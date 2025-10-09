@@ -408,6 +408,48 @@ root_agent = Agent()
         assert hasattr(agent, "result")
         assert agent.result == "Shared function"
 
+    def test_agent_with_multiple_sibling_imports(self, tmp_path):
+        """Test loading agent that imports from multiple sibling modules."""
+        # Create package structure:
+        # multi_import/
+        #   __init__.py
+        #   agent.py (imports from .utils, .helpers, .config)
+        #   utils.py
+        #   helpers.py
+        #   config.py
+
+        agent_dir = tmp_path / "multi_import"
+        agent_dir.mkdir()
+        (agent_dir / "__init__.py").write_text("")
+
+        # Create multiple utility modules
+        (agent_dir / "utils.py").write_text('VALUE = "utils"')
+        (agent_dir / "helpers.py").write_text('HELPER = "helper"')
+        (agent_dir / "config.py").write_text('CONFIG = "config"')
+
+        # Create agent that imports from all of them
+        agent_file = agent_dir / "agent.py"
+        agent_file.write_text("""
+from .utils import VALUE
+from .helpers import HELPER
+from .config import CONFIG
+
+class Agent:
+    def __init__(self):
+        self.name = "Multi Import Agent"
+        self.combined = f"{VALUE}_{HELPER}_{CONFIG}"
+
+root_agent = Agent()
+""")
+
+        # Should work with multiple sibling imports
+        agent, name, description = load_agent_module(str(agent_file))
+
+        assert agent is not None
+        assert name == "Multi Import Agent"
+        assert hasattr(agent, "combined")
+        assert agent.combined == "utils_helper_config"
+
 
 class TestEdgeCases:
     """Test edge cases and error scenarios."""

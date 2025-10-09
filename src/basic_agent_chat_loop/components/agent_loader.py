@@ -67,6 +67,63 @@ def _find_package_root(agent_path: Path) -> Tuple[Path, str]:
     return package_root, module_name
 
 
+def _ensure_package_loaded(package_root: Path, package_name: str) -> None:
+    """
+    Ensure all parent packages are loaded and registered in sys.modules.
+
+    This is critical for relative imports to work correctly - Python needs
+    all parent packages to be in sys.modules to resolve imports like
+    'from .sibling import foo'.
+
+    Args:
+        package_root: Root directory containing the package
+        package_name: Full package name (e.g., 'my_package.subpackage')
+    """
+    # Build list of all parent packages (e.g., ['my_package', 'my_package.subpackage'])
+    parts = package_name.split(".")
+    packages_to_load = []
+    for i in range(len(parts)):
+        pkg = ".".join(parts[: i + 1])
+        packages_to_load.append(pkg)
+
+    # Load each package if not already loaded
+    for pkg in packages_to_load:
+        if pkg in sys.modules:
+            continue
+
+        # Build path to __init__.py
+        pkg_path = package_root / pkg.replace(".", os.sep) / "__init__.py"
+
+        if not pkg_path.exists():
+            # Package doesn't have __init__.py, skip
+            continue
+
+        # Load the package __init__.py
+        spec = importlib.util.spec_from_file_location(pkg, pkg_path)
+        if spec is None or spec.loader is None:
+            continue
+
+        pkg_module = importlib.util.module_from_spec(spec)
+
+        # Set package attributes - critical for import machinery
+        pkg_module.__package__ = pkg
+        pkg_module.__path__ = [str(pkg_path.parent)]
+
+        # Also set __file__ for completeness
+        pkg_module.__file__ = str(pkg_path)
+
+        # Register in sys.modules BEFORE executing
+        sys.modules[pkg] = pkg_module
+
+        try:
+            spec.loader.exec_module(pkg_module)
+        except Exception as e:
+            # If package init fails, still keep it registered
+            # (might just have imports that will work later)
+            logger.debug(f"Package {pkg} __init__.py had errors: {e}")
+            pass
+
+
 def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
     """
     Dynamically load agent module and extract root_agent.
@@ -97,6 +154,12 @@ def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
     # Add the package root to sys.path (not just the immediate directory)
     if str(package_root) not in sys.path:
         sys.path.insert(0, str(package_root))
+
+    # Ensure parent packages are loaded and registered in sys.modules
+    # This is critical for relative imports to work correctly
+    if "." in module_name:
+        package_name = ".".join(module_name.split(".")[:-1])
+        _ensure_package_loaded(package_root, package_name)
 
     # Load the module with proper package context
     spec = importlib.util.spec_from_file_location(module_name, agent_path_obj)
