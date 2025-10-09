@@ -292,6 +292,98 @@ class ChatConfig:
 _global_config: Optional[ChatConfig] = None
 
 
+def initialize_default_config() -> Path:
+    """
+    Create default ~/.chatrc configuration file if it doesn't exist.
+
+    Returns:
+        Path to the config file
+    """
+    config_file = Path.home() / ".chatrc"
+
+    if config_file.exists():
+        return config_file
+
+    default_config = """# Basic Agent Chat Loop Configuration
+#
+# This file was automatically created with recommended defaults.
+# Edit to customize your experience!
+#
+# Format: YAML
+# Precedence: Project .chatrc > Global ~/.chatrc > Built-in defaults
+
+# ============================================================================
+# COLORS - ANSI escape codes for terminal output
+# ============================================================================
+colors:
+  user: '\\033[97m'      # Bright white - maximum contrast
+  agent: '\\033[94m'     # Bright blue
+  system: '\\033[33m'    # Yellow
+  error: '\\033[91m'     # Bright red
+  success: '\\033[92m'   # Bright green
+  dim: '\\033[2m'        # Dim
+  reset: '\\033[0m'      # Reset
+
+# ============================================================================
+# FEATURES - Toggle optional functionality
+# ============================================================================
+features:
+  auto_save: false              # Automatically save conversations on exit
+  rich_enabled: true            # Use rich library for formatting (if available)
+  show_tokens: false            # Display token counts and cost estimates
+  show_metadata: true           # Show agent metadata on startup
+  readline_enabled: true        # Enable command history with readline
+
+# ============================================================================
+# PATHS - File system locations
+# ============================================================================
+paths:
+  save_location: ~/agent-conversations    # Where to save conversations
+  log_location: .logs                      # Where to write logs
+
+# ============================================================================
+# BEHAVIOR - Runtime behavior settings
+# ============================================================================
+behavior:
+  max_retries: 3               # Maximum retry attempts on failure
+  retry_delay: 2.0             # Seconds to wait between retries
+  timeout: 120.0               # Request timeout in seconds
+  spinner_style: dots          # Thinking indicator style (dots, line, arc, etc.)
+
+# ============================================================================
+# UI - User interface preferences
+# ============================================================================
+ui:
+  show_banner: true            # Show welcome banner on startup
+  show_thinking_indicator: true  # Show "Thinking..." spinner
+  show_duration: true          # Show query duration
+  show_status_bar: false       # Show status bar at top (agent, model, queries, time)
+
+# ============================================================================
+# PER-AGENT OVERRIDES
+# ============================================================================
+# Override settings for specific agents by name
+agents:
+  # Example: Agent with auto-save enabled
+  # 'My Agent':
+  #   features:
+  #     auto_save: true
+  #     show_tokens: true
+  #   paths:
+  #     save_location: ~/my-agent-conversations
+"""
+
+    try:
+        with open(config_file, "w") as f:
+            f.write(default_config)
+        return config_file
+    except Exception:
+        # If we can't write the file, that's okay - will use built-in defaults
+        pass
+
+    return config_file
+
+
 def get_config(config_path: Optional[Path] = None, reload: bool = False) -> ChatConfig:
     """
     Get global configuration instance.
@@ -306,6 +398,10 @@ def get_config(config_path: Optional[Path] = None, reload: bool = False) -> Chat
     global _global_config
 
     if _global_config is None or reload:
+        # Initialize default config on first run if it doesn't exist
+        if config_path is None:
+            initialize_default_config()
+
         _global_config = ChatConfig(config_path)
 
     return _global_config

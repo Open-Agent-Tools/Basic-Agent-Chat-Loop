@@ -22,6 +22,107 @@ class TemplateManager:
             prompts_dir: Directory containing templates (defaults to ~/.prompts/)
         """
         self.prompts_dir = prompts_dir or Path.home() / ".prompts"
+        self._initialize_templates()
+
+    def _initialize_templates(self):
+        """Create prompts directory and sample templates if they don't exist."""
+        if self.prompts_dir.exists():
+            return
+
+        try:
+            self.prompts_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create sample templates
+            self._create_sample_template("explain", """# Explain this code
+
+Please explain the following code in detail:
+
+{input}
+
+Focus on:
+- What the code does
+- How it works
+- Any potential issues or improvements
+- Best practices being followed or violated
+""")
+
+            self._create_sample_template("review", """# Code Review
+
+Please review the following code:
+
+{input}
+
+Provide feedback on:
+- Code quality and readability
+- Potential bugs or issues
+- Performance considerations
+- Security concerns
+- Suggestions for improvement
+""")
+
+            self._create_sample_template("debug", """# Debug Help
+
+I'm having trouble with this code:
+
+{input}
+
+Please help me:
+1. Identify the issue
+2. Explain why it's happening
+3. Suggest a fix
+4. Provide the corrected code
+""")
+
+            self._create_sample_template("optimize", """# Optimize This Code
+
+Please optimize the following code:
+
+{input}
+
+Focus on:
+- Performance improvements
+- Memory efficiency
+- Code simplicity
+- Best practices
+""")
+
+            self._create_sample_template("test", """# Write Tests
+
+Please write comprehensive tests for the following code:
+
+{input}
+
+Include:
+- Unit tests for all functions
+- Edge cases and error handling
+- Test descriptions explaining what each test validates
+""")
+
+            self._create_sample_template("document", """# Add Documentation
+
+Please add comprehensive documentation to this code:
+
+{input}
+
+Include:
+- Docstrings for all functions/classes
+- Inline comments for complex logic
+- Usage examples
+- Type hints if missing
+""")
+
+        except Exception as e:
+            logger.debug(f"Could not initialize templates: {e}")
+
+    def _create_sample_template(self, name: str, content: str):
+        """Create a sample template file."""
+        template_path = self.prompts_dir / f"{name}.md"
+        if not template_path.exists():
+            try:
+                with open(template_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+            except Exception as e:
+                logger.debug(f"Could not create template {name}: {e}")
 
     def load_template(self, template_name: str, input_text: str = "") -> Optional[str]:
         """
