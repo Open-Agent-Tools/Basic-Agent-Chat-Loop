@@ -38,9 +38,40 @@ def load_environment_variables() -> Optional[Path]:
     return None
 
 
+def _find_package_root(agent_path: Path) -> Tuple[Path, str]:
+    """
+    Find the package root by walking up directories looking for __init__.py files.
+
+    Args:
+        agent_path: Path to the agent file
+
+    Returns:
+        Tuple of (package_root_path, module_name)
+    """
+    agent_path = Path(agent_path).resolve()
+    agent_dir = agent_path.parent
+
+    # Build the module name by walking up the directory tree
+    module_parts = [agent_path.stem]
+    current_dir = agent_dir
+
+    # Walk up while we find __init__.py files
+    while (current_dir / "__init__.py").exists():
+        module_parts.insert(0, current_dir.name)
+        current_dir = current_dir.parent
+
+    # The package root is one level above the highest __init__.py
+    package_root = current_dir
+    module_name = ".".join(module_parts)
+
+    return package_root, module_name
+
+
 def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
     """
     Dynamically load agent module and extract root_agent.
+
+    Supports agents with relative imports by properly establishing package context.
 
     Args:
         agent_path: Path to agent module file
@@ -58,21 +89,37 @@ def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
         filename = os.path.basename(agent_path)
         raise FileNotFoundError(f"Agent file not found: {filename}")
 
-    # Add the agent directory to sys.path to fix import issues
-    agent_dir = os.path.dirname(agent_path)
-    if agent_dir not in sys.path:
-        sys.path.insert(0, agent_dir)
+    agent_path_obj = Path(agent_path).resolve()
 
-    # Convert path to module name
-    spec = importlib.util.spec_from_file_location("agent_module", agent_path)
+    # Find package root and construct proper module name
+    package_root, module_name = _find_package_root(agent_path_obj)
+
+    # Add the package root to sys.path (not just the immediate directory)
+    if str(package_root) not in sys.path:
+        sys.path.insert(0, str(package_root))
+
+    # Load the module with proper package context
+    spec = importlib.util.spec_from_file_location(module_name, agent_path_obj)
     if spec is None or spec.loader is None:
         # Only show filename, not full path
         filename = os.path.basename(agent_path)
         raise ImportError(f"Could not load module from {filename}")
 
     module = importlib.util.module_from_spec(spec)
-    sys.modules["agent_module"] = module
-    spec.loader.exec_module(module)
+
+    # Set the package attribute for relative imports
+    if "." in module_name:
+        module.__package__ = ".".join(module_name.split(".")[:-1])
+
+    # Register in sys.modules before executing to support circular imports
+    sys.modules[module_name] = module
+
+    try:
+        spec.loader.exec_module(module)
+    except Exception as e:
+        # Clean up sys.modules on failure
+        sys.modules.pop(module_name, None)
+        raise ImportError(f"Failed to execute module {os.path.basename(agent_path)}: {e}")
 
     # Extract root_agent
     if not hasattr(module, "root_agent"):

@@ -318,6 +318,97 @@ root_agent = Agent()
         assert "model_id" not in metadata or metadata["model_id"] == "Unknown Model"
 
 
+class TestRelativeImports:
+    """Test relative imports in agent packages."""
+
+    def test_agent_with_relative_imports(self, tmp_path):
+        """Test loading agent that uses relative imports."""
+        # Create a package structure:
+        # my_agent/
+        #   __init__.py
+        #   agent.py (has: from .utils import helper)
+        #   utils.py (has: helper function)
+
+        agent_dir = tmp_path / "my_agent"
+        agent_dir.mkdir()
+
+        # Create __init__.py to make it a package
+        (agent_dir / "__init__.py").write_text("")
+
+        # Create utils module with a helper function
+        (agent_dir / "utils.py").write_text("""
+def helper():
+    return "Helper function result"
+""")
+
+        # Create agent that uses relative import
+        agent_file = agent_dir / "agent.py"
+        agent_file.write_text("""
+from .utils import helper
+
+class Agent:
+    def __init__(self):
+        self.name = "Test Agent"
+        self.helper_result = helper()
+
+root_agent = Agent()
+""")
+
+        # Load the agent - should work with relative imports
+        agent, name, description = load_agent_module(str(agent_file))
+
+        assert agent is not None
+        assert name == "Test Agent"
+        assert hasattr(agent, "helper_result")
+        assert agent.helper_result == "Helper function result"
+
+    def test_agent_with_parent_relative_imports(self, tmp_path):
+        """Test loading agent with parent-level relative imports."""
+        # Create a deeper package structure:
+        # my_package/
+        #   __init__.py
+        #   shared/
+        #     __init__.py
+        #     helpers.py
+        #   agents/
+        #     __init__.py
+        #     agent.py (has: from ..shared.helpers import func)
+
+        root = tmp_path / "my_package"
+        root.mkdir()
+        (root / "__init__.py").write_text("")
+
+        shared = root / "shared"
+        shared.mkdir()
+        (shared / "__init__.py").write_text("")
+        (shared / "helpers.py").write_text("""
+def shared_function():
+    return "Shared function"
+""")
+
+        agents = root / "agents"
+        agents.mkdir()
+        (agents / "__init__.py").write_text("")
+
+        agent_file = agents / "agent.py"
+        agent_file.write_text("""
+from ..shared.helpers import shared_function
+
+class Agent:
+    def __init__(self):
+        self.result = shared_function()
+
+root_agent = Agent()
+""")
+
+        # Load the agent - should work with parent relative imports
+        agent, _, _ = load_agent_module(str(agent_file))
+
+        assert agent is not None
+        assert hasattr(agent, "result")
+        assert agent.result == "Shared function"
+
+
 class TestEdgeCases:
     """Test edge cases and error scenarios."""
 
@@ -341,7 +432,7 @@ class Agent:
 root_agent = Agent()
 """)
 
-        with pytest.raises(ModuleNotFoundError):
+        with pytest.raises(ImportError, match="Failed to execute module"):
             load_agent_module(str(agent_file))
 
     def test_metadata_with_unknown_model_id(self, tmp_path):

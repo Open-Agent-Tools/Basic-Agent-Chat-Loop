@@ -55,9 +55,14 @@
   - ✅ Fixed: Added `python-dotenv>=1.0.0` to core dependencies
 
 - [ ] Test installation on all platforms via pip
-  - [ ] macOS
+  - [x] macOS - ✅ Tested successfully
   - [ ] Linux
-  - [ ] Windows
+  - [x] Windows - ✅ Installation succeeds
+    - [x] ~~Fixed: Agents with relative imports now work correctly~~
+      - ✅ Added package root detection
+      - ✅ Proper module naming with __package__ attribute
+      - ✅ Support for both same-level (from .module) and parent-level (from ..module) imports
+      - ✅ Added comprehensive tests for relative imports
 - [ ] Verify all imports work in installed package
 - [ ] Test CLI entry point (`chat_loop` command)
 - [ ] Test editable install (`pip install -e .`)
