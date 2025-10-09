@@ -108,10 +108,12 @@ See `QA_FINDINGS_SUMMARY.md` for quick reference with file paths.
   - ✅ Fixed: Changed bare `except:` to `except Exception:`
   - Note: Silent failures intentional for config loading (fallback to defaults)
 
-- [ ] **HIGH-004:** Extract magic numbers to named constants
-  - `ui_components.py:122-126` - Token formatting thresholds
-  - `chat_loop.py:100` - History length (1000)
-  - `agent_loader.py:28` - .env search depth (3)
+- [x] **HIGH-004:** ~~Extract magic numbers to named constants~~
+  - ✅ Fixed: Extracted all magic numbers to named constants
+  - ✅ `ui_components.py` - Added `TOKEN_THOUSANDS_THRESHOLD` and `TOKEN_MILLIONS_THRESHOLD` class constants
+  - ✅ `chat_loop.py` - Added `READLINE_HISTORY_LENGTH` module constant
+  - ✅ `agent_loader.py` - Added `ENV_SEARCH_DEPTH` module constant
+  - ✅ All 158 tests passing after changes
 
 - [ ] **MEDIUM-002:** Fix logging configuration
   - `chat_loop.py:81` - Don't clear root logger handlers

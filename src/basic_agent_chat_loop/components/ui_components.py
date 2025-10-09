@@ -68,6 +68,10 @@ class Colors:
 class StatusBar:
     """Simple status bar for chat loop."""
 
+    # Token display formatting thresholds
+    TOKEN_THOUSANDS_THRESHOLD = 1_000
+    TOKEN_MILLIONS_THRESHOLD = 1_000_000
+
     def __init__(self, agent_name: str, model_info: str, show_tokens: bool = False):
         """
         Initialize status bar.
@@ -119,10 +123,10 @@ class StatusBar:
 
         # Add tokens if enabled and available
         if self.show_tokens and self.total_tokens > 0:
-            if self.total_tokens >= 1_000_000:
-                token_str = f"{self.total_tokens / 1_000_000:.1f}M tokens"
-            elif self.total_tokens >= 1_000:
-                token_str = f"{self.total_tokens / 1_000:.1f}K tokens"
+            if self.total_tokens >= self.TOKEN_MILLIONS_THRESHOLD:
+                token_str = f"{self.total_tokens / self.TOKEN_MILLIONS_THRESHOLD:.1f}M tokens"
+            elif self.total_tokens >= self.TOKEN_THOUSANDS_THRESHOLD:
+                token_str = f"{self.total_tokens / self.TOKEN_THOUSANDS_THRESHOLD:.1f}K tokens"
             else:
                 token_str = f"{self.total_tokens} tokens"
             parts.append(token_str)

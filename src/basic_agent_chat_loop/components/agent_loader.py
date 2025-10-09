@@ -15,17 +15,20 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
+# Environment file search depth (number of parent directories to check)
+ENV_SEARCH_DEPTH = 3
+
 
 def load_environment_variables() -> Optional[Path]:
     """
-    Load environment variables from .env file up to 3 levels up.
+    Load environment variables from .env file searching parent directories.
 
     Returns:
         Path to .env file if found, None otherwise
     """
     try:
-        # Look for .env file up to 3 levels up from current file
-        for i in range(3):
+        # Look for .env file in parent directories
+        for i in range(ENV_SEARCH_DEPTH):
             env_path = Path(__file__).parents[i] / ".env"
             if env_path.exists():
                 load_dotenv(env_path, override=False)  # Don't override existing vars

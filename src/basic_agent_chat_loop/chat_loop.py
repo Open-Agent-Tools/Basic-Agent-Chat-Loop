@@ -75,6 +75,9 @@ except ImportError:
 log_dir = Path(__file__).parent.parent / ".logs"
 log_dir.mkdir(exist_ok=True)
 
+# Command history configuration
+READLINE_HISTORY_LENGTH = 1000
+
 # We'll configure logging after we know the agent name
 logger = logging.getLogger(__name__)
 
@@ -102,7 +105,7 @@ def setup_readline_history():
     history_file = Path.home() / ".chat_history"
 
     # Set history length
-    readline.set_history_length(1000)
+    readline.set_history_length(READLINE_HISTORY_LENGTH)
 
     # Enable tab completion and better editing
     try:
