@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2025-10-09
+
+### Fixed
+- **Eliminated Import Error Messages During Startup**
+  - Completely removed "No module named" errors when using fully qualified agent paths
+  - Parent package `__init__.py` files are no longer executed during agent loading
+  - Register parent packages as stub modules (sufficient for Python's import machinery)
+  - Added sys.stderr suppression during agent module execution as defense-in-depth
+  - Fixes issue with paths like `/agents/local/timmy/agent.py` where parent `agents/__init__.py` tries to import sibling modules
+
+### Impact
+- Clean startup experience with no confusing error messages
+- Agent functionality unchanged (absolute imports still work)
+- All 161 tests passing
+
 ## [0.1.2] - 2025-10-09
 
 ### Fixed
@@ -150,6 +165,7 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
+[0.1.3]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.3
 [0.1.2]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.0
