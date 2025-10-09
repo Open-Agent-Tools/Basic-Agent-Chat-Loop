@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write  # Required for trusted publishing
-      contents: read
+      contents: write  # Required for uploading release assets
 
     steps:
     - uses: actions/checkout@v4
