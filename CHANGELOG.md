@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2025-10-09
+
+### Fixed
+- **Configuration System Bugs** - Fixed three critical config bugs
+  - Fixed config loading precedence (explicit path now has highest priority)
+  - Fixed NoneType handling in config merge (skips None values from YAML)
+  - Fixed default template to use `agents: {}` instead of `agents:`
+  - Resolves "NoneType not iterable" errors
+- **Enhanced Relative Import Support** - Improved multi-module imports
+  - Added proper parent package registration in sys.modules
+  - Agents can now import from multiple sibling modules
+  - Fixed: `from .utils import X` followed by `from .helpers import Y`
+
+### Testing
+- All 161 tests passing (up from 160)
+- Added test for multiple sibling imports
+- All 24 config tests now pass (was 20/24)
+
 ## [0.1.1] - 2025-10-09
 
 ### Fixed
@@ -132,5 +150,6 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
+[0.1.2]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.0
