@@ -94,16 +94,15 @@ class ChatConfig:
 
         config_files = []
 
-        # Check for explicit path
-        if explicit_path and explicit_path.exists():
-            config_files.append(explicit_path)
+        # Build list in order of precedence (lowest to highest)
+        # Lower priority configs are loaded first, higher priority override them
 
-        # Global config
+        # Global config (lowest priority when explicit or project configs exist)
         global_config = Path.home() / ".chatrc"
         if global_config.exists():
             config_files.append(global_config)
 
-        # Project config (current directory and up to 3 parents)
+        # Project config (higher priority than global)
         for i in range(4):
             if i == 0:
                 project_config = Path.cwd() / ".chatrc"
@@ -117,7 +116,11 @@ class ChatConfig:
                 config_files.append(project_config)
                 break  # Use first found, don't search higher
 
-        # Load and merge configs (global first, then project overrides)
+        # Explicit path (highest priority - loaded last to override others)
+        if explicit_path and explicit_path.exists():
+            config_files.append(explicit_path)
+
+        # Load and merge configs (each subsequent config overrides previous)
         for config_file in config_files:
             try:
                 with open(config_file) as f:
@@ -149,6 +152,10 @@ class ChatConfig:
         result = self._deep_copy(base)
 
         for key, value in override.items():
+            # Skip None values (treat as "not set" rather than explicit None)
+            if value is None:
+                continue
+
             if (
                 key in result
                 and isinstance(result[key], dict)
@@ -177,8 +184,9 @@ class ChatConfig:
             Configuration value
         """
         # Check agent-specific override first
-        if agent_name and agent_name in self.config.get("agents", {}):
-            agent_config = self.config["agents"][agent_name]
+        agents = self.config.get("agents") or {}
+        if agent_name and agent_name in agents:
+            agent_config = agents[agent_name]
             agent_value = self._get_nested(agent_config, key)
             if agent_value is not None:
                 return agent_value
@@ -225,8 +233,9 @@ class ChatConfig:
         base_section = self.config.get(section, {})
 
         # Apply agent overrides if specified
-        if agent_name and agent_name in self.config.get("agents", {}):
-            agent_config = self.config["agents"][agent_name]
+        agents = self.config.get("agents") or {}
+        if agent_name and agent_name in agents:
+            agent_config = agents[agent_name]
             if section in agent_config:
                 base_section = self._merge_config(base_section, agent_config[section])
 
@@ -259,9 +268,10 @@ class ChatConfig:
 
         # Determine target dict
         if agent_name:
+            agents = self.config.get("agents") or {}
             if "agents" not in self.config:
                 self.config["agents"] = {}
-            if agent_name not in self.config["agents"]:
+            if agent_name not in agents:
                 self.config["agents"][agent_name] = {}
             target = self.config["agents"][agent_name]
         else:
@@ -363,14 +373,16 @@ ui:
 # PER-AGENT OVERRIDES
 # ============================================================================
 # Override settings for specific agents by name
-agents:
-  # Example: Agent with auto-save enabled
-  # 'My Agent':
-  #   features:
-  #     auto_save: true
-  #     show_tokens: true
-  #   paths:
-  #     save_location: ~/my-agent-conversations
+# Example:
+# agents:
+#   'My Agent':
+#     features:
+#       auto_save: true
+#       show_tokens: true
+#     paths:
+#       save_location: ~/my-agent-conversations
+
+agents: {}
 """
 
     try:
