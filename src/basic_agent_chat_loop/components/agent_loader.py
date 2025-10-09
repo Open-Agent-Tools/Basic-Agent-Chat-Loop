@@ -4,7 +4,9 @@ Agent loading and metadata extraction.
 Handles dynamic loading of agent modules and extraction of agent metadata.
 """
 
+import contextlib
 import importlib.util
+import io
 import logging
 import os
 import sys
@@ -115,12 +117,17 @@ def _ensure_package_loaded(package_root: Path, package_name: str) -> None:
         # Register in sys.modules BEFORE executing
         sys.modules[pkg] = pkg_module
 
+        # Suppress stderr during package init - parent packages in agent paths
+        # often have import errors that are non-critical (agent still works)
         try:
-            spec.loader.exec_module(pkg_module)
+            with contextlib.redirect_stderr(io.StringIO()):
+                spec.loader.exec_module(pkg_module)
         except Exception as e:
-            # If package init fails, still keep it registered
-            # (might just have imports that will work later)
-            logger.debug(f"Package {pkg} __init__.py had errors: {e}")
+            # If package init fails, still keep it registered (might just have
+            # imports that will work later). This commonly happens with
+            # intermediate directories in agent paths (e.g., /path/agents/my_agent.py)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(f"Package {pkg} __init__.py initialization failed: {type(e).__name__}")
             pass
 
 
