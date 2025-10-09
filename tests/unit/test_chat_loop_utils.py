@@ -187,7 +187,9 @@ class TestExtractTokenUsage:
     def test_extract_usage_from_dict_result_bedrock(self):
         """Test extraction from AWS Bedrock style response."""
         agent = Mock()
-        with patch("basic_agent_chat_loop.chat_loop.extract_agent_metadata") as mock_extract:
+        with patch(
+            "basic_agent_chat_loop.chat_loop.extract_agent_metadata"
+        ) as mock_extract:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test", "Desc")
 
@@ -208,7 +210,9 @@ class TestExtractTokenUsage:
     def test_extract_usage_from_object_anthropic(self):
         """Test extraction from Anthropic style response."""
         agent = Mock()
-        with patch("basic_agent_chat_loop.chat_loop.extract_agent_metadata") as mock_extract:
+        with patch(
+            "basic_agent_chat_loop.chat_loop.extract_agent_metadata"
+        ) as mock_extract:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test", "Desc")
 
@@ -224,7 +228,9 @@ class TestExtractTokenUsage:
     def test_extract_usage_from_dict_usage(self):
         """Test extraction from dict with usage key."""
         agent = Mock()
-        with patch("basic_agent_chat_loop.chat_loop.extract_agent_metadata") as mock_extract:
+        with patch(
+            "basic_agent_chat_loop.chat_loop.extract_agent_metadata"
+        ) as mock_extract:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test", "Desc")
 
@@ -239,7 +245,9 @@ class TestExtractTokenUsage:
     def test_extract_usage_prompt_completion_tokens(self):
         """Test extraction with prompt_tokens/completion_tokens names."""
         agent = Mock()
-        with patch("basic_agent_chat_loop.chat_loop.extract_agent_metadata") as mock_extract:
+        with patch(
+            "basic_agent_chat_loop.chat_loop.extract_agent_metadata"
+        ) as mock_extract:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test", "Desc")
 
@@ -257,7 +265,9 @@ class TestExtractTokenUsage:
     def test_extract_usage_zero_tokens(self):
         """Test with zero token usage."""
         agent = Mock()
-        with patch("basic_agent_chat_loop.chat_loop.extract_agent_metadata") as mock_extract:
+        with patch(
+            "basic_agent_chat_loop.chat_loop.extract_agent_metadata"
+        ) as mock_extract:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test", "Desc")
 
@@ -271,7 +281,9 @@ class TestExtractTokenUsage:
     def test_extract_usage_partial_tokens(self):
         """Test with only input tokens."""
         agent = Mock()
-        with patch("basic_agent_chat_loop.chat_loop.extract_agent_metadata") as mock_extract:
+        with patch(
+            "basic_agent_chat_loop.chat_loop.extract_agent_metadata"
+        ) as mock_extract:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test", "Desc")
 

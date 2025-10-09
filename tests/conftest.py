@@ -10,6 +10,7 @@ src_path = Path(__file__).parent.parent / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
+
 @pytest.fixture
 def temp_config_file(tmp_path):
     """Create a temporary config file."""
@@ -25,20 +26,23 @@ behavior:
 """)
     return config_file
 
+
 @pytest.fixture
 def temp_aliases_file(tmp_path):
     """Create a temporary aliases file."""
     aliases_file = tmp_path / ".chat_aliases"
     return aliases_file
 
+
 @pytest.fixture
 def mock_agent():
     """Create a mock agent for testing."""
+
     class MockAgent:
         def __init__(self):
             self.name = "Test Agent"
             self.description = "A test agent"
-            self.model = type('obj', (object,), {'model_id': 'test-model'})()
+            self.model = type("obj", (object,), {"model_id": "test-model"})()
 
         def __call__(self, query):
             return {"message": "Test response"}

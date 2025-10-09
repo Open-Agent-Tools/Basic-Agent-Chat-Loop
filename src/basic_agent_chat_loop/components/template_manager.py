@@ -33,7 +33,9 @@ class TemplateManager:
             self.prompts_dir.mkdir(parents=True, exist_ok=True)
 
             # Create sample templates
-            self._create_sample_template("explain", """# Explain this code
+            self._create_sample_template(
+                "explain",
+                """# Explain this code
 
 Please explain the following code in detail:
 
@@ -44,9 +46,12 @@ Focus on:
 - How it works
 - Any potential issues or improvements
 - Best practices being followed or violated
-""")
+""",
+            )
 
-            self._create_sample_template("review", """# Code Review
+            self._create_sample_template(
+                "review",
+                """# Code Review
 
 Please review the following code:
 
@@ -58,9 +63,12 @@ Provide feedback on:
 - Performance considerations
 - Security concerns
 - Suggestions for improvement
-""")
+""",
+            )
 
-            self._create_sample_template("debug", """# Debug Help
+            self._create_sample_template(
+                "debug",
+                """# Debug Help
 
 I'm having trouble with this code:
 
@@ -71,9 +79,12 @@ Please help me:
 2. Explain why it's happening
 3. Suggest a fix
 4. Provide the corrected code
-""")
+""",
+            )
 
-            self._create_sample_template("optimize", """# Optimize This Code
+            self._create_sample_template(
+                "optimize",
+                """# Optimize This Code
 
 Please optimize the following code:
 
@@ -84,9 +95,12 @@ Focus on:
 - Memory efficiency
 - Code simplicity
 - Best practices
-""")
+""",
+            )
 
-            self._create_sample_template("test", """# Write Tests
+            self._create_sample_template(
+                "test",
+                """# Write Tests
 
 Please write comprehensive tests for the following code:
 
@@ -96,9 +110,12 @@ Include:
 - Unit tests for all functions
 - Edge cases and error handling
 - Test descriptions explaining what each test validates
-""")
+""",
+            )
 
-            self._create_sample_template("document", """# Add Documentation
+            self._create_sample_template(
+                "document",
+                """# Add Documentation
 
 Please add comprehensive documentation to this code:
 
@@ -109,7 +126,8 @@ Include:
 - Inline comments for complex logic
 - Usage examples
 - Type hints if missing
-""")
+""",
+            )
 
         except Exception as e:
             logger.debug(f"Could not initialize templates: {e}")

@@ -1,5 +1,5 @@
 """Tests for TokenTracker component."""
-import pytest
+
 from basic_agent_chat_loop.components.token_tracker import TokenTracker
 
 

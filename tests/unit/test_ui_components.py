@@ -2,8 +2,6 @@
 
 import time
 
-import pytest
-
 from basic_agent_chat_loop.components.ui_components import Colors, StatusBar
 
 

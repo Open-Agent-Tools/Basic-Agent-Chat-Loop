@@ -86,7 +86,9 @@ class TestAddAlias:
         assert success is False
         assert "not found" in message
 
-    def test_add_alias_duplicate_without_overwrite(self, populated_alias_manager, tmp_path):
+    def test_add_alias_duplicate_without_overwrite(
+        self, populated_alias_manager, tmp_path
+    ):
         """Test adding duplicate alias without overwrite flag."""
         agent_path = tmp_path / "new_agent.py"
         agent_path.write_text("# new agent")
@@ -98,7 +100,9 @@ class TestAddAlias:
         assert "already exists" in message
         assert "--overwrite" in message
 
-    def test_add_alias_duplicate_with_overwrite(self, populated_alias_manager, tmp_path):
+    def test_add_alias_duplicate_with_overwrite(
+        self, populated_alias_manager, tmp_path
+    ):
         """Test adding duplicate alias with overwrite flag."""
         agent_path = tmp_path / "new_agent.py"
         agent_path.write_text("# new agent")

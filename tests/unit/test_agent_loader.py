@@ -123,7 +123,9 @@ class TestLoadAgentModule:
         agent_file = tmp_path / "no_root.py"
         agent_file.write_text("# No root_agent here")
 
-        with pytest.raises(AttributeError, match="must expose a 'root_agent' attribute"):
+        with pytest.raises(
+            AttributeError, match="must expose a 'root_agent' attribute"
+        ):
             load_agent_module(str(agent_file))
 
     def test_agent_directory_added_to_sys_path(self, mock_agent_file):

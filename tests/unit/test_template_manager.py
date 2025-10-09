@@ -1,6 +1,5 @@
 """Tests for TemplateManager component."""
 
-from pathlib import Path
 
 import pytest
 
@@ -34,10 +33,7 @@ def populated_prompts_dir(prompts_dir):
 
     # Template with different heading
     (prompts_dir / "complex.md").write_text(
-        "# Complex Template\n"
-        "\n"
-        "Content: {input}\n"
-        "Additional: {extra}"
+        "# Complex Template\n\nContent: {input}\nAdditional: {extra}"
     )
 
     return prompts_dir
@@ -104,7 +100,9 @@ class TestListTemplatesWithDescriptions:
         assert len(templates) == 1
         assert templates[0] == ("simple", "simple")  # Uses name as description
 
-    def test_list_with_descriptions_with_heading(self, prompts_dir, populated_prompts_dir):
+    def test_list_with_descriptions_with_heading(
+        self, prompts_dir, populated_prompts_dir
+    ):
         """Test listing templates with markdown headings."""
         manager = TemplateManager(prompts_dir)
         templates = manager.list_templates_with_descriptions()
@@ -143,7 +141,9 @@ class TestLoadTemplate:
 
         assert content == "This is a simple template."
 
-    def test_load_template_with_variable_substitution(self, prompts_dir, populated_prompts_dir):
+    def test_load_template_with_variable_substitution(
+        self, prompts_dir, populated_prompts_dir
+    ):
         """Test loading template and substituting variables."""
         manager = TemplateManager(prompts_dir)
         content = manager.load_template("review", "my_code.py")
@@ -198,7 +198,9 @@ class TestEdgeCases:
 
     def test_template_without_input_placeholder(self, prompts_dir):
         """Test loading template without {input} placeholder."""
-        (prompts_dir / "no_placeholder.md").write_text("# Title\n\nContent without placeholder")
+        (prompts_dir / "no_placeholder.md").write_text(
+            "# Title\n\nContent without placeholder"
+        )
 
         manager = TemplateManager(prompts_dir)
         content = manager.load_template("no_placeholder", "extra text")

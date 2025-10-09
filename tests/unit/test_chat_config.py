@@ -318,7 +318,9 @@ class TestGetConfigFunction:
         config2 = get_config(temp_config_file, reload=True)
 
         # Should be different configuration
-        assert config1.get("features.show_tokens") != config2.get("features.show_tokens")
+        assert config1.get("features.show_tokens") != config2.get(
+            "features.show_tokens"
+        )
 
 
 class TestEdgeCases:

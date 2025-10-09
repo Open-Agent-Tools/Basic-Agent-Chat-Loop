@@ -124,9 +124,13 @@ class StatusBar:
         # Add tokens if enabled and available
         if self.show_tokens and self.total_tokens > 0:
             if self.total_tokens >= self.TOKEN_MILLIONS_THRESHOLD:
-                token_str = f"{self.total_tokens / self.TOKEN_MILLIONS_THRESHOLD:.1f}M tokens"
+                token_str = (
+                    f"{self.total_tokens / self.TOKEN_MILLIONS_THRESHOLD:.1f}M tokens"
+                )
             elif self.total_tokens >= self.TOKEN_THOUSANDS_THRESHOLD:
-                token_str = f"{self.total_tokens / self.TOKEN_THOUSANDS_THRESHOLD:.1f}K tokens"
+                token_str = (
+                    f"{self.total_tokens / self.TOKEN_THOUSANDS_THRESHOLD:.1f}K tokens"
+                )
             else:
                 token_str = f"{self.total_tokens} tokens"
             parts.append(token_str)
