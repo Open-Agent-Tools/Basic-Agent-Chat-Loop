@@ -1,13 +1,23 @@
 # Basic Agent Chat Loop - TODO
 
-**Updated:** 2025-10-09 (v0.1.0 Release Preparation Complete)
-**Status:** Ready for v0.1.0 Release - All Critical Issues Resolved
+**Updated:** 2025-10-09 (v0.1.0 Released to PyPI)
+**Status:** 🎉 v0.1.0 Released - Focus on Testing, Documentation, and Community
 
 ---
 
-## Pre-Release Tasks
+## Recently Completed (2025-10-09)
 
-### Critical (BLOCKING RELEASE)
+- [x] **v0.1.0 Release** - Successfully published to PyPI
+- [x] **Documentation Overhaul** - Comprehensive updates to README, INSTALL.md, and new TROUBLESHOOTING.md
+- [x] **Auto-Setup Features** - Implemented .chatrc and ~/.prompts/ auto-creation
+- [x] **GitHub Workflows** - CI/CD pipeline with trusted publisher for PyPI
+- [x] **Package Publishing** - Live at https://pypi.org/project/basic-agent-chat-loop/
+
+---
+
+## Post-Release Priority Tasks
+
+### Critical (HIGH PRIORITY)
 
 **QA Issues Found:**
 - [x] **CRITICAL-001:** ~~No unit tests exist - tests/ directory is empty~~
@@ -56,13 +66,18 @@
 - [ ] Create example agents for testing (not AWS Strands specific)
 
 ### Documentation
-- [ ] Update docs/INSTALL.md to reflect new package structure
-- [ ] Add API documentation (docstrings complete?)
+- [x] ~~Update docs/INSTALL.md to reflect new package structure~~
+  - ✅ Completed: Comprehensive PyPI-first installation guide
+- [x] ~~Add badges to README~~
+  - ✅ Completed: PyPI, tests, coverage, license badges
+- [x] ~~Add usage examples to README~~
+  - ✅ Completed: Framework-agnostic examples with aliases and templates
+- [x] ~~Add troubleshooting section to docs~~
+  - ✅ Completed: Comprehensive docs/TROUBLESHOOTING.md created
 - [x] ~~Create CHANGELOG.md with version history~~
   - ✅ Completed: Full v0.1.0 changelog with release notes
-- [ ] Add usage examples to README
+- [ ] Add API documentation (docstrings complete?)
 - [ ] Document programmatic API usage
-- [ ] Add troubleshooting section to docs
 - [ ] Create quick start guide for different agent frameworks
 
 ### Testing
@@ -89,19 +104,26 @@
   - ✅ Built: basic_agent_chat_loop-0.1.0.tar.gz
   - ✅ Built: basic_agent_chat_loop-0.1.0-py3-none-any.whl
   - ✅ Validated with twine check (PASSED)
-- [ ] Test on TestPyPI first
-- [ ] Upload to PyPI
-- [ ] Verify package installation from PyPI
-- [ ] Update README with actual PyPI install command
+- [x] ~~Upload to PyPI~~
+  - ✅ Published via GitHub Actions trusted publisher
+  - ✅ Available at https://pypi.org/project/basic-agent-chat-loop/
+- [x] ~~Verify package installation from PyPI~~
+  - ✅ Tested: `pip install basic-agent-chat-loop` works
+  - ✅ CLI command available and functional
+- [x] ~~Update README with actual PyPI install command~~
+  - ✅ README updated with PyPI installation instructions
 
 ### Release Process
 - [x] ~~Create GitHub releases workflow~~
   - ✅ Automated PyPI publishing on GitHub releases (.github/workflows/publish.yml)
-- [ ] Tag version 0.1.0
+- [x] ~~Tag version 0.1.0~~
+  - ✅ Tagged: v0.1.0
 - [x] ~~Create release notes~~
   - ✅ Complete CHANGELOG.md with v0.1.0 release notes
   - ✅ RELEASE_CHECKLIST.md with detailed steps
-- [ ] Build and upload distribution packages
+  - ✅ GitHub release created: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.0
+- [x] ~~Build and upload distribution packages~~
+  - ✅ Automatically handled by GitHub Actions workflow
 
 ## Code Quality
 
@@ -170,7 +192,12 @@
   - ✅ Security scanning with bandit
 - [x] ~~Add code coverage reporting~~
   - ✅ Codecov integration in CI workflow
-- [ ] Add badges to README (tests passing, coverage, PyPI version)
+- [x] ~~Add badges to README (tests passing, coverage, PyPI version)~~
+  - ✅ PyPI version badge
+  - ✅ Tests status badge
+  - ✅ Codecov badge
+  - ✅ Python version badge
+  - ✅ License badge
 
 ## Feature Enhancements
 
