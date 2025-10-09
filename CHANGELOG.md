@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-10-09
+
+### Fixed
+- **Relative Import Support** - Agents with relative imports (from .module or from ..module) now work correctly on all platforms
+  - Added package root detection by walking up directory tree for __init__.py files
+  - Set proper __package__ attribute for Python import system
+  - Support for both same-level and parent-level relative imports
+  - Added comprehensive tests for relative import scenarios
+
+### Added
+- Comprehensive documentation updates:
+  - PyPI, tests, and coverage badges in README
+  - Complete INSTALL.md rewrite with platform-specific instructions
+  - New TROUBLESHOOTING.md with common issues and solutions
+  - Auto-setup documentation for .chatrc and ~/.prompts/
+
+### Testing
+- Added 2 new tests for relative imports (156 total tests passing)
+- Verified Windows installation and compatibility
+
 ## [0.1.0] - 2025-10-09
 
 ### Added
@@ -112,4 +132,5 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
+[0.1.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.0

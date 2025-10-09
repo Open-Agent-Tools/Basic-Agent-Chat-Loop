@@ -1,6 +1,5 @@
 """Tests for TemplateManager component."""
 
-
 import pytest
 
 from basic_agent_chat_loop.components.template_manager import TemplateManager

@@ -119,7 +119,9 @@ def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
     except Exception as e:
         # Clean up sys.modules on failure
         sys.modules.pop(module_name, None)
-        raise ImportError(f"Failed to execute module {os.path.basename(agent_path)}: {e}")
+        raise ImportError(
+            f"Failed to execute module {os.path.basename(agent_path)}: {e}"
+        )
 
     # Extract root_agent
     if not hasattr(module, "root_agent"):
