@@ -10,6 +10,7 @@ import io
 import logging
 import os
 import sys
+import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -77,6 +78,11 @@ def _ensure_package_loaded(package_root: Path, package_name: str) -> None:
     all parent packages to be in sys.modules to resolve imports like
     'from .sibling import foo'.
 
+    Note: We register parent packages as minimal stub modules to avoid
+    executing their __init__.py files, which may have import errors when
+    loading agents from deep directory structures (e.g., /agents/local/my_agent.py
+    where agents/__init__.py tries to import unrelated modules).
+
     Args:
         package_root: Root directory containing the package
         package_name: Full package name (e.g., 'my_package.subpackage')
@@ -93,42 +99,34 @@ def _ensure_package_loaded(package_root: Path, package_name: str) -> None:
         if pkg in sys.modules:
             continue
 
-        # Build path to __init__.py
-        pkg_path = package_root / pkg.replace(".", os.sep) / "__init__.py"
+        # Build path to package directory
+        pkg_dir = package_root / pkg.replace(".", os.sep)
+        pkg_init = pkg_dir / "__init__.py"
 
-        if not pkg_path.exists():
+        if not pkg_init.exists():
             # Package doesn't have __init__.py, skip
             continue
 
-        # Load the package __init__.py
-        spec = importlib.util.spec_from_file_location(pkg, pkg_path)
-        if spec is None or spec.loader is None:
-            continue
-
-        pkg_module = importlib.util.module_from_spec(spec)
+        # Create a minimal stub module WITHOUT executing __init__.py
+        # This avoids import errors from parent packages while still
+        # satisfying Python's import machinery for relative imports
+        import types
+        pkg_module = types.ModuleType(pkg)
 
         # Set package attributes - critical for import machinery
         pkg_module.__package__ = pkg
-        pkg_module.__path__ = [str(pkg_path.parent)]
+        pkg_module.__path__ = [str(pkg_dir)]
+        pkg_module.__file__ = str(pkg_init)
+        pkg_module.__name__ = pkg
 
-        # Also set __file__ for completeness
-        pkg_module.__file__ = str(pkg_path)
-
-        # Register in sys.modules BEFORE executing
+        # Register in sys.modules - this is all Python needs for relative imports
         sys.modules[pkg] = pkg_module
 
-        # Suppress stderr during package init - parent packages in agent paths
-        # often have import errors that are non-critical (agent still works)
-        try:
-            with contextlib.redirect_stderr(io.StringIO()):
-                spec.loader.exec_module(pkg_module)
-        except Exception as e:
-            # If package init fails, still keep it registered (might just have
-            # imports that will work later). This commonly happens with
-            # intermediate directories in agent paths (e.g., /path/agents/my_agent.py)
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Package {pkg} __init__.py initialization failed: {type(e).__name__}")
-            pass
+        # NOTE: We intentionally do NOT execute parent package __init__.py files.
+        # Executing them often causes import errors for sibling modules that
+        # aren't needed for the specific agent being loaded. The stub module
+        # registration is sufficient for Python's import machinery to resolve
+        # relative imports within the agent.
 
 
 def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
@@ -184,7 +182,12 @@ def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
     # Register in sys.modules before executing to support circular imports
     sys.modules[module_name] = module
 
+    # Temporarily suppress stderr during module execution to hide import errors
+    # from parent packages (common with paths like /agents/local/agent.py where
+    # agents/__init__.py may try to import unrelated sibling modules)
+    original_stderr = sys.stderr
     try:
+        sys.stderr = io.StringIO()
         spec.loader.exec_module(module)
     except Exception as e:
         # Clean up sys.modules on failure
@@ -192,6 +195,8 @@ def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
         raise ImportError(
             f"Failed to execute module {os.path.basename(agent_path)}: {e}"
         )
+    finally:
+        sys.stderr = original_stderr
 
     # Extract root_agent
     if not hasattr(module, "root_agent"):
