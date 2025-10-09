@@ -1,7 +1,7 @@
-# Basic Agent Chat Loop - v1.0.0 Release Checklist
+# Basic Agent Chat Loop - v0.1.0 Release Checklist
 
 **Status:** Ready for Testing
-**Version:** 1.0.0
+**Version:** 0.1.0
 **Date:** 2025-10-09
 
 ---
@@ -22,7 +22,7 @@
 
 - [x] **Documentation**
   - [x] README.md complete with usage examples
-  - [x] CHANGELOG.md created with full v1.0.0 history
+  - [x] CHANGELOG.md created with full v0.1.0 history
   - [x] CONTRIBUTING.md with development guidelines
   - [x] All documentation files reviewed
 
@@ -32,10 +32,10 @@
   - [x] Development status: Beta
   - [x] All required classifiers present
 
-- [x] **Build**
-  - [x] Source distribution built: `basic_agent_chat_loop-1.0.0.tar.gz`
-  - [x] Wheel built: `basic_agent_chat_loop-1.0.0-py3-none-any.whl`
-  - [x] Both packages validated with `twine check` ✅ PASSED
+- [ ] **Build**
+  - [ ] Source distribution built: `basic_agent_chat_loop-0.1.0.tar.gz`
+  - [ ] Wheel built: `basic_agent_chat_loop-0.1.0-py3-none-any.whl`
+  - [ ] Both packages validated with `twine check`
 
 ---
 
@@ -78,7 +78,7 @@ pip uninstall basic-agent-chat-loop
 git add .
 
 # 2. Commit release
-git commit -m "chore: release v1.0.0
+git commit -m "chore: release v0.1.0
 
 - Fixed logging configuration (MEDIUM-002)
 - Fixed cost display duplication (MEDIUM-004)
@@ -90,25 +90,25 @@ git commit -m "chore: release v1.0.0
 All 158 tests passing with 61% coverage"
 
 # 3. Create and push tag
-git tag -a v1.0.0 -m "Release v1.0.0 - Initial public release"
+git tag -a v0.1.0 -m "Release v0.1.0 - Initial public release"
 git push origin main
-git push origin v1.0.0
+git push origin v0.1.0
 ```
 
 ### Step 3: Create GitHub Release
 
 1. Go to: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/new
-2. Select tag: `v1.0.0`
-3. Release title: `v1.0.0 - Initial Release`
-4. Description: Copy from CHANGELOG.md (v1.0.0 section)
+2. Select tag: `v0.1.0`
+3. Release title: `v0.1.0 - Initial Release`
+4. Description: Copy from CHANGELOG.md (v0.1.0 section)
 5. Upload artifacts:
-   - `dist/basic_agent_chat_loop-1.0.0.tar.gz`
-   - `dist/basic_agent_chat_loop-1.0.0-py3-none-any.whl`
+   - `dist/basic_agent_chat_loop-0.1.0.tar.gz`
+   - `dist/basic_agent_chat_loop-0.1.0-py3-none-any.whl`
 6. Click "Publish release"
 
 ### Step 4: Publish to PyPI
 
-**⚠️ CAUTION: This cannot be undone. Once published, you cannot delete or replace v1.0.0**
+**⚠️ CAUTION: This cannot be undone. Once published, you cannot delete or replace v0.1.0**
 
 ```bash
 # 1. Upload to PyPI (requires PyPI account)
@@ -154,7 +154,7 @@ password = pypi-<your-testpypi-token-here>
 
 # 3. Update TODO.md to mark release tasks complete
 
-# 4. Start development on v1.0.1 or v1.1.0
+# 4. Start development on v0.1.1 or v0.2.0
 #    - Create new branch: git checkout -b develop
 ```
 
@@ -164,7 +164,7 @@ password = pypi-<your-testpypi-token-here>
 
 ### Local Testing
 
-- [ ] Install from local build: `pip install dist/basic_agent_chat_loop-1.0.0-py3-none-any.whl`
+- [ ] Install from local build: `pip install dist/basic_agent_chat_loop-0.1.0-py3-none-any.whl`
 - [ ] Verify `chat_loop` command available
 - [ ] Test `chat_loop --help`
 - [ ] Test `chat_loop --list-aliases`
@@ -196,14 +196,14 @@ password = pypi-<your-testpypi-token-here>
 ## 📊 Package Information
 
 **Package Name:** basic-agent-chat-loop
-**Version:** 1.0.0
+**Version:** 0.1.0
 **License:** MIT
 **Python Requirement:** >=3.8
 **Development Status:** Beta
 
 **Distribution Files:**
-- Source: `basic_agent_chat_loop-1.0.0.tar.gz` (29K)
-- Wheel: `basic_agent_chat_loop-1.0.0-py3-none-any.whl` (30K)
+- Source: `basic_agent_chat_loop-0.1.0.tar.gz`
+- Wheel: `basic_agent_chat_loop-0.1.0-py3-none-any.whl`
 
 **Dependencies:**
 - `pyyaml>=6.0.1`
@@ -221,8 +221,8 @@ password = pypi-<your-testpypi-token-here>
 
 ```bash
 # Check package contents
-tar -tzf dist/basic_agent_chat_loop-1.0.0.tar.gz | head -20
-unzip -l dist/basic_agent_chat_loop-1.0.0-py3-none-any.whl | head -20
+tar -tzf dist/basic_agent_chat_loop-0.1.0.tar.gz | head -20
+unzip -l dist/basic_agent_chat_loop-0.1.0-py3-none-any.whl | head -20
 
 # Verify metadata
 python -m twine check dist/*
@@ -281,7 +281,7 @@ pytest --cov=src/basic_agent_chat_loop tests/
 
 **Released by:** _______________
 **Date:** _______________
-**Version:** v1.0.0
+**Version:** v0.1.0
 
 ---
 

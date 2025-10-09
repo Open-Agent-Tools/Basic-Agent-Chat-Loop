@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-10-09
+## [0.1.0] - 2025-10-09
 
 ### Added
 - **Agent Alias System** - Save agents as short names for quick access
@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Release Notes
 
-### v1.0.0 - Initial Release
+### v0.1.0 - Initial Release
 
 This is the first public release of Basic Agent Chat Loop, a feature-rich interactive CLI for AI agents. The project provides a unified interface for any AI agent with token tracking, prompt templates, and extensive configuration options.
 
@@ -112,4 +112,4 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
-[1.0.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.0.0
+[0.1.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.0
