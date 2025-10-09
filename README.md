@@ -1,6 +1,9 @@
 # Basic Agent Chat Loop
 
+[![PyPI version](https://img.shields.io/pypi/v/basic-agent-chat-loop.svg)](https://pypi.org/project/basic-agent-chat-loop/)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/actions/workflows/ci.yml/badge.svg)](https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Open-Agent-Tools/Basic-Agent-Chat-Loop/branch/main/graph/badge.svg)](https://codecov.io/gh/Open-Agent-Tools/Basic-Agent-Chat-Loop)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A feature-rich, interactive CLI for AI agents with token tracking, prompt templates, agent aliases, and extensive configuration options.
@@ -21,35 +24,39 @@ A feature-rich, interactive CLI for AI agents with token tracking, prompt templa
 
 ## Installation
 
-### PyPI Install (Coming Soon)
+### Quick Install (Recommended)
 
 ```bash
 pip install basic-agent-chat-loop
 ```
 
+That's it! The package will automatically create:
+- `~/.chatrc` - Configuration file with recommended defaults
+- `~/.prompts/` - Sample prompt templates (on first use)
+
+### Platform-Specific Options
+
+**Windows (for command history support):**
+```bash
+pip install basic-agent-chat-loop[windows]
+```
+
+**AWS Bedrock integration:**
+```bash
+pip install basic-agent-chat-loop[bedrock]
+```
+
 ### From Source
 
-**Recommended (editable install):**
+For development or the latest features:
 
 ```bash
-git clone <repo-url> Basic-Agent-Chat-Loop
+git clone https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop.git
 cd Basic-Agent-Chat-Loop
-pip install -e .
-```
-
-**Windows users (for command history support):**
-
-```bash
-pip install -e ".[windows]"
-```
-
-**Development install:**
-
-```bash
 pip install -e ".[dev]"
 ```
 
-See [docs/INSTALL.md](docs/INSTALL.md) for detailed installation instructions.
+See [docs/INSTALL.md](docs/INSTALL.md) for detailed installation instructions and troubleshooting.
 
 ## Quick Start
 
@@ -57,10 +64,10 @@ See [docs/INSTALL.md](docs/INSTALL.md) for detailed installation instructions.
 
 ```bash
 # Run with agent path
-chat_loop AWS_Strands/Product_Pete/agent.py
+chat_loop path/to/your/agent.py
 
-# Run with alias (after saving)
-chat_loop pete
+# Or use an alias (after saving)
+chat_loop myagent
 ```
 
 ### Agent Aliases
@@ -68,54 +75,75 @@ chat_loop pete
 Save frequently used agents for quick access:
 
 ```bash
-# Save aliases
-chat_loop --save-alias pete AWS_Strands/Product_Pete/agent.py
-chat_loop --save-alias clara AWS_Strands/Complex_Coding_Clara/agent.py
+# Save an agent as an alias
+chat_loop --save-alias myagent path/to/agent.py
 
-# Use aliases from anywhere
-chat_loop pete
-chat_loop clara
+# Use the alias from anywhere
+chat_loop myagent
 
-# List all aliases
+# List all saved aliases
 chat_loop --list-aliases
 
 # Remove an alias
-chat_loop --remove-alias pete
+chat_loop --remove-alias myagent
+```
+
+**Example with real agents:**
+```bash
+# Save your agents
+chat_loop --save-alias pete ~/agents/product_manager/agent.py
+chat_loop --save-alias dev ~/agents/senior_developer/agent.py
+
+# Use them from anywhere
+cd ~/projects/my-app
+chat_loop dev  # Get coding help
+chat_loop pete  # Get product feedback
 ```
 
 Aliases are stored in `~/.chat_aliases` and work from any directory.
 
 ### Prompt Templates
 
-Create reusable prompt templates:
+The package automatically creates sample templates in `~/.prompts/` on first use:
+- `explain.md` - Explain code in detail
+- `review.md` - Code review with best practices
+- `debug.md` - Help debugging issues
+- `optimize.md` - Performance optimization suggestions
+- `test.md` - Generate test cases
+- `document.md` - Add documentation
 
+**Use templates in chat:**
 ```bash
-# Create template directory
-mkdir -p ~/.prompts
+chat_loop myagent
+You: /review src/app.py
+You: /explain utils.py
+You: /test my_function
+```
 
-# Create a code review template
-cat > ~/.prompts/review.md <<'EOF'
-# Code review
-Please review the following code for:
-- Best practices and design patterns
-- Potential bugs or edge cases
+**Create custom templates:**
+```bash
+# Create your own template
+cat > ~/.prompts/security.md <<'EOF'
+# Security Review
+
+Please review this code for security vulnerabilities:
+
 {input}
+
+Focus on:
+- Input validation
+- Authentication/authorization
+- Data sanitization
+- Common security patterns
 EOF
 
-# Use template in chat
-chat_loop pete
-You: /review my_code.py
+# Use it in chat
+You: /security auth.py
 ```
 
 ## Configuration
 
-Create a configuration file at `~/.chatrc`:
-
-```bash
-cp .chatrc.example ~/.chatrc
-```
-
-Example configuration:
+A configuration file (`~/.chatrc`) is automatically created on first use with recommended defaults. You can customize it to your preferences:
 
 ```yaml
 features:
@@ -212,20 +240,25 @@ chat.run()
 
 ### Core Dependencies
 
-- `anthropic-bedrock>=0.8.0` - AWS Bedrock integration
+- **Python 3.8+**
 - `pyyaml>=6.0.1` - Configuration file parsing
-
-### Optional (Recommended)
-
 - `rich>=13.7.0` - Enhanced terminal rendering
-- `readline` (built-in on Unix) - Command history
-- `pyreadline3` (Windows only) - Command history support
+- `python-dotenv>=1.0.0` - Environment variable management
+
+### Optional Dependencies
+
+- `pyreadline3>=3.4.1` - Command history on Windows (install with `[windows]`)
+- `anthropic-bedrock>=0.8.0` - AWS Bedrock integration (install with `[bedrock]`)
+
+### Built-in Features
+
+- `readline` (built-in on Unix) - Command history on macOS/Linux
 
 ## Platform Support
 
 - ✅ **macOS** - Full support with native readline
 - ✅ **Linux** - Full support with native readline
-- ✅ **Windows** - Full support (install via `install.bat` or `install.py`)
+- ✅ **Windows** - Full support with `pip install basic-agent-chat-loop[windows]`
 
 ## Architecture
 
@@ -287,19 +320,33 @@ MIT License - see LICENSE file for details.
 
 ## Changelog
 
-### v1.0.0 (2025-10-08)
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-- ✨ Initial release
+### Latest Release: v0.1.0 (2025-10-09)
+
+Initial public release with:
 - 🏷️ Agent alias system
-- 📝 Prompt templates
+- 📝 Prompt templates with auto-setup
 - 💰 Token tracking and cost estimation
-- ⚙️ YAML configuration with per-agent overrides
+- ⚙️ YAML configuration with auto-setup
 - 📊 Status bar and session summaries
 - 🎨 Rich markdown rendering
 - 🔄 Automatic error recovery
 - 📜 Persistent command history
-- 🌐 Cross-platform installers (macOS, Linux, Windows)
+- ✅ 61% test coverage (158 tests)
+
+## Troubleshooting
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues and solutions.
+
+**Quick fixes:**
+- **Package not found**: Run `pip install --upgrade basic-agent-chat-loop`
+- **Command not found**: Ensure pip's bin directory is in your PATH
+- **Import errors**: Try reinstalling with `pip install --force-reinstall basic-agent-chat-loop`
 
 ## Support
 
-For issues, questions, or contributions, please visit the [repository](https://github.com/yourusername/Basic-Agent-Chat-Loop).
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/issues)
+- 💡 **Feature Requests**: [GitHub Issues](https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/issues)
+- 📖 **Documentation**: [docs/](docs/)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/discussions)

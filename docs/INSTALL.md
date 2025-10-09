@@ -1,275 +1,322 @@
 # Installation Guide
 
-This guide explains how to install the Strands Chat Loop as a global command on **Windows**, **macOS**, or **Linux**.
+Complete installation instructions for **Basic Agent Chat Loop** on macOS, Linux, and Windows.
 
 ## Quick Install
 
-### macOS / Linux
+### Standard Installation
+
+The easiest way to install:
+
+```bash
+pip install basic-agent-chat-loop
+```
+
+That's it! The CLI command `chat_loop` will be available immediately.
+
+### Platform-Specific Installations
+
+**Windows (with command history support):**
+```bash
+pip install basic-agent-chat-loop[windows]
+```
+
+**AWS Bedrock integration:**
+```bash
+pip install basic-agent-chat-loop[bedrock]
+```
+
+**Development install:**
+```bash
+pip install basic-agent-chat-loop[dev]
+```
+
+## Installation Methods
+
+### Method 1: PyPI (Recommended)
+
+Install from the Python Package Index:
+
+```bash
+# Latest stable release
+pip install basic-agent-chat-loop
+
+# Specific version
+pip install basic-agent-chat-loop==0.1.0
+
+# With all optional dependencies
+pip install basic-agent-chat-loop[windows,bedrock,dev]
+```
+
+### Method 2: From Source
+
+For development or to use the latest features:
 
 ```bash
 # Clone the repository
-git clone <repo-url> agent-examples
-cd agent-examples/scripts/strands_chat_loop
+git clone https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop.git
+cd Basic-Agent-Chat-Loop
 
-# Run the installer
-./install.sh
+# Install in editable mode
+pip install -e .
+
+# Or with dev dependencies
+pip install -e ".[dev]"
 ```
 
-### Windows
+### Method 3: User vs System Install
 
-```cmd
-# Clone the repository
-git clone <repo-url> agent-examples
-cd agent-examples\scripts\strands_chat_loop
-
-# Run the installer
-install.bat
+**User install (no sudo required):**
+```bash
+pip install --user basic-agent-chat-loop
 ```
 
-### Cross-Platform (Python)
+**System install:**
+```bash
+# May require sudo on Unix systems
+sudo pip install basic-agent-chat-loop
+```
 
-Works on all platforms:
+**Virtual environment (recommended for development):**
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install basic-agent-chat-loop
+```
+
+## Verification
+
+After installation, verify everything works:
 
 ```bash
-# Clone the repository
-git clone <repo-url> agent-examples
-cd agent-examples/scripts/strands_chat_loop
+# Check installation
+pip show basic-agent-chat-loop
 
-# Run the Python installer
-python install.py
+# Verify CLI command is available
+which chat_loop  # Unix/macOS
+where chat_loop  # Windows
+
+# Test the command (will show help)
+chat_loop --help
 ```
 
-After installation, you can run from anywhere:
+## First Run Setup
+
+On first run, the package automatically creates:
+
+1. **`~/.chatrc`** - Configuration file with recommended defaults
+2. **`~/.prompts/`** - Sample prompt templates (created on first template use)
+
+These files are created with sensible defaults - no manual setup required!
+
+## Upgrading
+
+To upgrade to the latest version:
 
 ```bash
-chat_loop AWS_Strands/Product_Pete/agent.py
-chat_loop path/to/your/agent.py --config ~/.chatrc-custom
+pip install --upgrade basic-agent-chat-loop
 ```
 
-## What the Installer Does
+## Uninstalling
 
-1. **Installs Python Dependencies**
-   - Prompts you to choose installation method (user/system/skip)
-   - Installs from `requirements.txt`
-
-2. **Creates Global Command**
-   - Installs `chat_loop` wrapper to `~/.local/bin`
-   - Makes it executable and callable from anywhere
-
-3. **Updates PATH**
-   - Adds `~/.local/bin` to your PATH in `.bashrc`/`.zshrc`
-   - Allows the command to be found by your shell
-
-## Usage
-
-### Basic Usage
+To remove the package:
 
 ```bash
-# Run with an agent
-chat_loop AWS_Strands/Product_Pete/agent.py
-
-# With custom config
-chat_loop AWS_Strands/Product_Pete/agent.py --config ~/.chatrc-custom
-```
-
-### From Any Directory
-
-```bash
-# Works from anywhere
-cd ~/Documents
-chat_loop ~/Development/agent-examples/AWS_Strands/Product_Pete/agent.py
-
-cd ~/Projects
-chat_loop ../agent-examples/AWS_Strands/Complex_Coding_Clara/agent.py
-```
-
-## Installation Options
-
-### User Install (Recommended)
-
-```bash
-./install.sh
-# Choose option 1 for user install
-```
-
-- Installs to `~/.local/bin` (no sudo required)
-- Dependencies installed to user site-packages
-- Only affects current user
-
-### System Install
-
-```bash
-./install.sh
-# Choose option 2 for system install
-```
-
-- May require sudo for dependencies
-- Available to all users
-- Modifies system Python packages
-
-### Skip Dependencies
-
-If you've already installed dependencies:
-
-```bash
-./install.sh
-# Choose option 3 to skip dependency installation
-```
-
-## Uninstall
-
-### macOS / Linux
-
-```bash
-cd scripts/strands_chat_loop
-./install.sh --uninstall
-```
-
-### Windows
-
-```cmd
-cd scripts\strands_chat_loop
-install.bat /uninstall
-```
-
-### Cross-Platform
-
-```bash
-python install.py --uninstall
+pip uninstall basic-agent-chat-loop
 ```
 
 This removes:
-- The `chat_loop` command from `~/.local/bin`
+- The `chat_loop` command
+- All Python package files
+- Installed dependencies (if no other packages use them)
 
 This does NOT remove:
-- Python dependencies (remove manually with pip if needed)
-- PATH modifications in shell config files
+- `~/.chatrc` - Your configuration file
+- `~/.prompts/` - Your prompt templates
+- `~/.chat_aliases` - Your saved agent aliases
+- `~/.chat_history` - Your command history
 
-### Manual Cleanup
-
-To fully remove everything:
+To fully clean up:
 
 ```bash
-# Uninstall command
-./install.sh --uninstall
+# Uninstall package
+pip uninstall basic-agent-chat-loop
 
-# Remove dependencies
-pip uninstall anthropic-bedrock pyyaml rich
-
-# Remove PATH modification (edit manually)
-nano ~/.bashrc  # or ~/.zshrc
-# Remove the line: export PATH="$HOME/.local/bin:$PATH"
+# Remove configuration (optional - will be recreated on next install)
+rm -f ~/.chatrc
+rm -rf ~/.prompts/
+rm -f ~/.chat_aliases
+rm -f ~/.chat_history
 ```
+
+## Platform-Specific Notes
+
+### macOS
+
+**Using Homebrew Python:**
+```bash
+# Install with Homebrew's pip
+python3 -m pip install basic-agent-chat-loop
+```
+
+**Command history works out of the box** - readline is built-in.
+
+### Linux
+
+**Debian/Ubuntu:**
+```bash
+# Ensure pip is installed
+sudo apt update
+sudo apt install python3-pip
+
+# Install package
+pip3 install basic-agent-chat-loop
+```
+
+**RHEL/CentOS/Fedora:**
+```bash
+# Ensure pip is installed
+sudo dnf install python3-pip  # Fedora
+sudo yum install python3-pip  # CentOS/RHEL
+
+# Install package
+pip3 install basic-agent-chat-loop
+```
+
+**Command history works out of the box** - readline is built-in.
+
+### Windows
+
+**Install with Windows extras:**
+```bash
+pip install basic-agent-chat-loop[windows]
+```
+
+This includes `pyreadline3` for command history support.
+
+**Using Windows Terminal** (recommended) for best experience with colors and formatting.
+
+**PowerShell execution policy:**
+If you get execution policy errors, you may need to adjust:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+## Dependencies
+
+### Core Dependencies
+These are installed automatically:
+- `pyyaml>=6.0.1` - Configuration parsing
+- `rich>=13.7.0` - Terminal formatting
+- `python-dotenv>=1.0.0` - Environment variable management
+
+### Optional Dependencies
+
+**Windows extras (`[windows]`):**
+- `pyreadline3>=3.4.1` - Command history on Windows
+
+**AWS Bedrock extras (`[bedrock]`):**
+- `anthropic-bedrock>=0.8.0` - AWS Bedrock integration
+
+**Development extras (`[dev]`):**
+- `pytest>=7.0` - Testing framework
+- `pytest-cov>=4.0` - Coverage reporting
+- `black>=23.0` - Code formatting
+- `ruff>=0.1.0` - Linting
+- `mypy>=1.0.0` - Type checking
 
 ## Troubleshooting
 
-### Command Not Found
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed troubleshooting guide.
 
-If `chat_loop` command is not found after installation:
+### Common Issues
+
+**"command not found: chat_loop"**
+
+The pip bin directory is not in your PATH. Solutions:
 
 ```bash
-# Reload your shell configuration
+# Find where pip installed it
+pip show -f basic-agent-chat-loop | grep bin
+
+# Add to PATH (add to ~/.bashrc or ~/.zshrc)
+export PATH="$HOME/.local/bin:$PATH"
+
+# Reload shell
 source ~/.bashrc  # or source ~/.zshrc
-
-# Or restart your terminal
 ```
 
-### Python Import Errors
+**"No module named 'basic_agent_chat_loop'"**
 
-If you see import errors:
+Package not installed in current environment:
 
 ```bash
-# Reinstall dependencies
-cd scripts/strands_chat_loop
-pip install --user -r requirements.txt
+# Verify installation
+pip list | grep basic-agent-chat-loop
 
-# Or with uv (faster)
-uv pip install -r requirements.txt
+# Reinstall if needed
+pip install --force-reinstall basic-agent-chat-loop
 ```
 
-### Permission Denied
+**Import errors or missing dependencies**
 
-If you see "Permission denied" errors:
+Try reinstalling with force:
 
 ```bash
-# Make sure install.sh is executable
-chmod +x install.sh
-
-# Run installer again
-./install.sh
+pip install --force-reinstall basic-agent-chat-loop
 ```
 
-### Wrong Python Version
+**Permission errors**
 
-The chat loop requires Python 3.8+:
+Use user install to avoid sudo:
 
 ```bash
-# Check your Python version
-python3 --version
-
-# If too old, install a newer Python
-# Then run install.sh again
+pip install --user basic-agent-chat-loop
 ```
 
-## Development Mode
+**Old version installed**
 
-If you're actively developing the chat loop, you may want to run it directly instead of installing:
+Upgrade to latest:
 
 ```bash
-# Run directly from source
-python scripts/strands_chat_loop/chat_loop.py --agent AWS_Strands/Product_Pete/agent.py
-
-# Or create an alias
-echo "alias chat_loop='python3 /full/path/to/scripts/strands_chat_loop/chat_loop.py'" >> ~/.bashrc
-source ~/.bashrc
+pip install --upgrade basic-agent-chat-loop
 ```
-
-## Alternative: Manual Installation
-
-If you prefer to install manually:
-
-```bash
-# 1. Install dependencies
-pip install --user -r scripts/strands_chat_loop/requirements.txt
-
-# 2. Create ~/.local/bin if needed
-mkdir -p ~/.local/bin
-
-# 3. Create wrapper script
-cat > ~/.local/bin/chat_loop << 'EOF'
-#!/usr/bin/env python3
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path.home() / "Development/agent-examples/scripts/strands_chat_loop"))
-from chat_loop import main
-sys.exit(main())
-EOF
-
-# 4. Make executable
-chmod +x ~/.local/bin/chat_loop
-
-# 5. Add to PATH (if not already)
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-## Features
-
-Once installed, you get:
-- ✅ Global `chat_loop` command
-- ✅ Works from any directory
-- ✅ Accepts relative or absolute agent paths
-- ✅ All chat loop features available
-- ✅ Configuration file support
-- ✅ Command history persistence
-- ✅ Prompt templates
 
 ## Next Steps
 
 After installation:
 
-1. **Configure your settings**: `cp scripts/strands_chat_loop/.chatrc.example ~/.chatrc`
-2. **Create templates**: `mkdir ~/.prompts` and add your templates
-3. **Try an agent**: `chat_loop AWS_Strands/Product_Pete/agent.py`
+1. **Run your first agent:**
+   ```bash
+   chat_loop path/to/your/agent.py
+   ```
 
-See [README.md](README.md) for full feature documentation.
+2. **Save an alias for quick access:**
+   ```bash
+   chat_loop --save-alias myagent path/to/agent.py
+   chat_loop myagent
+   ```
+
+3. **Customize your config:**
+   ```bash
+   # Edit ~/.chatrc to customize colors, features, behavior
+   nano ~/.chatrc
+   ```
+
+4. **Explore sample templates:**
+   ```bash
+   # Templates are created in ~/.prompts/ on first use
+   ls ~/.prompts/
+   ```
+
+5. **Read the docs:**
+   - [README.md](../README.md) - Feature overview
+   - [CONFIG.md](CONFIG.md) - Configuration options
+   - [ALIASES.md](ALIASES.md) - Alias system guide
+   - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues
+
+## Getting Help
+
+- 📖 **Documentation**: [docs/](.)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/issues)
+- 💬 **Questions**: [GitHub Discussions](https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/discussions)
