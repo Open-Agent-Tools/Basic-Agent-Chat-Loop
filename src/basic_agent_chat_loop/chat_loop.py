@@ -86,14 +86,20 @@ def setup_logging(agent_name: str):
     """Setup logging with agent-specific filename."""
     log_file = log_dir / f"{agent_name.lower().replace(' ', '_')}_chat.log"
 
-    # Clear any existing handlers
-    logging.root.handlers = []
+    # Configure our own logger instead of root logger
+    # This prevents interfering with other libraries' logging
+    chat_logger = logging.getLogger("basic_agent_chat_loop")
+    chat_logger.setLevel(logging.INFO)
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.FileHandler(log_file)],
+    # Remove any existing handlers from our logger
+    chat_logger.handlers = []
+
+    # Add file handler with formatting
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )
+    chat_logger.addHandler(handler)
 
 
 def setup_readline_history():
@@ -646,13 +652,10 @@ class ChatLoop:
                     token_str += f"out: {self.token_tracker.format_tokens(output_tok)})"
                     info_parts.append(token_str)
 
-                    # Show cost
+                    # Show cost (session total)
                     cost = self.token_tracker.get_cost()
                     if cost > 0:
                         info_parts.append(f"Cost: {self.token_tracker.format_cost()}")
-                        info_parts.append(
-                            f"Session: {self.token_tracker.format_cost()}"
-                        )
 
                 if info_parts:  # Only print if we have something to show
                     print(Colors.system(" │ ".join(info_parts)))

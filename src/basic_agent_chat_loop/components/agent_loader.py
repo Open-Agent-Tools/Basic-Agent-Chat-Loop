@@ -54,7 +54,9 @@ def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
         AttributeError: If module doesn't have root_agent
     """
     if not os.path.exists(agent_path):
-        raise FileNotFoundError(f"Agent file not found: {agent_path}")
+        # Only show filename, not full path (to avoid exposing system info)
+        filename = os.path.basename(agent_path)
+        raise FileNotFoundError(f"Agent file not found: {filename}")
 
     # Add the agent directory to sys.path to fix import issues
     agent_dir = os.path.dirname(agent_path)
@@ -64,7 +66,9 @@ def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
     # Convert path to module name
     spec = importlib.util.spec_from_file_location("agent_module", agent_path)
     if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load module from {agent_path}")
+        # Only show filename, not full path
+        filename = os.path.basename(agent_path)
+        raise ImportError(f"Could not load module from {filename}")
 
     module = importlib.util.module_from_spec(spec)
     sys.modules["agent_module"] = module
@@ -72,8 +76,10 @@ def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
 
     # Extract root_agent
     if not hasattr(module, "root_agent"):
+        # Only show filename, not full path
+        filename = os.path.basename(agent_path)
         raise AttributeError(
-            f"Agent module {agent_path} must expose a 'root_agent' attribute"
+            f"Agent module {filename} must expose a 'root_agent' attribute"
         )
 
     agent = module.root_agent
