@@ -3,9 +3,6 @@
 **Updated:** 2025-10-09 (v0.1.0 Release Preparation Complete)
 **Status:** Ready for v0.1.0 Release - All Critical Issues Resolved
 
-See `QA_REPORT.md` for comprehensive quality assessment.
-See `QA_FINDINGS_SUMMARY.md` for quick reference with file paths.
-
 ---
 
 ## Pre-Release Tasks
@@ -47,10 +44,10 @@ See `QA_FINDINGS_SUMMARY.md` for quick reference with file paths.
 - [x] **HIGH-002:** ~~Add missing python-dotenv dependency~~
   - ✅ Fixed: Added `python-dotenv>=1.0.0` to core dependencies
 
-- [ ] Test installation on all platforms (AFTER fixing above)
-  - [ ] macOS (install.sh)
-  - [ ] Linux (install.sh)
-  - [ ] Windows (install.bat, install.py)
+- [ ] Test installation on all platforms via pip
+  - [ ] macOS
+  - [ ] Linux
+  - [ ] Windows
 - [ ] Verify all imports work in installed package
 - [ ] Test CLI entry point (`chat_loop` command)
 - [ ] Test editable install (`pip install -e .`)
@@ -265,7 +262,7 @@ See `QA_FINDINGS_SUMMARY.md` for quick reference with file paths.
 
 ## Notes
 
-- Installation scripts (install.sh, install.bat, install.py) are optional legacy installers
-- Main installation method should be `pip install basic-agent-chat-loop`
+- Main installation method: `pip install basic-agent-chat-loop`
+- Legacy install scripts removed - use pip for all installations
 - Maintain backward compatibility with AWS Strands agents
 - Consider extracting agent framework adapters into separate packages
