@@ -947,6 +947,20 @@ Examples:
         """,
     )
 
+    # Import version for --version flag
+    try:
+        from . import __version__
+
+        version_string = f"%(prog)s {__version__}"
+    except ImportError:
+        version_string = "%(prog)s (version unknown)"
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=version_string,
+    )
+
     parser.add_argument("agent", nargs="?", help="Agent path or alias name")
 
     parser.add_argument(
