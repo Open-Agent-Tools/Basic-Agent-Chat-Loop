@@ -11,6 +11,7 @@ from .agent_loader import (
     load_environment_variables,
 )
 from .alias_manager import AliasManager
+from .dependency_manager import DependencyManager
 from .display_manager import DisplayManager
 from .template_manager import TemplateManager
 from .token_tracker import TokenTracker
@@ -23,6 +24,7 @@ __all__ = [
     "TemplateManager",
     "DisplayManager",
     "AliasManager",
+    "DependencyManager",
     "load_environment_variables",
     "load_agent_module",
     "extract_agent_metadata",

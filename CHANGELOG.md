@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-10-10
+
+### Added
+- **Automatic Dependency Installation** - New `--auto-setup` / `-a` flag to automatically install agent dependencies
+  - Supports `requirements.txt`, `pyproject.toml`, and `setup.py`
+  - Smart detection: Suggests using `--auto-setup` when dependency files are found
+  - Helpful feedback with installation progress and errors
+  - 20 new tests for dependency management (181 total tests)
+- **Community Roadmap** - Created 37 feature request issues for community discussion
+  - CLI enhancements (watch, budget, pipe, resume, inspect, validate, export, quiet, test-suite, benchmark, compare, context, preset, profile, dry-run, max-turns)
+  - Documentation & learning (tutorial, example agents, videos)
+  - Integrations (VS Code, Web UI, API server, Slack/Discord)
+  - Quality of life (better errors, keyboard shortcuts, tab completion, conversation management)
+  - Advanced features (multi-agent, RAG, persistent memory, marketplace)
+  - Developer experience (debug mode, config wizard, scaffolding, hot reload)
+  - Testing & quality (integration tests, fuzzing, performance benchmarks)
+  - Community & sharing (plugin system, templates, import/export)
+  - Security & safety (sandboxing, audit logging, secret detection)
+
+### Changed
+- Minor version bump to reflect new auto-setup feature
+
 ## [0.1.3] - 2025-10-09
 
 ### Fixed

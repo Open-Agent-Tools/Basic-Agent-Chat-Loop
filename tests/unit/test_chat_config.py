@@ -11,7 +11,8 @@ from basic_agent_chat_loop.chat_config import ChatConfig, get_config
 def temp_config_file(tmp_path):
     """Create a temporary config file."""
     config_file = tmp_path / ".chatrc"
-    config_file.write_text("""
+    config_file.write_text(
+        """
 features:
   show_tokens: true
   rich_enabled: false
@@ -22,7 +23,8 @@ behavior:
 
 ui:
   show_banner: false
-""")
+"""
+    )
     return config_file
 
 
@@ -30,7 +32,8 @@ ui:
 def agent_override_config(tmp_path):
     """Create config with agent-specific overrides."""
     config_file = tmp_path / ".chatrc"
-    config_file.write_text("""
+    config_file.write_text(
+        """
 features:
   show_tokens: false
 
@@ -42,7 +45,8 @@ agents:
   'Another Agent':
     behavior:
       max_retries: 10
-""")
+"""
+    )
     return config_file
 
 
@@ -218,23 +222,27 @@ class TestConfigMerging:
         """Test that configs are loaded in correct hierarchy."""
         # Create global config
         global_config = tmp_path / ".chatrc"
-        global_config.write_text("""
+        global_config.write_text(
+            """
 features:
   show_tokens: true
 behavior:
   max_retries: 5
-""")
+"""
+        )
 
         # Create project config
         project_dir = tmp_path / "project"
         project_dir.mkdir()
         project_config = project_dir / ".chatrc"
-        project_config.write_text("""
+        project_config.write_text(
+            """
 behavior:
   max_retries: 10
 ui:
   show_banner: false
-""")
+"""
+        )
 
         # Simulate being in project directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -340,12 +348,14 @@ class TestEdgeCases:
         monkeypatch.setattr(Path, "cwd", lambda: tmp_path / "cwd")
 
         config_file = tmp_path / ".chatrc"
-        config_file.write_text("""
+        config_file.write_text(
+            """
 behavior:
   max_retries: 100
   timeout: 3.14159
   retry_delay: 0
-""")
+"""
+        )
 
         config = ChatConfig(config_file)
 
@@ -356,13 +366,15 @@ behavior:
     def test_boolean_values(self, tmp_path):
         """Test boolean configuration values."""
         config_file = tmp_path / ".chatrc"
-        config_file.write_text("""
+        config_file.write_text(
+            """
 features:
   option_true: true
   option_false: false
   option_yes: yes
   option_no: no
-""")
+"""
+        )
 
         config = ChatConfig(config_file)
 

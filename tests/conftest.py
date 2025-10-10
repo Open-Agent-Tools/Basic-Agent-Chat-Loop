@@ -15,7 +15,8 @@ if str(src_path) not in sys.path:
 def temp_config_file(tmp_path):
     """Create a temporary config file."""
     config_file = tmp_path / ".chatrc"
-    config_file.write_text("""
+    config_file.write_text(
+        """
 features:
   show_tokens: true
   rich_enabled: true
@@ -23,7 +24,8 @@ features:
 behavior:
   max_retries: 3
   timeout: 120.0
-""")
+"""
+    )
     return config_file
 
 

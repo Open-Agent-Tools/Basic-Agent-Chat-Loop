@@ -15,7 +15,8 @@ from basic_agent_chat_loop.components.agent_loader import (
 def mock_agent_file(tmp_path):
     """Create a mock agent file."""
     agent_file = tmp_path / "test_agent.py"
-    agent_file.write_text("""
+    agent_file.write_text(
+        """
 class MockModel:
     def __init__(self):
         self.model_id = "test-model-id"
@@ -37,7 +38,8 @@ class MockAgent:
         return {"response": f"Processed: {query}"}
 
 root_agent = MockAgent()
-""")
+"""
+    )
     return agent_file
 
 
@@ -45,12 +47,14 @@ root_agent = MockAgent()
 def agent_without_metadata(tmp_path):
     """Create an agent file without metadata."""
     agent_file = tmp_path / "simple_agent.py"
-    agent_file.write_text("""
+    agent_file.write_text(
+        """
 class SimpleAgent:
     pass
 
 root_agent = SimpleAgent()
-""")
+"""
+    )
     return agent_file
 
 
@@ -133,7 +137,7 @@ class TestLoadAgentModule:
         import sys
 
         agent_dir = str(mock_agent_file.parent)
-        initial_path = sys.path.copy()
+        sys.path.copy()
 
         agent, _, _ = load_agent_module(str(mock_agent_file))
 
@@ -149,12 +153,14 @@ class TestLoadAgentModule:
         agent_dir = tmp_path / "MyCustomAgent"
         agent_dir.mkdir()
         agent_file = agent_dir / "agent.py"
-        agent_file.write_text("""
+        agent_file.write_text(
+            """
 class Agent:
     pass
 
 root_agent = Agent()
-""")
+"""
+        )
 
         _, name, _ = load_agent_module(str(agent_file))
         assert name == "MyCustomAgent"
@@ -188,7 +194,8 @@ class TestExtractAgentMetadata:
     def test_extract_metadata_claude_model_cleanup(self, tmp_path):
         """Test that AWS Claude model IDs are cleaned up."""
         agent_file = tmp_path / "claude_agent.py"
-        agent_file.write_text("""
+        agent_file.write_text(
+            """
 class Model:
     def __init__(self):
         self.model_id = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
@@ -198,7 +205,8 @@ class Agent:
         self.model = Model()
 
 root_agent = Agent()
-""")
+"""
+        )
 
         agent, _, _ = load_agent_module(str(agent_file))
         metadata = extract_agent_metadata(agent)
@@ -217,7 +225,8 @@ root_agent = Agent()
 
         for model_id, expected in test_cases:
             agent_file = tmp_path / f"agent_{expected.replace(' ', '_')}.py"
-            agent_file.write_text(f"""
+            agent_file.write_text(
+                f"""
 class Model:
     def __init__(self):
         self.model_id = "{model_id}"
@@ -227,7 +236,8 @@ class Agent:
         self.model = Model()
 
 root_agent = Agent()
-""")
+"""
+            )
 
             agent, _, _ = load_agent_module(str(agent_file))
             metadata = extract_agent_metadata(agent)
@@ -236,7 +246,8 @@ root_agent = Agent()
     def test_extract_tools_with_different_formats(self, tmp_path):
         """Test extracting tools in different formats."""
         agent_file = tmp_path / "tools_agent.py"
-        agent_file.write_text("""
+        agent_file.write_text(
+            """
 def tool_function():
     pass
 
@@ -257,7 +268,8 @@ class Agent:
         ]
 
 root_agent = Agent()
-""")
+"""
+        )
 
         agent, _, _ = load_agent_module(str(agent_file))
         metadata = extract_agent_metadata(agent)
@@ -270,7 +282,8 @@ root_agent = Agent()
         """Test that tool list is truncated to first 10."""
         agent_file = tmp_path / "many_tools_agent.py"
         tools_list = ", ".join([f'Tool("tool{i}")' for i in range(15)])
-        agent_file.write_text(f"""
+        agent_file.write_text(
+            f"""
 class Tool:
     def __init__(self, name):
         self.name = name
@@ -280,7 +293,8 @@ class Agent:
         self.tools = [{tools_list}]
 
 root_agent = Agent()
-""")
+"""
+        )
 
         agent, _, _ = load_agent_module(str(agent_file))
         metadata = extract_agent_metadata(agent)
@@ -291,7 +305,8 @@ root_agent = Agent()
     def test_extract_metadata_tools_alternate_attributes(self, tmp_path):
         """Test extracting tools from alternate attribute names."""
         agent_file = tmp_path / "alt_tools_agent.py"
-        agent_file.write_text("""
+        agent_file.write_text(
+            """
 class Tool:
     def __init__(self, name):
         self.name = name
@@ -301,7 +316,8 @@ class Agent:
         self._tools = [Tool("tool1"), Tool("tool2")]
 
 root_agent = Agent()
-""")
+"""
+        )
 
         agent, _, _ = load_agent_module(str(agent_file))
         metadata = extract_agent_metadata(agent)
@@ -336,14 +352,17 @@ class TestRelativeImports:
         (agent_dir / "__init__.py").write_text("")
 
         # Create utils module with a helper function
-        (agent_dir / "utils.py").write_text("""
+        (agent_dir / "utils.py").write_text(
+            """
 def helper():
     return "Helper function result"
-""")
+"""
+        )
 
         # Create agent that uses relative import
         agent_file = agent_dir / "agent.py"
-        agent_file.write_text("""
+        agent_file.write_text(
+            """
 from .utils import helper
 
 class Agent:
@@ -352,7 +371,8 @@ class Agent:
         self.helper_result = helper()
 
 root_agent = Agent()
-""")
+"""
+        )
 
         # Load the agent - should work with relative imports
         agent, name, description = load_agent_module(str(agent_file))
@@ -381,17 +401,20 @@ root_agent = Agent()
         shared = root / "shared"
         shared.mkdir()
         (shared / "__init__.py").write_text("")
-        (shared / "helpers.py").write_text("""
+        (shared / "helpers.py").write_text(
+            """
 def shared_function():
     return "Shared function"
-""")
+"""
+        )
 
         agents = root / "agents"
         agents.mkdir()
         (agents / "__init__.py").write_text("")
 
         agent_file = agents / "agent.py"
-        agent_file.write_text("""
+        agent_file.write_text(
+            """
 from ..shared.helpers import shared_function
 
 class Agent:
@@ -399,7 +422,8 @@ class Agent:
         self.result = shared_function()
 
 root_agent = Agent()
-""")
+"""
+        )
 
         # Load the agent - should work with parent relative imports
         agent, _, _ = load_agent_module(str(agent_file))
@@ -429,7 +453,8 @@ root_agent = Agent()
 
         # Create agent that imports from all of them
         agent_file = agent_dir / "agent.py"
-        agent_file.write_text("""
+        agent_file.write_text(
+            """
 from .utils import VALUE
 from .helpers import HELPER
 from .config import CONFIG
@@ -440,7 +465,8 @@ class Agent:
         self.combined = f"{VALUE}_{HELPER}_{CONFIG}"
 
 root_agent = Agent()
-""")
+"""
+        )
 
         # Should work with multiple sibling imports
         agent, name, description = load_agent_module(str(agent_file))
@@ -465,14 +491,16 @@ class TestEdgeCases:
     def test_agent_with_import_errors(self, tmp_path):
         """Test loading agent that has import errors."""
         agent_file = tmp_path / "import_error.py"
-        agent_file.write_text("""
+        agent_file.write_text(
+            """
 import nonexistent_module
 
 class Agent:
     pass
 
 root_agent = Agent()
-""")
+"""
+        )
 
         with pytest.raises(ImportError, match="Failed to execute module"):
             load_agent_module(str(agent_file))
@@ -480,7 +508,8 @@ root_agent = Agent()
     def test_metadata_with_unknown_model_id(self, tmp_path):
         """Test metadata extraction with unknown model."""
         agent_file = tmp_path / "unknown_model.py"
-        agent_file.write_text("""
+        agent_file.write_text(
+            """
 class Model:
     model_id = "unknown-custom-model"
 
@@ -488,7 +517,8 @@ class Agent:
     model = Model()
 
 root_agent = Agent()
-""")
+"""
+        )
 
         agent, _, _ = load_agent_module(str(agent_file))
         metadata = extract_agent_metadata(agent)

@@ -4,13 +4,11 @@ Agent loading and metadata extraction.
 Handles dynamic loading of agent modules and extraction of agent metadata.
 """
 
-import contextlib
 import importlib.util
 import io
 import logging
 import os
 import sys
-import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -111,6 +109,7 @@ def _ensure_package_loaded(package_root: Path, package_name: str) -> None:
         # This avoids import errors from parent packages while still
         # satisfying Python's import machinery for relative imports
         import types
+
         pkg_module = types.ModuleType(pkg)
 
         # Set package attributes - critical for import machinery

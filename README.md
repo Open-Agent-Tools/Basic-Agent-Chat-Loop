@@ -11,6 +11,7 @@ A feature-rich, interactive CLI for AI agents with token tracking, prompt templa
 ## Features
 
 - 🏷️ **Agent Aliases** - Save agents as short names (`chat_loop pete` instead of full paths)
+- 📦 **Auto-Setup** - Automatically install agent dependencies from `requirements.txt` or `pyproject.toml`
 - 📜 **Command History** - Navigate previous queries with ↑↓ arrows (persisted to `~/.chat_history`)
 - ✍️ **Multi-line Input** - Type `\\` to enter multi-line mode for code blocks
 - 💰 **Token Tracking** - Track tokens and costs per query and session
@@ -101,6 +102,35 @@ chat_loop pete  # Get product feedback
 ```
 
 Aliases are stored in `~/.chat_aliases` and work from any directory.
+
+### Auto-Setup Dependencies
+
+Automatically install agent dependencies with the `--auto-setup` flag (or `-a` for short):
+
+```bash
+# Auto-install dependencies when running an agent
+chat_loop myagent --auto-setup
+chat_loop path/to/agent.py -a
+
+# Works with any of these dependency files:
+# - requirements.txt (most common)
+# - pyproject.toml (modern Python projects)
+# - setup.py (legacy projects)
+```
+
+**Smart detection**: If you run an agent without `--auto-setup` and dependency files are detected, you'll see a helpful suggestion:
+
+```bash
+chat_loop myagent
+💡 Found requirements.txt in agent directory. Run with --auto-setup (or -a) to install dependencies automatically
+```
+
+**What gets installed:**
+- `requirements.txt` → `pip install -r requirements.txt`
+- `pyproject.toml` → `pip install -e <agent_directory>`
+- `setup.py` → `pip install -e <agent_directory>`
+
+This makes sharing agents easier—just include a `requirements.txt` with your agent and users can install everything with one command.
 
 ### Prompt Templates
 

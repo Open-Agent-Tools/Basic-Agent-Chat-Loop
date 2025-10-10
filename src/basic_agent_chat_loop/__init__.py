@@ -4,7 +4,7 @@ A powerful chat interface for AI agents with token tracking, prompt templates,
 agent aliases, and extensive configuration options.
 """
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 from .chat_config import ChatConfig
 from .chat_loop import ChatLoop

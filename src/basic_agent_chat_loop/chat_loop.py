@@ -47,6 +47,7 @@ from .chat_config import ChatConfig, get_config
 from .components import (
     AliasManager,
     Colors,
+    DependencyManager,
     DisplayManager,
     StatusBar,
     TemplateManager,
@@ -935,6 +936,10 @@ Examples:
     # Run with alias
     chat_loop my_agent
 
+    # Auto-install dependencies
+    chat_loop my_agent --auto-setup
+    chat_loop path/to/agent.py -a
+
     # Alias management
     chat_loop --save-alias my_agent path/to/agent.py
     chat_loop --list-aliases
@@ -970,6 +975,14 @@ Examples:
         "--overwrite",
         action="store_true",
         help="Overwrite existing alias when using --save-alias",
+    )
+
+    # Dependency management
+    parser.add_argument(
+        "--auto-setup",
+        "-a",
+        action="store_true",
+        help="Automatically install agent dependencies (requirements.txt, pyproject.toml)",
     )
 
     args = parser.parse_args()
@@ -1051,6 +1064,36 @@ Examples:
         else:
             print("  (none)")
         sys.exit(1)
+
+    # Handle dependency installation if requested
+    dep_manager = DependencyManager(agent_path)
+
+    if args.auto_setup:
+        # User explicitly requested dependency installation
+        dep_info = dep_manager.detect_dependency_file()
+        if dep_info:
+            file_type, file_path = dep_info
+            print(
+                Colors.system(f"📦 Found {file_path.name}, installing dependencies...")
+            )
+            success, message = dep_manager.install_dependencies(file_type, file_path)
+            if success:
+                print(Colors.success(message))
+            else:
+                print(Colors.error(message))
+                print(Colors.system("\nContinuing without dependency installation..."))
+        else:
+            print(
+                Colors.system(
+                    "💡 No dependency files found (requirements.txt, pyproject.toml, setup.py)"
+                )
+            )
+    else:
+        # Check if dependencies exist and suggest using --auto-setup
+        suggestion = dep_manager.suggest_auto_setup()
+        if suggestion:
+            print(Colors.system(suggestion))
+            print()  # Extra spacing
 
     try:
         # Load configuration FIRST (before any print statements)

@@ -23,7 +23,7 @@ class TestSetupLogging:
             setup_logging("test_agent")
 
             # Check that log file was created (or would be created on first log)
-            expected_log = tmp_path / "test_agent_chat.log"
+            tmp_path / "test_agent_chat.log"
             # The file won't exist yet, but the directory should
             assert tmp_path.exists()
 
@@ -41,7 +41,7 @@ class TestSetupLogging:
             setup_logging("My Test Agent")
 
             # Should create log file with underscores
-            expected_log = tmp_path / "my_test_agent_chat.log"
+            tmp_path / "my_test_agent_chat.log"
             # Directory should exist
             assert tmp_path.exists()
 

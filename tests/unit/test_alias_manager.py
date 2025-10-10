@@ -11,7 +11,7 @@ from basic_agent_chat_loop.components.alias_manager import AliasManager
 @pytest.fixture
 def alias_manager(tmp_path, monkeypatch):
     """Create AliasManager with temporary aliases file."""
-    aliases_file = tmp_path / ".chat_aliases"
+    tmp_path / ".chat_aliases"
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     return AliasManager()
 
@@ -34,7 +34,7 @@ class TestAliasManagerInitialization:
     def test_initialization_does_not_create_file(self, tmp_path, monkeypatch):
         """Test that initialization does not create aliases file."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        manager = AliasManager()
+        AliasManager()
         aliases_file = tmp_path / ".chat_aliases"
         # File is not created until save_aliases is called
         assert not aliases_file.exists()
@@ -163,11 +163,11 @@ class TestResolveAgentPath:
     def test_resolve_alias(self, populated_alias_manager, tmp_path):
         """Test resolving an alias to its path."""
         # Create the actual file that the alias points to
-        agent_path = Path("/path/to/test_agent.py")
+        Path("/path/to/test_agent.py")
 
         # For this test, we just check that it tries to resolve the alias
         # The actual file doesn't need to exist for alias resolution
-        resolved = populated_alias_manager.resolve_agent_path("test_agent")
+        populated_alias_manager.resolve_agent_path("test_agent")
 
         # Since the file doesn't actually exist, it should return None
         # But the alias lookup should work
