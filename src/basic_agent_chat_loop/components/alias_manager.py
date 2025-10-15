@@ -108,10 +108,11 @@ class AliasManager:
             return False, "Alias name cannot be empty"
 
         if not alias_name.replace("_", "").replace("-", "").isalnum():
-            return (
-                False,
-                "Alias name must contain only letters, numbers, hyphens, and underscores",
+            msg = (
+                "Alias name must contain only letters, numbers, "
+                "hyphens, and underscores"
             )
+            return (False, msg)
 
         # Convert to absolute path
         path_obj = Path(agent_path).expanduser().resolve()
@@ -129,10 +130,11 @@ class AliasManager:
         # Check if alias already exists
         if alias_name in aliases and not overwrite:
             existing_path = aliases[alias_name]
-            return (
-                False,
-                f"Alias '{alias_name}' already exists (points to: {existing_path}). Use --overwrite to update.",
+            msg = (
+                f"Alias '{alias_name}' already exists "
+                f"(points to: {existing_path}). Use --overwrite to update."
             )
+            return (False, msg)
 
         # Add/update alias
         aliases[alias_name] = str(path_obj)

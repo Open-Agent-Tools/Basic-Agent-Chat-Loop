@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-10-15
+
+### Added
+- **Conversation Auto-Save** - Automatically save conversations on exit
+  - New `--auto-save` / `-s` flag to enable automatic saving
+  - Config option `features.auto_save` for persistent setting
+  - Per-agent config override support
+  - Conversations saved to `~/agent-conversations/` by default
+  - Filenames include agent name, timestamp, and first query snippet
+  - JSON format with metadata (agent, model, tokens, duration)
+  - 181 tests passing (maintained from 0.2.1)
+
+### Changed
+- Minor version bump to reflect new auto-save feature
+
+## [0.2.1] - 2025-10-13
+
+### Fixed
+- **Code Quality** - Cleanup for release standards
+  - Fixed all line-length violations (E501) - 88 character limit
+  - Fixed mypy type checking issues
+  - Improved type hints throughout codebase
+  - All 181 tests passing
+
 ## [0.2.0] - 2025-10-10
 
 ### Added
@@ -187,6 +211,9 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
+[0.3.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.0
+[0.2.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.2.1
+[0.2.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.2.0
 [0.1.3]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.3
 [0.1.2]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.2
 [0.1.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.1.1

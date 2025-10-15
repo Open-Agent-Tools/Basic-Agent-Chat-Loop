@@ -242,7 +242,8 @@ def extract_agent_metadata(agent: Any) -> Dict[str, Any]:
         # Clean up model_id if it's a long AWS model string
         if model_id and isinstance(model_id, str):
             # Extract meaningful part from AWS model IDs
-            # e.g., "us.anthropic.claude-sonnet-4-5-20250929-v1:0" -> "Claude Sonnet 4.5"
+            # Example: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+            # -> "Claude Sonnet 4.5"
             if "claude-sonnet" in model_id.lower():
                 if "4-5" in model_id or "4.5" in model_id:
                     model_id = "Claude Sonnet 4.5"

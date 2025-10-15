@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 try:
-    import yaml
+    import yaml  # type: ignore[import-untyped]
 
     YAML_AVAILABLE = True
 except ImportError:
@@ -45,7 +45,7 @@ class ChatConfig:
         },
         "paths": {
             "save_location": "~/agent-conversations",
-            "log_location": ".logs",
+            "log_location": "~/.chat_loop_logs",
         },
         "behavior": {
             "max_retries": 3,
@@ -349,7 +349,7 @@ features:
 # ============================================================================
 paths:
   save_location: ~/agent-conversations    # Where to save conversations
-  log_location: .logs                      # Where to write logs
+  log_location: ~/.chat_loop_logs          # Where to write logs (in home directory)
 
 # ============================================================================
 # BEHAVIOR - Runtime behavior settings

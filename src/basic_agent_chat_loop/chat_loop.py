@@ -8,6 +8,7 @@ prompt templates, configuration management, and extensive UX enhancements.
 Features:
 - Async streaming support with real-time response display
 - Command history with readline (↑↓ to navigate, saved to ~/.chat_history)
+- Agent logs saved to ~/.chat_loop_logs/<agent_name>_chat.log
 - Multi-line input support (type \\\\ to enter multi-line mode)
 - Token tracking and cost estimation per query and session
 - Prompt templates from ~/.prompts/ with variable substitution
@@ -72,93 +73,165 @@ except ImportError:
     ConsoleType = None  # type: ignore
     MarkdownType = None  # type: ignore
 
-# Setup logging directory
-log_dir = Path(__file__).parent.parent / ".logs"
-log_dir.mkdir(exist_ok=True)
+# Setup logging directory in home directory for easy access
+# Default: ~/.chat_loop_logs/
+log_dir = Path.home() / ".chat_loop_logs"
 
 # Command history configuration
 READLINE_HISTORY_LENGTH = 1000
 
-# We'll configure logging after we know the agent name
-logger = logging.getLogger(__name__)
+# Use a single consistent logger throughout the module
+logger = logging.getLogger("basic_agent_chat_loop")
 
 
-def setup_logging(agent_name: str):
-    """Setup logging with agent-specific filename."""
-    log_file = log_dir / f"{agent_name.lower().replace(' ', '_')}_chat.log"
+def setup_logging(agent_name: str) -> bool:
+    """
+    Setup logging with agent-specific filename.
 
-    # Configure our own logger instead of root logger
-    # This prevents interfering with other libraries' logging
-    chat_logger = logging.getLogger("basic_agent_chat_loop")
-    chat_logger.setLevel(logging.INFO)
+    Args:
+        agent_name: Name of the agent for the log file
 
-    # Remove any existing handlers from our logger
-    chat_logger.handlers = []
+    Returns:
+        True if logging was successfully configured, False otherwise
+    """
+    try:
+        # Ensure log directory exists
+        log_dir.mkdir(exist_ok=True)
 
-    # Add file handler with formatting
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-    chat_logger.addHandler(handler)
+        # Create log file path with sanitized agent name
+        safe_name = agent_name.lower().replace(" ", "_").replace("/", "_")
+        log_file = log_dir / f"{safe_name}_chat.log"
+
+        # Configure our logger
+        logger.setLevel(logging.INFO)
+
+        # Remove any existing handlers to avoid duplicates
+        logger.handlers = []
+
+        # Add file handler with formatting
+        handler = logging.FileHandler(log_file, encoding="utf-8")
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+        logger.addHandler(handler)
+
+        # Also add console handler for errors (stderr only)
+        console_handler = logging.StreamHandler(sys.stderr)
+        console_handler.setLevel(logging.ERROR)
+        console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        logger.addHandler(console_handler)
+
+        logger.info(f"Logging initialized for agent: {agent_name}")
+        logger.info(f"Log file: {log_file}")
+        return True
+
+    except Exception as e:
+        # Fallback: print to stderr if logging setup fails
+        print(f"Warning: Could not setup logging: {e}", file=sys.stderr)
+        # Set up minimal console-only logging as fallback
+        logger.setLevel(logging.WARNING)
+        console_handler = logging.StreamHandler(sys.stderr)
+        console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        logger.addHandler(console_handler)
+        return False
 
 
-def setup_readline_history():
-    """Setup readline command history with persistence."""
+def setup_readline_history() -> Optional[Path]:
+    """
+    Setup readline command history with persistence.
+
+    Returns:
+        Path to history file if successful, None otherwise
+    """
     if not READLINE_AVAILABLE:
+        logger.debug("Readline not available, history will not be saved")
         return None
 
-    # History file in user's home directory
-    history_file = Path.home() / ".chat_history"
-
-    # Set history length
-    readline.set_history_length(READLINE_HISTORY_LENGTH)
-
-    # Enable tab completion and better editing
     try:
-        # Suppress CPR warning by redirecting stderr temporarily
-        import sys
+        # History file in user's home directory
+        history_file = Path.home() / ".chat_history"
 
-        old_stderr = sys.stderr
-        sys.stderr = open(os.devnull, "w")
+        # Set history length
+        readline.set_history_length(READLINE_HISTORY_LENGTH)
 
+        # Enable tab completion and better editing
         try:
-            # Parse readline init file if it exists
-            readline.parse_and_bind("tab: complete")
+            # Suppress CPR warning by redirecting stderr temporarily
+            old_stderr = sys.stderr
+            sys.stderr = open(os.devnull, "w")
 
-            # Enable vi or emacs mode (emacs is default)
-            readline.parse_and_bind("set editing-mode emacs")
+            try:
+                # Parse readline init file if it exists
+                readline.parse_and_bind("tab: complete")
 
-            # Disable horizontal scroll to prevent CPR check
-            readline.parse_and_bind("set horizontal-scroll-mode off")
+                # Enable vi or emacs mode (emacs is default)
+                readline.parse_and_bind("set editing-mode emacs")
 
-            # Enable better line editing
-            readline.parse_and_bind("set show-all-if-ambiguous on")
-            readline.parse_and_bind("set completion-ignore-case on")
-        finally:
-            # Restore stderr
-            sys.stderr.close()
-            sys.stderr = old_stderr
+                # Disable horizontal scroll to prevent CPR check
+                readline.parse_and_bind("set horizontal-scroll-mode off")
+
+                # Enable better line editing
+                readline.parse_and_bind("set show-all-if-ambiguous on")
+                readline.parse_and_bind("set completion-ignore-case on")
+            finally:
+                # Restore stderr
+                sys.stderr.close()
+                sys.stderr = old_stderr
+        except Exception as e:
+            logger.debug(f"Could not configure readline bindings: {e}")
+            # Continue anyway, basic history will still work
+
+        # Load existing history
+        if history_file.exists():
+            try:
+                readline.read_history_file(str(history_file))
+                count = readline.get_current_history_length()
+                logger.debug(f"Loaded {count} history entries")
+            except Exception as e:
+                logger.warning(f"Could not load history from {history_file}: {e}")
+                # Continue anyway, we'll create new history
+
+        logger.debug(f"Command history will be saved to: {history_file}")
+        return history_file
+
     except Exception as e:
-        logger.debug(f"Could not configure readline: {e}")
-
-    # Load existing history
-    if history_file.exists():
-        try:
-            readline.read_history_file(str(history_file))
-        except Exception as e:
-            logger.debug(f"Could not load history: {e}")
-
-    return history_file
+        logger.warning(f"Could not setup command history: {e}")
+        return None
 
 
-def save_readline_history(history_file: Optional[Path]):
-    """Save readline command history."""
-    if history_file and READLINE_AVAILABLE:
-        try:
-            readline.write_history_file(str(history_file))
-        except Exception as e:
-            logger.debug(f"Could not save history: {e}")
+def save_readline_history(history_file: Optional[Path]) -> bool:
+    """
+    Save readline command history.
+
+    Args:
+        history_file: Path to history file
+
+    Returns:
+        True if history was successfully saved, False otherwise
+    """
+    if not history_file:
+        return False
+
+    if not READLINE_AVAILABLE:
+        return False
+
+    try:
+        # Ensure parent directory exists
+        history_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Save history
+        readline.write_history_file(str(history_file))
+
+        # Set secure permissions (readable/writable by owner only)
+        history_file.chmod(0o600)
+
+        count = readline.get_current_history_length()
+        logger.debug(f"Saved {count} history entries to {history_file}")
+        return True
+
+    except Exception as e:
+        logger.warning(f"Could not save command history to {history_file}: {e}")
+        return False
 
 
 class ChatLoop:
@@ -178,6 +251,9 @@ class ChatLoop:
         self.agent_factory = agent_factory  # Function to create fresh agent instance
         self.history_file = None
         self.last_response = ""  # Track last response for copy command
+
+        # Conversation tracking for auto-save
+        self.conversation_history: list[Dict[str, Any]] = []
 
         # Load or use provided config
         self.config = config if config else get_config()
@@ -260,7 +336,8 @@ class ChatLoop:
             if model_override:
                 model_for_pricing = model_override
 
-        # Always create token tracker for session summary (not just when show_tokens is true)
+        # Always create token tracker for session summary
+        # (not just when show_tokens is true)
         self.token_tracker = TokenTracker(model_for_pricing)
 
         # Track session start time for summary
@@ -295,7 +372,8 @@ class ChatLoop:
 
             # Log for debugging
             logger.debug(
-                f"Status bar initialized: agent={agent_name}, model={model_info}, show_tokens={self.show_tokens}"
+                f"Status bar initialized: agent={agent_name}, "
+                f"model={model_info}, show_tokens={self.show_tokens}"
             )
 
         # Create display manager
@@ -400,6 +478,98 @@ class ChatLoop:
             return {"input_tokens": input_tokens, "output_tokens": output_tokens}
 
         return None
+
+    def save_conversation(self) -> bool:
+        """
+        Save conversation history to markdown file.
+
+        Returns:
+            True if save was successful, False otherwise
+        """
+        # Only save if there's conversation history
+        if not self.conversation_history:
+            logger.debug("No conversation history to save")
+            return False
+
+        try:
+            # Get save location from config or use default
+            save_location = (
+                self.config.expand_path(
+                    self.config.get("paths.save_location", "~/agent-conversations")
+                )
+                if self.config
+                else Path.home() / "agent-conversations"
+            )
+
+            # Ensure directory exists
+            save_location.mkdir(parents=True, exist_ok=True)
+
+            # Generate filename with timestamp
+            from datetime import datetime
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_agent_name = self.agent_name.lower()
+            safe_agent_name = safe_agent_name.replace(" ", "_").replace("/", "_")
+            filename = f"{safe_agent_name}_{timestamp}.md"
+            filepath = save_location / filename
+
+            # Format conversation as markdown
+            content_lines = [
+                f"# {self.agent_name} Conversation",
+                f"\n**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                f"\n**Agent:** {self.agent_name}",
+                f"\n**Description:** {self.agent_description}",
+                f"\n**Total Queries:** {len(self.conversation_history)}",
+                "\n---\n",
+            ]
+
+            # Add each conversation entry
+            for i, entry in enumerate(self.conversation_history, 1):
+                ts = entry["timestamp"]
+                entry_timestamp = datetime.fromtimestamp(ts).strftime("%H:%M:%S")
+                duration = entry.get("duration", 0)
+
+                # Add query
+                content_lines.append(f"\n## Query {i} ({entry_timestamp})\n")
+                content_lines.append(f"**You:** {entry['query']}\n")
+
+                # Add response
+                content_lines.append(f"\n**{self.agent_name}:** {entry['response']}\n")
+
+                # Add metadata
+                metadata_parts = [f"Time: {duration:.1f}s"]
+
+                # Add token info if available
+                usage = entry.get("usage")
+                if usage and usage is not None:
+                    input_tok = usage.get("input_tokens", 0)
+                    output_tok = usage.get("output_tokens", 0)
+                    total_tok = input_tok + output_tok
+                    if total_tok > 0:
+                        tok_str = f"Tokens: {total_tok:,} "
+                        tok_str += f"(in: {input_tok:,}, out: {output_tok:,})"
+                        metadata_parts.append(tok_str)
+
+                if metadata_parts:
+                    content_lines.append(f"\n*{' | '.join(metadata_parts)}*\n")
+
+                content_lines.append("\n---\n")
+
+            # Write to file
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.writelines(content_lines)
+
+            # Set secure permissions (readable/writable by owner only)
+            filepath.chmod(0o600)
+
+            logger.info(f"Conversation saved to: {filepath}")
+            print(Colors.success(f"\n💾 Conversation saved to: {filepath}"))
+            return True
+
+        except Exception as e:
+            logger.warning(f"Failed to save conversation: {e}")
+            print(Colors.error(f"\n⚠️  Could not save conversation: {e}"))
+            return False
 
     async def get_multiline_input(self) -> str:
         """Get multi-line input from user. Empty line submits."""
@@ -589,7 +759,8 @@ class ChatLoop:
                             elif hasattr(metrics.tool_metrics, "__len__"):
                                 tool_count = len(metrics.tool_metrics)
                             elif hasattr(metrics.tool_metrics, "__dict__"):
-                                # ToolMetrics object - count attributes that look like tool calls
+                                # ToolMetrics object - count attributes
+                                # that look like tool calls
                                 tool_count = len(
                                     [
                                         k
@@ -662,6 +833,18 @@ class ChatLoop:
                     print(Colors.system(" │ ".join(info_parts)))
 
             logger.info(f"Query completed successfully in {duration:.1f}s")
+
+            # Track conversation for auto-save if enabled
+            if self.auto_save:
+                self.conversation_history.append(
+                    {
+                        "timestamp": time.time(),
+                        "query": query,
+                        "response": full_response,
+                        "duration": duration,
+                        "usage": usage_info,
+                    }
+                )
 
             return {"duration": duration, "usage": usage_info}
 
@@ -803,9 +986,9 @@ class ChatLoop:
                             user_input = template
                         else:
                             print(Colors.error(f"Template not found: {template_name}"))
-                            print(
-                                f"Available templates: {', '.join(self.template_manager.list_templates()) or 'none'}"
-                            )
+                            templates = self.template_manager.list_templates()
+                            tmpl_list = ", ".join(templates) or "none"
+                            print(f"Available templates: {tmpl_list}")
                             print(f"Create at: {self.prompts_dir}/{template_name}.md")
                             continue
                     elif user_input.lower() == "clear":
@@ -891,6 +1074,10 @@ class ChatLoop:
             # Save command history
             save_readline_history(self.history_file)
 
+            # Save conversation if auto-save is enabled
+            if self.auto_save:
+                self.save_conversation()
+
             # Cleanup agent if it has cleanup method
             if hasattr(self.agent, "cleanup"):
                 try:
@@ -926,7 +1113,10 @@ def main():
     env_path = load_environment_variables()
 
     parser = argparse.ArgumentParser(
-        description="Interactive CLI for AI Agents with token tracking and rich features",
+        description=(
+            "Interactive CLI for AI Agents with token tracking "
+            "and rich features"
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -996,7 +1186,10 @@ Examples:
         "--auto-setup",
         "-a",
         action="store_true",
-        help="Automatically install agent dependencies (requirements.txt, pyproject.toml)",
+        help=(
+            "Automatically install agent dependencies "
+            "(requirements.txt, pyproject.toml)"
+        ),
     )
 
     args = parser.parse_args()
@@ -1026,9 +1219,8 @@ Examples:
                 if Path(agent_path).exists():
                     print(f"  {Colors.success(alias_name):<20} → {agent_path}")
                 else:
-                    print(
-                        f"  {Colors.error(alias_name):<20} → {agent_path} {Colors.YELLOW}(missing){Colors.RESET}"
-                    )
+                    status = f"{Colors.YELLOW}(missing){Colors.RESET}"
+                    print(f"  {Colors.error(alias_name):<20} → {agent_path} {status}")
             print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
             print(f"\nUsage: {Colors.system('chat_loop <alias>')}")
         else:
@@ -1097,11 +1289,11 @@ Examples:
                 print(Colors.error(message))
                 print(Colors.system("\nContinuing without dependency installation..."))
         else:
-            print(
-                Colors.system(
-                    "💡 No dependency files found (requirements.txt, pyproject.toml, setup.py)"
-                )
+            msg = (
+                "💡 No dependency files found "
+                "(requirements.txt, pyproject.toml, setup.py)"
             )
+            print(Colors.system(msg))
     else:
         # Check if dependencies exist and suggest using --auto-setup
         suggestion = dep_manager.suggest_auto_setup()
