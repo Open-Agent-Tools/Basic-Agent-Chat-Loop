@@ -84,7 +84,7 @@ wheels = [
 
 [[package]]
 name = "basic-agent-chat-loop"
-version = "0.3.0"
+version = "0.3.5"
 source = { editable = "." }
 dependencies = [
     { name = "python-dotenv", version = "1.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },

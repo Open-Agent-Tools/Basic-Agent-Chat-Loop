@@ -1,6 +1,6 @@
 # Chat Loop Configuration Guide
 
-The AWS Strands chat loop supports comprehensive configuration via `.chatrc` files.
+The Basic Agent Chat Loop supports comprehensive configuration via `.chatrc` files.
 
 ## Quick Start
 
@@ -123,6 +123,36 @@ When enabled, shows a persistent status bar at the top:
 - Shows session time and query count
 - Clean box drawing characters
 
+### Audio
+
+Audio notification settings:
+
+```yaml
+audio:
+  enabled: true                # Play sound when agent completes
+  notification_sound: null     # Custom WAV file (null = bundled sound)
+```
+
+**Platform support:**
+- macOS: Uses `afplay` (built-in)
+- Linux: Uses `aplay` or falls back to `paplay`
+- Windows: Uses `winsound` module
+
+**Custom notification sounds:**
+```yaml
+audio:
+  enabled: true
+  notification_sound: /path/to/custom.wav
+```
+
+The notification sound must be a WAV file. The bundled sound (when `notification_sound: null`) is a pleasant, non-intrusive notification tone.
+
+**Disable audio:**
+```yaml
+audio:
+  enabled: false
+```
+
 ## Per-Agent Configuration
 
 Override settings for specific agents:
@@ -139,12 +169,16 @@ agents:
       timeout: 300.0
     ui:
       show_metadata: false
+    audio:
+      enabled: false          # Silent agent - no audio
 
   'Product Pete':
     colors:
       agent: '\033[95m'       # Magenta
     features:
       auto_save: true
+    audio:
+      notification_sound: ~/sounds/product-complete.wav
 ```
 
 Agent names must match exactly (as shown in banner).
@@ -372,6 +406,10 @@ ui:
   show_duration: boolean
   show_status_bar: boolean  # Top status bar with agent, model, queries, time
 
+audio:
+  enabled: boolean          # Play sound when agent completes
+  notification_sound: string | null  # Path to WAV file or null for bundled sound
+
 agents:
   '<agent_name>':
     # Any of the above sections can be overridden
@@ -380,6 +418,7 @@ agents:
     paths: {...}
     behavior: {...}
     ui: {...}
+    audio: {...}
 ```
 
 ## See Also

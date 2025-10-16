@@ -12,6 +12,7 @@ A feature-rich, interactive CLI for AI agents with token tracking, prompt templa
 
 - 🏷️ **Agent Aliases** - Save agents as short names (`chat_loop pete` instead of full paths)
 - 📦 **Auto-Setup** - Automatically install agent dependencies from `requirements.txt` or `pyproject.toml`
+- 🔔 **Audio Notifications** - Play sound when agent completes a turn (cross-platform support)
 - 📜 **Command History** - Navigate previous queries with ↑↓ arrows (persisted to `~/.chat_history`)
 - ✍️ **Multi-line Input** - Type `\\` to enter multi-line mode for code blocks
 - 💰 **Token Tracking** - Track tokens and costs per query and session
@@ -185,6 +186,10 @@ ui:
   show_status_bar: true       # Top status bar
   show_duration: true         # Query duration
 
+audio:
+  enabled: true               # Play sound when agent completes
+  notification_sound: null    # Custom WAV file (null = bundled sound)
+
 behavior:
   max_retries: 3              # Retry attempts on failure
   timeout: 120.0              # Request timeout (seconds)
@@ -194,6 +199,35 @@ agents:
   'Product Pete':
     features:
       show_tokens: false
+    audio:
+      enabled: false          # Disable audio for this agent
+```
+
+### Audio Notifications
+
+Audio notifications alert you when the agent completes a response. Enabled by default with a bundled notification sound.
+
+**Platforms supported:**
+- macOS (using `afplay`)
+- Linux (using `aplay` or `paplay`)
+- Windows (using `winsound`)
+
+**Configure audio in ~/.chatrc:**
+```yaml
+audio:
+  enabled: true
+  notification_sound: null    # Use bundled sound
+
+  # Or specify a custom WAV file:
+  # notification_sound: /path/to/custom.wav
+```
+
+**Per-agent overrides:**
+```yaml
+agents:
+  'Silent Agent':
+    audio:
+      enabled: false  # Disable audio for this agent
 ```
 
 See [CONFIG.md](CONFIG.md) for full configuration options.
