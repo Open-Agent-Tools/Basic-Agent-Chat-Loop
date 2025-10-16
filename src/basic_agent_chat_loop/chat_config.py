@@ -59,6 +59,10 @@ class ChatConfig:
             "show_duration": True,
             "show_status_bar": False,
         },
+        "audio": {
+            "enabled": True,
+            "notification_sound": None,  # Uses bundled notification.wav if None
+        },
         # Per-agent overrides (example structure)
         "agents": {
             # 'Complex Coding Clara': {
@@ -368,6 +372,13 @@ ui:
   show_thinking_indicator: true  # Show "Thinking..." spinner
   show_duration: true          # Show query duration
   show_status_bar: false       # Show status bar at top (agent, model, queries, time)
+
+# ============================================================================
+# AUDIO - Notification sounds
+# ============================================================================
+audio:
+  enabled: true                # Play sound when agent completes a turn
+  notification_sound: null     # Path to custom WAV file (uses bundled sound if null)
 
 # ============================================================================
 # PER-AGENT OVERRIDES

@@ -47,7 +47,9 @@ except ImportError:
 from .chat_config import ChatConfig, get_config
 from .components import (
     AliasManager,
+    AudioNotifier,
     Colors,
+    ConfigWizard,
     DependencyManager,
     DisplayManager,
     StatusBar,
@@ -387,6 +389,21 @@ class ChatLoop:
             auto_save=self.auto_save,
             config=self.config,
             status_bar=self.status_bar,
+        )
+
+        # Setup audio notifications
+        audio_enabled = (
+            self.config.get("audio.enabled", True, agent_name=agent_name)
+            if self.config
+            else True
+        )
+        audio_sound_file = (
+            self.config.get("audio.notification_sound", None, agent_name=agent_name)
+            if self.config
+            else None
+        )
+        self.audio_notifier = AudioNotifier(
+            enabled=audio_enabled, sound_file=audio_sound_file
         )
 
     def _extract_token_usage(self, response_obj) -> Optional[Dict[str, int]]:
@@ -846,6 +863,9 @@ class ChatLoop:
                     }
                 )
 
+            # Play audio notification on agent turn completion
+            self.audio_notifier.play()
+
             return {"duration": duration, "usage": usage_info}
 
         except Exception as e:
@@ -1114,8 +1134,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Interactive CLI for AI Agents with token tracking "
-            "and rich features"
+            "Interactive CLI for AI Agents with token tracking and rich features"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -1192,7 +1211,24 @@ Examples:
         ),
     )
 
+    # Configuration wizard
+    parser.add_argument(
+        "--wizard",
+        "-w",
+        action="store_true",
+        help="Run interactive configuration wizard to create .chatrc file",
+    )
+
     args = parser.parse_args()
+
+    # Handle configuration wizard
+    if args.wizard:
+        wizard = ConfigWizard()
+        config_path = wizard.run()
+        if config_path:
+            sys.exit(0)
+        else:
+            sys.exit(1)
 
     # Handle alias management commands
     alias_manager = AliasManager()

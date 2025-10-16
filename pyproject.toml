@@ -68,7 +68,7 @@ license-files = []
 where = ["src"]
 
 [tool.setuptools.package-data]
-basic_agent_chat_loop = ["py.typed"]
+basic_agent_chat_loop = ["py.typed", "notification.wav"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

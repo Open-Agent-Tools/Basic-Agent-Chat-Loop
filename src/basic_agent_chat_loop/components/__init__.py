@@ -11,6 +11,8 @@ from .agent_loader import (
     load_environment_variables,
 )
 from .alias_manager import AliasManager
+from .audio_notifier import AudioNotifier
+from .config_wizard import ConfigWizard
 from .dependency_manager import DependencyManager
 from .display_manager import DisplayManager
 from .template_manager import TemplateManager
@@ -18,7 +20,9 @@ from .token_tracker import TokenTracker
 from .ui_components import Colors, StatusBar
 
 __all__ = [
+    "AudioNotifier",
     "Colors",
+    "ConfigWizard",
     "StatusBar",
     "TokenTracker",
     "TemplateManager",

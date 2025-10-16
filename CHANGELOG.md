@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - 2025-10-16
+
+### Added
+- **Audio Notifications** - Play sound when agent completes a turn
+  - New `audio.enabled` config option (default: true)
+  - Custom WAV file support via `audio.notification_sound` config
+  - Bundled notification.wav included in package
+  - Cross-platform support (macOS: afplay, Linux: aplay/paplay, Windows: winsound)
+  - Per-agent audio override support
+
+- **Configuration Wizard** - Interactive setup for .chatrc files
+  - New `--wizard` / `-w` flag to launch interactive configuration wizard
+  - Walks through all available settings section by section
+  - Loads and displays current values when editing existing configs
+  - Supports both global (`~/.chatrc`) and project-level (`./.chatrc`) configs
+  - Input validation for all setting types (bool, int, float, string)
+  - Generates well-formatted YAML with helpful comments
+  - Secure file permissions (0o600) on created configs
+
+### Changed
+- Code quality improvements with ruff formatting
+- Enhanced type annotations for winsound and yaml imports
+
+### Fixed
+- Line length warnings in config wizard (addressed via formatting)
+- Type checking issues with platform-specific imports
+
 ## [0.3.0] - 2025-10-15
 
 ### Added
@@ -211,6 +238,7 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
+[0.3.5]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.5
 [0.3.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.0
 [0.2.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.2.0
