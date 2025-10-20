@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2025-10-20
+
 ### Fixed
 - **Windows Command History** - pyreadline3 now installed automatically on Windows
   - No longer requires manual installation with `[windows]` extras
@@ -282,6 +284,8 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
+[0.3.7]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.7
+[0.3.6]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.6
 [0.3.5]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.5
 [0.3.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.0
 [0.2.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.2.1
