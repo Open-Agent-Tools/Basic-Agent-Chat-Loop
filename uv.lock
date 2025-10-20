@@ -84,9 +84,10 @@ wheels = [
 
 [[package]]
 name = "basic-agent-chat-loop"
-version = "0.3.5"
+version = "0.3.6"
 source = { editable = "." }
 dependencies = [
+    { name = "pyreadline3", marker = "sys_platform == 'win32'" },
     { name = "python-dotenv", version = "1.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "python-dotenv", version = "1.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "pyyaml" },
@@ -108,16 +109,13 @@ dev = [
     { name = "pytest-cov", version = "7.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "ruff" },
 ]
-windows = [
-    { name = "pyreadline3" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "anthropic-bedrock", marker = "extra == 'bedrock'", specifier = ">=0.8.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
-    { name = "pyreadline3", marker = "extra == 'windows'", specifier = ">=3.4.1" },
+    { name = "pyreadline3", marker = "sys_platform == 'win32'", specifier = ">=3.4.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },

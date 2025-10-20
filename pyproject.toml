@@ -36,6 +36,7 @@ dependencies = [
     "pyyaml>=6.0.1",
     "rich>=13.7.0",
     "python-dotenv>=1.0.0",
+    "pyreadline3>=3.4.1; platform_system=='Windows'",  # Command history on Windows
 ]
 
 [project.optional-dependencies]
@@ -47,7 +48,7 @@ dev = [
     "mypy>=1.0.0",
 ]
 windows = [
-    "pyreadline3>=3.4.1",  # Command history support on Windows
+    # pyreadline3 is now installed automatically on Windows (kept for compatibility)
 ]
 bedrock = [
     "anthropic-bedrock>=0.8.0",  # AWS Bedrock integration

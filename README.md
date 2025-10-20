@@ -38,10 +38,8 @@ That's it! The package will automatically create:
 
 ### Platform-Specific Options
 
-**Windows (for command history support):**
-```bash
-pip install basic-agent-chat-loop[windows]
-```
+**Windows:**
+Command history support (pyreadline3) is now **installed automatically** on Windows - no extra steps needed!
 
 **AWS Bedrock integration:**
 ```bash
@@ -311,7 +309,7 @@ chat.run()
 
 ### Optional Dependencies
 
-- `pyreadline3>=3.4.1` - Command history on Windows (install with `[windows]`)
+- `pyreadline3>=3.4.1` - Command history on Windows (**now auto-installed on Windows**)
 - `anthropic-bedrock>=0.8.0` - AWS Bedrock integration (install with `[bedrock]`)
 
 ### Built-in Features
@@ -322,7 +320,7 @@ chat.run()
 
 - ✅ **macOS** - Full support with native readline
 - ✅ **Linux** - Full support with native readline
-- ✅ **Windows** - Full support with `pip install basic-agent-chat-loop[windows]`
+- ✅ **Windows** - Full support with automatic pyreadline3 installation
 
 ## Architecture
 

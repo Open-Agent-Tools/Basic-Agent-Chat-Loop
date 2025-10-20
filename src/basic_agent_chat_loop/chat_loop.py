@@ -147,6 +147,16 @@ def setup_readline_history() -> Optional[Path]:
     """
     if not READLINE_AVAILABLE:
         logger.debug("Readline not available, history will not be saved")
+        # Show warning on Windows if readline is not available
+        if sys.platform == "win32":
+            print(
+                Colors.system(
+                    "⚠️  Command history not available. "
+                    "This should not happen on Windows.\n"
+                    "   Try reinstalling: "
+                    "pip install --force-reinstall basic-agent-chat-loop"
+                )
+            )
         return None
 
     try:

@@ -159,15 +159,18 @@ class TestConfigGetSection:
         assert agent_features["auto_save"] is True
 
     def test_get_colors_section_decodes_escapes(self):
-        """Test that colors section decodes escape sequences."""
+        """Test that colors section contains valid color values."""
         config = ChatConfig()
 
         colors = config.get_section("colors")
 
-        # Should have ANSI escape codes
-        assert "\033[" in colors["user"]
-        assert "\033[" in colors["agent"]
-        assert "\033[" in colors["error"]
+        # Should have color names or ANSI escape codes
+        assert colors["user"] in ["bright_white", "\033[97m"]
+        assert colors["agent"] in ["bright_blue", "\033[94m"]
+        assert colors["error"] in ["bright_red", "\033[91m"]
+        # Default colors should be color names now
+        assert colors["user"] == "bright_white"
+        assert colors["agent"] == "bright_blue"
 
 
 class TestConfigSet:

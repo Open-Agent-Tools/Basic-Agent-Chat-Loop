@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Windows Command History** - pyreadline3 now installed automatically on Windows
+  - No longer requires manual installation with `[windows]` extras
+  - Ensures consistent UX across all platforms
+  - Added warning message if readline is unavailable on Windows
+  - Resolves long-standing usability issue for Windows users
+
+### Changed
+- pyreadline3 moved from optional to core dependency (Windows only)
+- Updated installation documentation to reflect automatic Windows support
+
 ## [0.3.6] - 2025-10-20
 
 ### Added
