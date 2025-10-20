@@ -686,14 +686,17 @@ class ChatLoop:
                                 # Don't print during streaming, render at end
                                 pass
                             else:
-                                print(data, end="", flush=True)
+                                # Apply colorization for tool messages during streaming
+                                formatted_data = Colors.format_agent_response(data)
+                                print(formatted_data, end="", flush=True)
                         elif isinstance(data, dict):
                             # Handle structured data
                             if "text" in data:
                                 text = data["text"]
                                 response_text.append(text)
                                 if not self.use_rich:
-                                    print(text, end="", flush=True)
+                                    formatted_text = Colors.format_agent_response(text)
+                                    print(formatted_text, end="", flush=True)
                             elif "content" in data:
                                 content = data["content"]
                                 if isinstance(content, list):
@@ -702,12 +705,20 @@ class ChatLoop:
                                             text = block["text"]
                                             response_text.append(text)
                                             if not self.use_rich:
-                                                print(text, end="", flush=True)
+                                                formatted_text = (
+                                                    Colors.format_agent_response(text)
+                                                )
+                                                print(
+                                                    formatted_text, end="", flush=True
+                                                )
                                 else:
                                     text = str(content)
                                     response_text.append(text)
                                     if not self.use_rich:
-                                        print(text, end="", flush=True)
+                                        formatted_text = Colors.format_agent_response(
+                                            text
+                                        )
+                                        print(formatted_text, end="", flush=True)
             else:
                 # Fallback to synchronous call if streaming not supported
                 response = await asyncio.get_event_loop().run_in_executor(
@@ -749,7 +760,9 @@ class ChatLoop:
                 # Already printed during streaming, just add newline
                 if not first_token_received:
                     # Non-streaming case where nothing was printed yet
-                    print(full_response)
+                    # Apply colorization for tool messages
+                    formatted_response = Colors.format_agent_response(full_response)
+                    print(formatted_response)
 
             duration = time.time() - start_time
 
@@ -1149,6 +1162,10 @@ Examples:
     chat_loop my_agent --auto-setup
     chat_loop path/to/agent.py -a
 
+    # Configuration
+    chat_loop --wizard              # Create/customize .chatrc
+    chat_loop --reset-config        # Reset .chatrc to defaults
+
     # Alias management
     chat_loop --save-alias my_agent path/to/agent.py
     chat_loop --list-aliases
@@ -1219,12 +1236,28 @@ Examples:
         help="Run interactive configuration wizard to create .chatrc file",
     )
 
+    parser.add_argument(
+        "--reset-config",
+        action="store_true",
+        help="Reset .chatrc file to default values",
+    )
+
     args = parser.parse_args()
 
     # Handle configuration wizard
     if args.wizard:
         wizard = ConfigWizard()
         config_path = wizard.run()
+        if config_path:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    # Handle config reset
+    if args.reset_config:
+        from .components.config_wizard import reset_config_to_defaults
+
+        config_path = reset_config_to_defaults()
         if config_path:
             sys.exit(0)
         else:

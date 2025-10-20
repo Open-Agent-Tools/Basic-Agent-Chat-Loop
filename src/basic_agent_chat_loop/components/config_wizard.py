@@ -8,6 +8,215 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from ..chat_config import ChatConfig
+from .ui_components import COLOR_PALETTE
+
+
+def reset_config_to_defaults() -> Optional[Path]:
+    """
+    Reset .chatrc configuration file to default values.
+
+    Prompts user for scope and confirmation, then writes a fresh
+    configuration file with all default values.
+
+    Returns:
+        Path to the reset config file, or None if cancelled
+    """
+    print("\n" + "=" * 70)
+    print("  Reset Configuration to Defaults")
+    print("=" * 70)
+    print("\nThis will reset your .chatrc file to default values.")
+    print("Any customizations will be lost!")
+    print("\nPress Ctrl+C at any time to cancel.\n")
+
+    try:
+        # Ask which config to reset
+        print("Which configuration would you like to reset?")
+        print("  1. Global (~/.chatrc)")
+        print("  2. Project (./.chatrc)")
+
+        while True:
+            choice = input("\nChoice [1]: ").strip() or "1"
+
+            if choice == "1":
+                config_path = Path.home() / ".chatrc"
+                break
+            elif choice == "2":
+                config_path = Path.cwd() / ".chatrc"
+                break
+            else:
+                print("Invalid choice. Please enter 1 or 2.")
+
+        # Show what will be reset
+        print(f"\nThis will reset: {config_path}")
+
+        # Confirm
+        confirm = input("\nAre you sure you want to continue? [y/N]: ").strip().lower()
+
+        if confirm not in ["y", "yes"]:
+            print("\nReset cancelled. No changes were made.")
+            return None
+
+        # Create default config
+        default_config: Dict[str, Any] = {
+            "colors": {
+                "user": "bright_white",
+                "agent": "bright_blue",
+                "system": "yellow",
+                "error": "bright_red",
+                "success": "bright_green",
+            },
+            "features": {
+                "auto_save": False,
+                "show_tokens": False,
+                "show_metadata": True,
+                "rich_enabled": True,
+                "readline_enabled": True,
+            },
+            "ui": {
+                "show_banner": True,
+                "show_thinking_indicator": True,
+                "show_duration": True,
+                "show_status_bar": False,
+            },
+            "audio": {
+                "enabled": True,
+                "notification_sound": None,
+            },
+            "behavior": {
+                "max_retries": 3,
+                "retry_delay": 2.0,
+                "timeout": 120.0,
+                "spinner_style": "dots",
+            },
+            "paths": {
+                "save_location": "~/agent-conversations",
+                "log_location": "~/.chat_loop_logs",
+            },
+        }
+
+        # Generate YAML content
+        yaml_lines = [
+            "# Basic Agent Chat Loop Configuration",
+            "#",
+            "# Reset to default values",
+            "#",
+            "# Format: YAML",
+            "# Precedence: Project .chatrc > Global ~/.chatrc > Built-in defaults",
+            "",
+            "# ==================================================================",
+            "# COLORS - Named color palette",
+            "# ==================================================================",
+            "# Available colors: black, red, green, yellow, blue, magenta, cyan,",
+            "# white, bright_red, bright_green, bright_blue, bright_white",
+            "colors:",
+        ]
+
+        for key, value in default_config["colors"].items():
+            yaml_lines.append(f"  {key}: {value}")
+
+        yaml_lines.extend(
+            [
+                "",
+                "# ==================================================================",
+                "# FEATURES - Toggle optional functionality",
+                "# ==================================================================",
+                "features:",
+            ]
+        )
+
+        for key, value in default_config["features"].items():
+            yaml_lines.append(f"  {key}: {str(value).lower()}")
+
+        yaml_lines.extend(
+            [
+                "",
+                "# ==================================================================",
+                "# PATHS - File system locations",
+                "# ==================================================================",
+                "paths:",
+            ]
+        )
+
+        for key, value in default_config["paths"].items():
+            yaml_lines.append(f"  {key}: {value}")
+
+        yaml_lines.extend(
+            [
+                "",
+                "# ==================================================================",
+                "# BEHAVIOR - Runtime behavior settings",
+                "# ==================================================================",
+                "behavior:",
+            ]
+        )
+
+        for key, value in default_config["behavior"].items():
+            yaml_lines.append(f"  {key}: {value}")
+
+        yaml_lines.extend(
+            [
+                "",
+                "# ==================================================================",
+                "# UI - User interface preferences",
+                "# ==================================================================",
+                "ui:",
+            ]
+        )
+
+        for key, value in default_config["ui"].items():
+            yaml_lines.append(f"  {key}: {str(value).lower()}")
+
+        yaml_lines.extend(
+            [
+                "",
+                "# ==================================================================",
+                "# AUDIO - Notification sounds",
+                "# ==================================================================",
+                "audio:",
+                f"  enabled: {str(default_config['audio']['enabled']).lower()}",
+                (
+                    f"  notification_sound: "
+                    f"{default_config['audio']['notification_sound'] or 'null'}"
+                ),
+                "",
+                "# ==================================================================",
+                "# PER-AGENT OVERRIDES",
+                "# ==================================================================",
+                "# Override settings for specific agents by name",
+                "# Example:",
+                "# agents:",
+                "#   'My Agent':",
+                "#     features:",
+                "#       auto_save: true",
+                "",
+                "agents: {}",
+            ]
+        )
+
+        yaml_content = "\n".join(yaml_lines) + "\n"
+
+        # Write the file
+        try:
+            with open(config_path, "w") as f:
+                f.write(yaml_content)
+
+            # Set secure permissions
+            config_path.chmod(0o600)
+
+            print("\n" + "=" * 70)
+            print(f"✓ Configuration reset to defaults: {config_path}")
+            print("=" * 70)
+            print("\nYou can customize it again with 'chat_loop --wizard'\n")
+
+            return config_path
+
+        except Exception as e:
+            print(f"\nError writing configuration file: {e}")
+            return None
+
+    except KeyboardInterrupt:
+        print("\n\nReset cancelled. No changes were made.")
+        return None
 
 
 class ConfigWizard:
@@ -388,19 +597,28 @@ class ConfigWizard:
         print("COLORS - Terminal color customization")
         print("=" * 70 + "\n")
 
+        # Default color names (not ANSI codes)
+        default_colors = {
+            "user": "bright_white",
+            "agent": "bright_blue",
+            "system": "yellow",
+            "error": "bright_red",
+            "success": "bright_green",
+        }
+
         # Get current colors from config
         if self.current_config:
             current_colors = self.current_config.get_section("colors")
+            # Convert ANSI codes to color names if needed (backward compatibility)
+            for key in default_colors:
+                if key in current_colors:
+                    val = current_colors[key]
+                    # Check if it's already a color name
+                    if val not in COLOR_PALETTE:
+                        # It's an ANSI code, use default color name
+                        current_colors[key] = default_colors[key]
         else:
-            current_colors = {
-                "user": "\\033[97m",
-                "agent": "\\033[94m",
-                "system": "\\033[33m",
-                "error": "\\033[91m",
-                "success": "\\033[92m",
-                "dim": "\\033[2m",
-                "reset": "\\033[0m",
-            }
+            current_colors = default_colors.copy()
 
         print("Would you like to customize terminal colors?")
         if self.current_config:
@@ -413,30 +631,25 @@ class ConfigWizard:
             self.config["colors"] = current_colors
             return
 
-        print("\nEnter ANSI escape codes (e.g., \\033[94m for blue)")
-        print("Press Enter to keep the current value shown in [brackets]\n")
+        print("\nSelect colors from the named palette:")
+        print("(12 colors available: black, red, green, yellow, blue, magenta,")
+        print(" cyan, white, bright_red, bright_green, bright_blue, bright_white)\n")
 
         self.config["colors"] = {
-            "user": self._prompt_string(
-                "User input color", current_colors.get("user", "\\033[97m")
+            "user": self._prompt_color(
+                "User input color", current_colors.get("user", "bright_white")
             ),
-            "agent": self._prompt_string(
-                "Agent response color", current_colors.get("agent", "\\033[94m")
+            "agent": self._prompt_color(
+                "Agent response color", current_colors.get("agent", "bright_blue")
             ),
-            "system": self._prompt_string(
-                "System message color", current_colors.get("system", "\\033[33m")
+            "system": self._prompt_color(
+                "System message color", current_colors.get("system", "yellow")
             ),
-            "error": self._prompt_string(
-                "Error message color", current_colors.get("error", "\\033[91m")
+            "error": self._prompt_color(
+                "Error message color", current_colors.get("error", "bright_red")
             ),
-            "success": self._prompt_string(
-                "Success message color", current_colors.get("success", "\\033[92m")
-            ),
-            "dim": self._prompt_string(
-                "Dim text color", current_colors.get("dim", "\\033[2m")
-            ),
-            "reset": self._prompt_string(
-                "Reset color", current_colors.get("reset", "\\033[0m")
+            "success": self._prompt_color(
+                "Success message color", current_colors.get("success", "bright_green")
             ),
         }
 
@@ -508,13 +721,15 @@ class ConfigWizard:
             "# Precedence: Project .chatrc > Global ~/.chatrc > Built-in defaults",
             "",
             "# ==================================================================",
-            "# COLORS - ANSI escape codes for terminal output",
+            "# COLORS - Named color palette",
             "# ==================================================================",
+            "# Available colors: black, red, green, yellow, blue, magenta, cyan,",
+            "# white, bright_red, bright_green, bright_blue, bright_white",
             "colors:",
         ]
 
         for key, value in self.config["colors"].items():
-            lines.append(f"  {key}: '{value}'")
+            lines.append(f"  {key}: {value}")
 
         lines.extend(
             [
@@ -732,3 +947,31 @@ class ConfigWizard:
         """
         response = input(f"{prompt} [{default}]: ").strip()
         return response or default
+
+    def _prompt_color(self, prompt: str, default: str) -> str:
+        """
+        Prompt user for a color selection from the named palette.
+
+        Args:
+            prompt: Question to ask
+            default: Default color name
+
+        Returns:
+            Color name from palette
+        """
+        # Get list of available colors
+        colors = sorted(COLOR_PALETTE.keys())
+
+        print(f"\n{prompt}")
+        print(f"Available colors: {', '.join(colors)}")
+
+        while True:
+            response = input(f"Color [{default}]: ").strip().lower()
+
+            if not response:
+                return default
+
+            if response in COLOR_PALETTE:
+                return response
+            else:
+                print(f"Invalid color. Choose from: {', '.join(colors)}")

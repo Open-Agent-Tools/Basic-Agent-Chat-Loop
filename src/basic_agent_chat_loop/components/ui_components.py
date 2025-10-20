@@ -7,6 +7,22 @@ Contains terminal color codes and status bar rendering.
 import time
 from typing import Dict
 
+# Named color palette - maps color names to ANSI escape codes
+COLOR_PALETTE = {
+    "black": "\033[30m",
+    "red": "\033[31m",
+    "green": "\033[32m",
+    "yellow": "\033[33m",
+    "blue": "\033[34m",
+    "magenta": "\033[35m",
+    "cyan": "\033[36m",
+    "white": "\033[37m",
+    "bright_red": "\033[91m",
+    "bright_green": "\033[92m",
+    "bright_blue": "\033[94m",
+    "bright_white": "\033[97m",
+}
+
 
 class Colors:
     """ANSI color codes for terminal output."""
@@ -24,20 +40,38 @@ class Colors:
     SUCCESS = "\033[92m"  # Bright green for success
 
     @classmethod
+    def _resolve_color(cls, color_value: str) -> str:
+        """
+        Resolve a color name or ANSI code to an ANSI escape sequence.
+
+        Args:
+            color_value: Color name (e.g., 'bright_green') or ANSI code
+                (e.g., '\\033[92m')
+
+        Returns:
+            ANSI escape sequence
+        """
+        # If it's a named color, look it up in the palette
+        if color_value in COLOR_PALETTE:
+            return COLOR_PALETTE[color_value]
+        # Otherwise, assume it's already an ANSI code (backward compatibility)
+        return color_value
+
+    @classmethod
     def configure(cls, config: Dict[str, str]):
         """
         Configure colors from config dictionary.
 
         Args:
-            config: Dictionary of color codes
+            config: Dictionary of color names or ANSI codes
         """
-        cls.USER = config.get("user", cls.USER)
-        cls.AGENT = config.get("agent", cls.AGENT)
-        cls.SYSTEM = config.get("system", cls.SYSTEM)
-        cls.ERROR = config.get("error", cls.ERROR)
-        cls.SUCCESS = config.get("success", cls.SUCCESS)
-        cls.DIM = config.get("dim", cls.DIM)
-        cls.RESET = config.get("reset", cls.RESET)
+        cls.USER = cls._resolve_color(config.get("user", cls.USER))
+        cls.AGENT = cls._resolve_color(config.get("agent", cls.AGENT))
+        cls.SYSTEM = cls._resolve_color(config.get("system", cls.SYSTEM))
+        cls.ERROR = cls._resolve_color(config.get("error", cls.ERROR))
+        cls.SUCCESS = cls._resolve_color(config.get("success", cls.SUCCESS))
+        cls.DIM = cls._resolve_color(config.get("dim", cls.DIM))
+        cls.RESET = cls._resolve_color(config.get("reset", cls.RESET))
 
     @staticmethod
     def user(text: str) -> str:
@@ -63,6 +97,36 @@ class Colors:
     def success(text: str) -> str:
         """Format text as success."""
         return f"{Colors.SUCCESS}{text}{Colors.RESET}"
+
+    @staticmethod
+    def format_agent_response(text: str) -> str:
+        """
+        Format agent response text with special colorization for tool messages.
+
+        Lines starting with '[' or 'Tool #' are colored bright_green.
+        Other lines use the standard agent color.
+
+        Args:
+            text: Agent response text (may contain multiple lines)
+
+        Returns:
+            Formatted text with color codes
+        """
+        lines = text.split("\n")
+        formatted_lines = []
+
+        for line in lines:
+            # Check if line starts with '[' or 'Tool #'
+            if line.startswith("[") or line.startswith("Tool #"):
+                # Use bright_green for tool/thinking messages
+                formatted_lines.append(
+                    f"{COLOR_PALETTE['bright_green']}{line}{Colors.RESET}"
+                )
+            else:
+                # Use standard agent color
+                formatted_lines.append(f"{Colors.AGENT}{line}{Colors.RESET}")
+
+        return "\n".join(formatted_lines)
 
 
 class StatusBar:

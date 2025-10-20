@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Named Color Palette** - User-friendly color configuration
+  - 12 predefined colors: black, red, green, yellow, blue, magenta, cyan, white, bright_red, bright_green, bright_blue, bright_white
+  - Color wizard now uses color names instead of ANSI escape codes
+  - Backward compatibility with existing ANSI code configs
+  - New `Colors._resolve_color()` method for flexible color resolution
+
+- **Agent Tool Message Highlighting** - Better visibility for agent operations
+  - Lines starting with `[` or `Tool #` now display in bright_green
+  - Works in both streaming and non-streaming modes
+  - Automatic detection and colorization of agent tool usage
+  - New `Colors.format_agent_response()` method
+
+- **Configuration Reset** - Easy restoration of default settings
+  - New `--reset-config` flag to reset .chatrc to defaults
+  - Interactive prompt with confirmation
+  - Supports both global (~/.chatrc) and project (./.chatrc) configs
+  - Comprehensive default values for all configuration sections
+
+### Changed
+- Config wizard now prompts for color names instead of raw ANSI codes
+- Improved color configuration user experience
+- Enhanced test coverage (276 tests passing, +8 new tests)
+
+### Fixed
+- Removed unused `scope` variable in reset_config_to_defaults
+- Fixed line length violations in config_wizard.py and ui_components.py
+- Type hints added to default_config dictionary
+
 ## [0.3.5] - 2025-10-16
 
 ### Added

@@ -2,7 +2,11 @@
 
 import time
 
-from basic_agent_chat_loop.components.ui_components import Colors, StatusBar
+from basic_agent_chat_loop.components.ui_components import (
+    Colors,
+    StatusBar,
+    COLOR_PALETTE,
+)
 
 
 class TestColors:
@@ -104,6 +108,126 @@ class TestColors:
 
         # Should remain unchanged
         assert Colors.USER == original_user
+
+    def test_resolve_color_with_color_name(self):
+        """Test resolving color names to ANSI codes."""
+        assert Colors._resolve_color("bright_green") == COLOR_PALETTE["bright_green"]
+        assert Colors._resolve_color("red") == COLOR_PALETTE["red"]
+        assert Colors._resolve_color("blue") == COLOR_PALETTE["blue"]
+
+    def test_resolve_color_with_ansi_code(self):
+        """Test that ANSI codes are passed through unchanged."""
+        ansi_code = "\033[95m"
+        assert Colors._resolve_color(ansi_code) == ansi_code
+
+    def test_configure_with_color_names(self):
+        """Test configuring colors using named palette."""
+        original_user = Colors.USER
+        original_agent = Colors.AGENT
+
+        try:
+            config = {
+                "user": "bright_white",
+                "agent": "bright_green",
+            }
+            Colors.configure(config)
+
+            assert Colors.USER == COLOR_PALETTE["bright_white"]
+            assert Colors.AGENT == COLOR_PALETTE["bright_green"]
+
+        finally:
+            Colors.USER = original_user
+            Colors.AGENT = original_agent
+
+    def test_format_agent_response_with_tool_messages(self):
+        """Test formatting agent response with tool messages."""
+        text = "Regular line\n[Thinking about the problem]\nTool #1: Read file\nAnother regular line"
+
+        formatted = Colors.format_agent_response(text)
+
+        # Should contain bright_green for tool/thinking lines
+        assert COLOR_PALETTE["bright_green"] in formatted
+        # Should contain agent color for regular lines
+        assert Colors.AGENT in formatted
+        # Should contain all original text
+        assert "Regular line" in formatted
+        assert "[Thinking about the problem]" in formatted
+        assert "Tool #1: Read file" in formatted
+        assert "Another regular line" in formatted
+
+    def test_format_agent_response_no_tool_messages(self):
+        """Test formatting response with no tool messages."""
+        text = "Just a regular response\nWith multiple lines\nNo special formatting needed"
+
+        formatted = Colors.format_agent_response(text)
+
+        # Should use agent color throughout
+        assert Colors.AGENT in formatted
+        # Should not use bright_green since no tool messages
+        # (Can't assert absence easily since AGENT might be bright_green)
+        assert "Just a regular response" in formatted
+
+    def test_format_agent_response_only_tool_messages(self):
+        """Test formatting response with only tool messages."""
+        text = "[Analyzing the code]\nTool #1: Grep search\nTool #2: Read file"
+
+        formatted = Colors.format_agent_response(text)
+
+        # All lines should use bright_green
+        assert COLOR_PALETTE["bright_green"] in formatted
+        assert "[Analyzing the code]" in formatted
+        assert "Tool #1: Grep search" in formatted
+        assert "Tool #2: Read file" in formatted
+
+    def test_format_agent_response_empty_string(self):
+        """Test formatting empty response."""
+        formatted = Colors.format_agent_response("")
+
+        # Should return empty string (with colors)
+        assert isinstance(formatted, str)
+
+    def test_format_agent_response_single_line_with_bracket(self):
+        """Test formatting single line starting with bracket."""
+        text = "[Thinking...]"
+
+        formatted = Colors.format_agent_response(text)
+
+        assert COLOR_PALETTE["bright_green"] in formatted
+        assert "[Thinking...]" in formatted
+
+
+class TestColorPalette:
+    """Test COLOR_PALETTE constant."""
+
+    def test_palette_has_all_colors(self):
+        """Test that palette contains all expected colors."""
+        expected_colors = [
+            "black",
+            "red",
+            "green",
+            "yellow",
+            "blue",
+            "magenta",
+            "cyan",
+            "white",
+            "bright_red",
+            "bright_green",
+            "bright_blue",
+            "bright_white",
+        ]
+
+        for color in expected_colors:
+            assert color in COLOR_PALETTE
+
+    def test_palette_has_correct_count(self):
+        """Test that palette has exactly 12 colors."""
+        assert len(COLOR_PALETTE) == 12
+
+    def test_palette_values_are_ansi_codes(self):
+        """Test that all palette values are ANSI escape codes."""
+        for color, code in COLOR_PALETTE.items():
+            assert code.startswith("\033[")
+            assert code.endswith("m")
 
 
 class TestStatusBar:

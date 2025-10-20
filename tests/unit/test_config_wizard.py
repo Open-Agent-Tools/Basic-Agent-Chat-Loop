@@ -6,7 +6,10 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from basic_agent_chat_loop.chat_config import ChatConfig
-from basic_agent_chat_loop.components.config_wizard import ConfigWizard
+from basic_agent_chat_loop.components.config_wizard import (
+    ConfigWizard,
+    reset_config_to_defaults,
+)
 
 
 @pytest.fixture
@@ -485,6 +488,39 @@ class TestConfigurePaths:
         assert wizard.config["paths"]["log_location"] == "~/custom/logs"
 
 
+class TestPromptColor:
+    """Test _prompt_color method."""
+
+    @patch("builtins.input")
+    def test_prompt_color_valid_input(self, mock_input, wizard):
+        """Test valid color name input."""
+        mock_input.return_value = "bright_green"
+        result = wizard._prompt_color("Select color", default="blue")
+        assert result == "bright_green"
+
+    @patch("builtins.input")
+    def test_prompt_color_default(self, mock_input, wizard):
+        """Test using default color."""
+        mock_input.return_value = ""
+        result = wizard._prompt_color("Select color", default="blue")
+        assert result == "blue"
+
+    @patch("builtins.input")
+    def test_prompt_color_case_insensitive(self, mock_input, wizard):
+        """Test that color input is case insensitive."""
+        mock_input.return_value = "BRIGHT_GREEN"
+        result = wizard._prompt_color("Select color", default="blue")
+        assert result == "bright_green"
+
+    @patch("builtins.input")
+    def test_prompt_color_invalid_then_valid(self, mock_input, wizard):
+        """Test handling invalid color then valid."""
+        mock_input.side_effect = ["invalid_color", "purple", "red"]
+        result = wizard._prompt_color("Select color", default="blue")
+        assert result == "red"
+        assert mock_input.call_count == 3
+
+
 class TestConfigureColors:
     """Test _configure_colors method."""
 
@@ -496,27 +532,25 @@ class TestConfigureColors:
         wizard._configure_colors()
 
         assert "colors" in wizard.config
-        assert wizard.config["colors"]["user"] == "\\033[97m"
-        assert wizard.config["colors"]["agent"] == "\\033[94m"
+        assert wizard.config["colors"]["user"] == "bright_white"
+        assert wizard.config["colors"]["agent"] == "bright_blue"
 
     @patch("builtins.input")
     def test_configure_colors_custom_values(self, mock_input, wizard):
         """Test customizing colors."""
         mock_input.side_effect = [
             "y",  # Customize colors?
-            "\\033[91m",  # user
-            "\\033[92m",  # agent
+            "bright_red",  # user
+            "bright_green",  # agent
             "",  # system (default)
             "",  # error (default)
             "",  # success (default)
-            "",  # dim (default)
-            "",  # reset (default)
         ]
 
         wizard._configure_colors()
 
-        assert wizard.config["colors"]["user"] == "\\033[91m"
-        assert wizard.config["colors"]["agent"] == "\\033[92m"
+        assert wizard.config["colors"]["user"] == "bright_red"
+        assert wizard.config["colors"]["agent"] == "bright_green"
         assert "system" in wizard.config["colors"]
 
 
@@ -530,7 +564,7 @@ class TestWriteConfig:
         """Test writing new global config file."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         wizard.config = {
-            "colors": {"user": "\\033[97m"},
+            "colors": {"user": "bright_white"},
             "features": {"auto_save": False},
             "ui": {},
             "audio": {"enabled": True, "notification_sound": None},
@@ -550,7 +584,7 @@ class TestWriteConfig:
         """Test writing new project config file."""
         monkeypatch.chdir(tmp_path)
         wizard.config = {
-            "colors": {"user": "\\033[97m"},
+            "colors": {"user": "bright_white"},
             "features": {},
             "ui": {},
             "audio": {"enabled": True, "notification_sound": None},
@@ -633,7 +667,7 @@ class TestGenerateYamlWithComments:
     def test_generate_yaml_includes_all_sections(self, wizard):
         """Test that generated YAML includes all config sections."""
         wizard.config = {
-            "colors": {"user": "\\033[97m"},
+            "colors": {"user": "bright_white"},
             "features": {"auto_save": False},
             "ui": {"show_banner": True},
             "audio": {"enabled": True, "notification_sound": None},
@@ -760,3 +794,129 @@ class TestEdgeCases:
 
         # Should use values from existing config
         assert wizard.config["features"]["show_tokens"] is True
+
+
+class TestResetConfigToDefaults:
+    """Test reset_config_to_defaults function."""
+
+    @patch("builtins.input")
+    def test_reset_global_config_with_confirmation(self, mock_input, tmp_path, monkeypatch):
+        """Test resetting global config with confirmation."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        # User chooses global (1) and confirms (y)
+        mock_input.side_effect = ["1", "y"]
+
+        result = reset_config_to_defaults()
+
+        assert result == tmp_path / ".chatrc"
+        assert result.exists()
+
+        # Verify content has default values
+        content = result.read_text()
+        assert "bright_white" in content
+        assert "bright_blue" in content
+        assert "auto_save: false" in content
+        assert "show_tokens: false" in content
+
+    @patch("builtins.input")
+    def test_reset_project_config_with_confirmation(self, mock_input, tmp_path, monkeypatch):
+        """Test resetting project config."""
+        monkeypatch.chdir(tmp_path)
+
+        # User chooses project (2) and confirms (y)
+        mock_input.side_effect = ["2", "y"]
+
+        result = reset_config_to_defaults()
+
+        assert result == tmp_path / ".chatrc"
+        assert result.exists()
+
+    @patch("builtins.input")
+    def test_reset_config_cancelled_by_user(self, mock_input, tmp_path, monkeypatch):
+        """Test that user can cancel reset."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        # User chooses global (1) but declines confirmation (n)
+        mock_input.side_effect = ["1", "n"]
+
+        result = reset_config_to_defaults()
+
+        assert result is None
+        assert not (tmp_path / ".chatrc").exists()
+
+    @patch("builtins.input")
+    def test_reset_config_keyboard_interrupt(self, mock_input):
+        """Test that KeyboardInterrupt is handled gracefully."""
+        mock_input.side_effect = KeyboardInterrupt()
+
+        result = reset_config_to_defaults()
+
+        assert result is None
+
+    @patch("builtins.input")
+    def test_reset_config_overwrites_existing(self, mock_input, tmp_path, monkeypatch):
+        """Test that reset overwrites existing config."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        # Create existing config with custom values
+        existing_config = tmp_path / ".chatrc"
+        existing_config.write_text("custom: values\nshould: be_replaced")
+
+        # User confirms reset
+        mock_input.side_effect = ["1", "y"]
+
+        result = reset_config_to_defaults()
+
+        assert result is not None
+        content = result.read_text()
+
+        # Should have default values, not custom ones
+        assert "custom: values" not in content
+        assert "bright_white" in content
+
+    @patch("builtins.input")
+    def test_reset_config_sets_secure_permissions(self, mock_input, tmp_path, monkeypatch):
+        """Test that reset config has secure permissions."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        mock_input.side_effect = ["1", "y"]
+
+        result = reset_config_to_defaults()
+
+        assert result is not None
+        # Check permissions are 0o600
+        assert oct(result.stat().st_mode)[-3:] == "600"
+
+    @patch("builtins.input")
+    def test_reset_config_invalid_choice_then_valid(self, mock_input, tmp_path, monkeypatch):
+        """Test handling invalid choice then valid choice."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        # Invalid choice, then valid choice (1), then confirm
+        mock_input.side_effect = ["invalid", "3", "1", "y"]
+
+        result = reset_config_to_defaults()
+
+        assert result is not None
+        assert result.exists()
+
+    @patch("builtins.input")
+    def test_reset_config_includes_all_sections(self, mock_input, tmp_path, monkeypatch):
+        """Test that reset config includes all expected sections."""
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        mock_input.side_effect = ["1", "y"]
+
+        result = reset_config_to_defaults()
+
+        content = result.read_text()
+
+        # Check all major sections are present
+        assert "colors:" in content
+        assert "features:" in content
+        assert "ui:" in content
+        assert "audio:" in content
+        assert "behavior:" in content
+        assert "paths:" in content
+        assert "agents: {}" in content
