@@ -170,8 +170,9 @@ def set_terminal_title(title: str) -> None:
     """
     try:
         # \033]0; sets both icon and window title
-        # \007 is the BEL character (terminal bell) to end the sequence
-        print(f"\033]0;{title}\007", end="", flush=True)
+        # \033\\ is ST (String Terminator) - more compatible than BEL (\007)
+        # ST works better with Mac Terminal and VSCode's integrated terminal
+        print(f"\033]0;{title}\033\\", end="", flush=True)
     except Exception:
         # Silently fail if terminal doesn't support it
         pass
