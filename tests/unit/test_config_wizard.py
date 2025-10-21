@@ -720,7 +720,8 @@ class TestRunMethod:
             "",
             "",
             "",
-            # UI (4 bools)
+            # UI (5 bools)
+            "",
             "",
             "",
             "",

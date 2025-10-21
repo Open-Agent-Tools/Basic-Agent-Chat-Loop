@@ -158,6 +158,25 @@ def setup_logging(agent_name: str) -> bool:
         return False
 
 
+def set_terminal_title(title: str) -> None:
+    """
+    Set the terminal window/tab title.
+
+    Uses ANSI escape sequences to update the terminal title.
+    Works on macOS Terminal, iTerm2, Linux terminals, Windows Terminal, etc.
+
+    Args:
+        title: The title to set
+    """
+    try:
+        # \033]0; sets both icon and window title
+        # \007 is the BEL character (terminal bell) to end the sequence
+        print(f"\033]0;{title}\007", end="", flush=True)
+    except Exception:
+        # Silently fail if terminal doesn't support it
+        pass
+
+
 def setup_readline_history() -> Optional[Path]:
     """
     Setup readline command history with persistence.
@@ -321,6 +340,9 @@ class ChatLoop:
             self.show_banner = self.config.get(
                 "ui.show_banner", True, agent_name=agent_name
             )
+            self.update_terminal_title = self.config.get(
+                "ui.update_terminal_title", True, agent_name=agent_name
+            )
 
             # Rich override
             rich_enabled = self.config.get(
@@ -338,6 +360,7 @@ class ChatLoop:
             self.show_thinking = True
             self.show_duration = True
             self.show_banner = True
+            self.update_terminal_title = True
             self.use_rich = RICH_AVAILABLE
 
         # Setup rich console if available and enabled
@@ -1001,6 +1024,10 @@ class ChatLoop:
         # Setup readline history
         self.history_file = setup_readline_history()
 
+        # Set initial terminal title
+        if self.update_terminal_title:
+            set_terminal_title(f"{self.agent_name} - Idle")
+
         self.display_manager.display_banner()
 
         try:
@@ -1108,6 +1135,10 @@ class ChatLoop:
                     # Process query through agent
                     logger.info(f"Processing query: {user_input[:100]}...")
 
+                    # Update terminal title to show processing
+                    if self.update_terminal_title:
+                        set_terminal_title(f"{self.agent_name} - Processing...")
+
                     # Update status bar before query
                     if self.status_bar:
                         self.status_bar.increment_query()
@@ -1117,6 +1148,10 @@ class ChatLoop:
                         print()  # Blank line after status bar
 
                     await self.process_query(user_input)
+
+                    # Update terminal title back to idle
+                    if self.update_terminal_title:
+                        set_terminal_title(f"{self.agent_name} - Idle")
 
                 except KeyboardInterrupt:
                     print(
@@ -1134,6 +1169,10 @@ class ChatLoop:
                     break
 
         finally:
+            # Reset terminal title
+            if self.update_terminal_title:
+                set_terminal_title("Terminal")
+
             # Save command history
             save_readline_history(self.history_file)
 

@@ -458,6 +458,18 @@ class ConfigWizard:
             help_text="Displays agent, model, query count, and session time",
         )
 
+        # update_terminal_title
+        current_update_terminal_title = (
+            self.current_config.get("ui.update_terminal_title", True)
+            if self.current_config
+            else True
+        )
+        self.config["ui"]["update_terminal_title"] = self._prompt_bool(
+            "Update terminal title with agent status?",
+            default=current_update_terminal_title,
+            help_text="Shows 'Agent Name - Idle' or 'Agent Name - Processing...'",
+        )
+
     def _configure_audio(self):
         """Configure audio section."""
         print("\n" + "=" * 70)

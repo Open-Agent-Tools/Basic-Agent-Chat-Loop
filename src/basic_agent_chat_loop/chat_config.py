@@ -58,6 +58,7 @@ class ChatConfig:
             "show_thinking_indicator": True,
             "show_duration": True,
             "show_status_bar": False,
+            "update_terminal_title": True,
         },
         "audio": {
             "enabled": True,
