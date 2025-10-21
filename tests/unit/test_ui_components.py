@@ -3,9 +3,9 @@
 import time
 
 from basic_agent_chat_loop.components.ui_components import (
+    COLOR_PALETTE,
     Colors,
     StatusBar,
-    COLOR_PALETTE,
 )
 
 
@@ -141,7 +141,10 @@ class TestColors:
 
     def test_format_agent_response_with_tool_messages(self):
         """Test formatting agent response with tool messages."""
-        text = "Regular line\n[Thinking about the problem]\nTool #1: Read file\nAnother regular line"
+        text = (
+            "Regular line\n[Thinking about the problem]\n"
+            "Tool #1: Read file\nAnother regular line"
+        )
 
         formatted = Colors.format_agent_response(text)
 
@@ -157,7 +160,9 @@ class TestColors:
 
     def test_format_agent_response_no_tool_messages(self):
         """Test formatting response with no tool messages."""
-        text = "Just a regular response\nWith multiple lines\nNo special formatting needed"
+        text = (
+            "Just a regular response\nWith multiple lines\nNo special formatting needed"
+        )
 
         formatted = Colors.format_agent_response(text)
 

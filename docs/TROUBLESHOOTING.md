@@ -240,25 +240,27 @@ pip install basic-agent-chat-loop[windows]
    chat_loop myagent
    ```
 
-### Environment file (.env) not loaded
+### Environment variables and credentials
 
-**Symptom:** Agent cannot access environment variables
+**Note:** The chat loop framework does not load `.env` files. Environment variable handling is the responsibility of individual agents.
 
 **Solutions:**
 
-1. **Place .env in project root or up to 3 parent directories**
-2. **Check .env file format:**
-   ```bash
-   # .env file should have KEY=VALUE format (no spaces around =)
-   API_KEY=your_key_here
-   SECRET=your_secret
+1. **Agent-level configuration:** If your agent needs environment variables, have the agent load its own `.env` file using `python-dotenv`:
+   ```python
+   # In your agent code
+   from dotenv import load_dotenv
+   load_dotenv()  # Loads .env from agent's directory
    ```
 
-3. **Manually set environment variables:**
+2. **System environment variables:** Set environment variables before running the chat loop:
    ```bash
    export API_KEY=your_key
+   export SECRET=your_secret
    chat_loop agent.py
    ```
+
+3. **Shell profile:** Add variables to `~/.bashrc`, `~/.zshrc`, or equivalent for persistence
 
 ### Agent import errors
 

@@ -75,6 +75,29 @@ When using Basic Agent Chat Loop:
 - **File Permissions**: Ensure config files have appropriate permissions (not world-readable)
 - **Git Ignore**: Keep `.chatrc` in `.gitignore` to prevent accidental commits
 
+### Logging and Privacy
+
+The chat loop framework logs operational information to `~/.chat_loop_logs/`:
+
+**What Gets Logged:**
+- User queries (truncated to first 100 characters)
+- Agent responses metadata (timing, token counts)
+- Error messages and stack traces
+- File paths for configurations, templates, and aliases
+- Agent initialization and session information
+
+**Privacy Considerations:**
+- **PII Warning**: Logs may contain personally identifiable information from user queries
+- **File Permissions**: Log files are created with restrictive permissions (0600 - owner read/write only)
+- **Log Rotation**: Logs are automatically rotated (max 10MB per file, 5 backup files kept)
+- **Local Storage**: All logs are stored locally on your machine, never transmitted
+
+**Best Practices:**
+- Review log files periodically and delete old logs if they contain sensitive information
+- Do not share log files without reviewing their contents first
+- Set `LOG_LEVEL=ERROR` environment variable to reduce logging verbosity
+- Log directory location can be configured in `~/.chatrc` (see Configuration Security above)
+
 ### Dependencies
 
 - **Keep Updated**: Regularly update to the latest version

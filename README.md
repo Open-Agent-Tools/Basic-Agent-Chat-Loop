@@ -305,7 +305,6 @@ chat.run()
 - **Python 3.8+**
 - `pyyaml>=6.0.1` - Configuration file parsing
 - `rich>=13.7.0` - Enhanced terminal rendering
-- `python-dotenv>=1.0.0` - Environment variable management
 
 ### Optional Dependencies
 

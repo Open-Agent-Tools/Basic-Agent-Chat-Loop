@@ -8,7 +8,7 @@ prompt templates, configuration management, and extensive UX enhancements.
 Features:
 - Async streaming support with real-time response display
 - Command history with readline (↑↓ to navigate, saved to ~/.chat_history)
-- Agent logs saved to ~/.chat_loop_logs/<agent_name>_chat.log
+- Agent logs with rotation and secure permissions (0600) in ~/.chat_loop_logs/
 - Multi-line input support (type \\\\ to enter multi-line mode)
 - Token tracking and cost estimation per query and session
 - Prompt templates from ~/.prompts/ with variable substitution
@@ -19,6 +19,10 @@ Features:
 - Rich markdown rendering with syntax highlighting
 - Agent metadata display (model, tools, capabilities)
 
+Privacy Note:
+- Logs may contain user queries (truncated) and should be treated as sensitive
+- See SECURITY.md for details on what gets logged and privacy considerations
+
 Usage:
     chat_loop path/to/agent.py
     chat_loop my_agent_alias
@@ -28,7 +32,9 @@ Usage:
 import argparse
 import asyncio
 import logging
+import logging.handlers
 import os
+import stat
 import sys
 import time
 from pathlib import Path
@@ -57,7 +63,6 @@ from .components import (
     TokenTracker,
     extract_agent_metadata,
     load_agent_module,
-    load_environment_variables,
 )
 
 # Rich library for better formatting
@@ -88,7 +93,12 @@ logger = logging.getLogger("basic_agent_chat_loop")
 
 def setup_logging(agent_name: str) -> bool:
     """
-    Setup logging with agent-specific filename.
+    Setup logging with agent-specific filename, rotation, and secure permissions.
+
+    Log files are stored in ~/.chat_loop_logs/ with:
+    - Rotating file handler (max 10MB per file, 5 backup files)
+    - Restrictive permissions (0600 - owner read/write only)
+    - UTF-8 encoding
 
     Args:
         agent_name: Name of the agent for the log file
@@ -97,8 +107,8 @@ def setup_logging(agent_name: str) -> bool:
         True if logging was successfully configured, False otherwise
     """
     try:
-        # Ensure log directory exists
-        log_dir.mkdir(exist_ok=True)
+        # Ensure log directory exists with secure permissions
+        log_dir.mkdir(exist_ok=True, mode=0o700)
 
         # Create log file path with sanitized agent name
         safe_name = agent_name.lower().replace(" ", "_").replace("/", "_")
@@ -110,12 +120,22 @@ def setup_logging(agent_name: str) -> bool:
         # Remove any existing handlers to avoid duplicates
         logger.handlers = []
 
-        # Add file handler with formatting
-        handler = logging.FileHandler(log_file, encoding="utf-8")
+        # Add rotating file handler with formatting
+        # maxBytes=10MB, backupCount=5 keeps last ~50MB of logs
+        handler = logging.handlers.RotatingFileHandler(
+            log_file,
+            maxBytes=10 * 1024 * 1024,  # 10 MB
+            backupCount=5,
+            encoding="utf-8",
+        )
         handler.setFormatter(
             logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         )
         logger.addHandler(handler)
+
+        # Set restrictive permissions on log file (owner read/write only)
+        if log_file.exists():
+            os.chmod(log_file, stat.S_IRUSR | stat.S_IWUSR)  # 0600
 
         # Also add console handler for errors (stderr only)
         console_handler = logging.StreamHandler(sys.stderr)
@@ -1151,10 +1171,6 @@ class ChatLoop:
 
 def main():
     """Main entry point for the chat loop."""
-    # Load environment variables FIRST, before any imports or parsing
-    # This ensures credentials are available when agent modules are loaded
-    env_path = load_environment_variables()
-
     parser = argparse.ArgumentParser(
         description=(
             "Interactive CLI for AI Agents with token tracking and rich features"
@@ -1391,10 +1407,6 @@ Examples:
             color_config = config.get_section("colors")
             Colors.configure(color_config)
 
-        # Now print messages with colors configured
-        if env_path:
-            print(Colors.system(f"Loaded environment from: {env_path}"))
-
         # Show config info
         if config:
             if args.config:
@@ -1417,9 +1429,6 @@ Examples:
 
         # Setup logging with agent name
         setup_logging(agent_name)
-
-        if env_path:
-            logger.info(f"Loaded environment from: {env_path}")
 
         print(Colors.success(f"Agent loaded successfully: {agent_name}"))
         logger.info(f"Agent loaded successfully: {agent_name} - {agent_description}")

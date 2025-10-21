@@ -8,7 +8,6 @@ for better maintainability and testability.
 from .agent_loader import (
     extract_agent_metadata,
     load_agent_module,
-    load_environment_variables,
 )
 from .alias_manager import AliasManager
 from .audio_notifier import AudioNotifier
@@ -29,7 +28,6 @@ __all__ = [
     "DisplayManager",
     "AliasManager",
     "DependencyManager",
-    "load_environment_variables",
     "load_agent_module",
     "extract_agent_metadata",
 ]

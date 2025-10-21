@@ -10,33 +10,9 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
-
-from dotenv import load_dotenv
+from typing import Any, Dict, Tuple
 
 logger = logging.getLogger(__name__)
-
-# Environment file search depth (number of parent directories to check)
-ENV_SEARCH_DEPTH = 3
-
-
-def load_environment_variables() -> Optional[Path]:
-    """
-    Load environment variables from .env file searching parent directories.
-
-    Returns:
-        Path to .env file if found, None otherwise
-    """
-    try:
-        # Look for .env file in parent directories
-        for i in range(ENV_SEARCH_DEPTH):
-            env_path = Path(__file__).parents[i] / ".env"
-            if env_path.exists():
-                load_dotenv(env_path, override=False)  # Don't override existing vars
-                return env_path
-    except ImportError:
-        pass
-    return None
 
 
 def _find_package_root(agent_path: Path) -> Tuple[Path, str]:

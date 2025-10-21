@@ -1,7 +1,7 @@
 """Tests for ConfigWizard component."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -146,9 +146,7 @@ class TestLoadExistingConfig:
 
         assert wizard.current_config is None
 
-    def test_load_corrupted_config(
-        self, wizard, tmp_path, monkeypatch, capsys
-    ):
+    def test_load_corrupted_config(self, wizard, tmp_path, monkeypatch, capsys):
         """Test handling corrupted config file."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         config_file = tmp_path / ".chatrc"
@@ -451,9 +449,7 @@ class TestConfigureBehavior:
         assert wizard.config["behavior"]["spinner_style"] == "arc"
 
     @patch("builtins.input")
-    def test_configure_behavior_invalid_spinner_uses_default(
-        self, mock_input, wizard
-    ):
+    def test_configure_behavior_invalid_spinner_uses_default(self, mock_input, wizard):
         """Test that invalid spinner style uses default."""
         mock_input.side_effect = ["", "", "", "invalid_style"]
 
@@ -472,9 +468,7 @@ class TestConfigurePaths:
 
         wizard._configure_paths()
 
-        assert (
-            wizard.config["paths"]["save_location"] == "~/agent-conversations"
-        )
+        assert wizard.config["paths"]["save_location"] == "~/agent-conversations"
         assert wizard.config["paths"]["log_location"] == "~/.chat_loop_logs"
 
     @patch("builtins.input")
@@ -640,9 +634,7 @@ class TestWriteConfig:
         # Content should be changed
         assert existing_config.read_text() != "existing content"
 
-    def test_write_config_secure_permissions(
-        self, wizard, tmp_path, monkeypatch
-    ):
+    def test_write_config_secure_permissions(self, wizard, tmp_path, monkeypatch):
         """Test that config file has secure permissions."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         wizard.config = {
@@ -800,7 +792,9 @@ class TestResetConfigToDefaults:
     """Test reset_config_to_defaults function."""
 
     @patch("builtins.input")
-    def test_reset_global_config_with_confirmation(self, mock_input, tmp_path, monkeypatch):
+    def test_reset_global_config_with_confirmation(
+        self, mock_input, tmp_path, monkeypatch
+    ):
         """Test resetting global config with confirmation."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
@@ -820,7 +814,9 @@ class TestResetConfigToDefaults:
         assert "show_tokens: false" in content
 
     @patch("builtins.input")
-    def test_reset_project_config_with_confirmation(self, mock_input, tmp_path, monkeypatch):
+    def test_reset_project_config_with_confirmation(
+        self, mock_input, tmp_path, monkeypatch
+    ):
         """Test resetting project config."""
         monkeypatch.chdir(tmp_path)
 
@@ -876,7 +872,9 @@ class TestResetConfigToDefaults:
         assert "bright_white" in content
 
     @patch("builtins.input")
-    def test_reset_config_sets_secure_permissions(self, mock_input, tmp_path, monkeypatch):
+    def test_reset_config_sets_secure_permissions(
+        self, mock_input, tmp_path, monkeypatch
+    ):
         """Test that reset config has secure permissions."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
@@ -889,7 +887,9 @@ class TestResetConfigToDefaults:
         assert oct(result.stat().st_mode)[-3:] == "600"
 
     @patch("builtins.input")
-    def test_reset_config_invalid_choice_then_valid(self, mock_input, tmp_path, monkeypatch):
+    def test_reset_config_invalid_choice_then_valid(
+        self, mock_input, tmp_path, monkeypatch
+    ):
         """Test handling invalid choice then valid choice."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
@@ -902,7 +902,9 @@ class TestResetConfigToDefaults:
         assert result.exists()
 
     @patch("builtins.input")
-    def test_reset_config_includes_all_sections(self, mock_input, tmp_path, monkeypatch):
+    def test_reset_config_includes_all_sections(
+        self, mock_input, tmp_path, monkeypatch
+    ):
         """Test that reset config includes all expected sections."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 

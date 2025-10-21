@@ -1,13 +1,11 @@
 """Tests for agent_loader module."""
 
-from pathlib import Path
 
 import pytest
 
 from basic_agent_chat_loop.components.agent_loader import (
     extract_agent_metadata,
     load_agent_module,
-    load_environment_variables,
 )
 
 
@@ -56,43 +54,6 @@ root_agent = SimpleAgent()
 """
     )
     return agent_file
-
-
-class TestLoadEnvironmentVariables:
-    """Test environment variable loading."""
-
-    def test_load_env_from_current_dir(self, tmp_path, monkeypatch):
-        """Test loading .env from current directory."""
-        env_file = tmp_path / ".env"
-        env_file.write_text("TEST_VAR=test_value\nANOTHER_VAR=another_value")
-
-        monkeypatch.setattr(Path, "cwd", lambda: tmp_path)
-        monkeypatch.chdir(tmp_path)
-
-        # Create a test file in the location
-        test_file = tmp_path / "test.py"
-        test_file.write_text("# test")
-
-        # Note: load_environment_variables looks relative to __file__
-        # For testing, we'll verify it doesn't crash
-        result = load_environment_variables()
-
-        # Should return None if not found, or Path if found
-        assert result is None or isinstance(result, Path)
-
-    def test_no_env_file_returns_none(self, tmp_path, monkeypatch):
-        """Test that missing .env file returns None."""
-        monkeypatch.chdir(tmp_path)
-
-        result = load_environment_variables()
-        assert result is None
-
-    def test_import_error_handled(self, monkeypatch):
-        """Test that ImportError is handled gracefully."""
-        # This tests the except ImportError clause
-        result = load_environment_variables()
-        # Should return None if dotenv not available
-        assert result is None or isinstance(result, Path)
 
 
 class TestLoadAgentModule:
