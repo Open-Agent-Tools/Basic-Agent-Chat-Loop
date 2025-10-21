@@ -935,11 +935,6 @@ class ChatLoop:
             return {"duration": duration, "usage": usage_info}
 
         except Exception as e:
-            # Cleanup thinking indicator on error
-            stop_thinking.set()
-            if thinking_task and not thinking_task.done():
-                await thinking_task
-
             duration = time.time() - start_time
             print(f"\n{Colors.DIM}{'-' * 60}{Colors.RESET}")
             print(Colors.error(f"{self.agent_name}: Query failed - {e}"))
@@ -953,6 +948,16 @@ class ChatLoop:
             )
 
             return {"duration": duration, "usage": None}
+
+        finally:
+            # Always cleanup thinking indicator, even on KeyboardInterrupt
+            stop_thinking.set()
+            if thinking_task and not thinking_task.done():
+                thinking_task.cancel()
+                try:
+                    await thinking_task
+                except asyncio.CancelledError:
+                    pass  # Expected when cancelling
 
     async def process_query(self, query: str):
         """Process query through agent with streaming and error recovery."""
