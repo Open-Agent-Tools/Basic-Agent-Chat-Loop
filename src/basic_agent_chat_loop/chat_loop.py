@@ -10,6 +10,8 @@ Features:
 - Command history with readline (↑↓ to navigate, saved to ~/.chat_history)
 - Agent logs with rotation and secure permissions (0600) in ~/.chat_loop_logs/
 - Multi-line input support (type \\\\ to enter multi-line mode)
+  - ESC to cancel, ↑ arrow to edit previous line
+  - Saves full block to history for later recall
 - Token tracking and cost estimation per query and session
 - Prompt templates from ~/.prompts/ with variable substitution
 - Configuration file support (~/.chatrc or .chatrc in project root)
@@ -46,6 +48,22 @@ try:
     READLINE_AVAILABLE = True
 except ImportError:
     READLINE_AVAILABLE = False
+
+# Platform-specific imports for ESC key detection
+try:
+    if sys.platform != "win32":
+        import termios
+        import tty
+
+        TERMIOS_AVAILABLE = True
+    else:
+        import msvcrt
+
+        TERMIOS_AVAILABLE = False
+    ESC_KEY_SUPPORT = True
+except ImportError:
+    ESC_KEY_SUPPORT = False
+    TERMIOS_AVAILABLE = False
 
 
 # Components
@@ -284,6 +302,102 @@ def save_readline_history(history_file: Optional[Path]) -> bool:
     except Exception as e:
         logger.warning(f"Could not save command history to {history_file}: {e}")
         return False
+
+
+def get_char_with_esc_detection() -> Optional[str]:
+    """
+    Get a single character from stdin with ESC and arrow key detection.
+
+    Returns:
+        The character typed, None if ESC was pressed,
+        "UP_ARROW" if up arrow was pressed, or "" if detection failed
+    """
+    if not ESC_KEY_SUPPORT:
+        return ""  # Fall back to regular input
+
+    try:
+        if sys.platform == "win32":
+            # Windows implementation
+            import msvcrt
+
+            if msvcrt.kbhit():
+                char = msvcrt.getch()
+                if char == b"\xe0":  # Extended key prefix on Windows
+                    if msvcrt.kbhit():
+                        extended = msvcrt.getch()
+                        if extended == b"H":  # Up arrow
+                            return "UP_ARROW"
+                    return ""
+                elif char == b"\x1b":  # ESC key
+                    return None
+                return char.decode("utf-8", errors="ignore")
+            return ""
+        else:
+            # Unix/Linux/Mac implementation
+            import termios
+            import tty
+            import select
+
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                char = sys.stdin.read(1)
+                if char == "\x1b":  # ESC or arrow key sequence
+                    # Check if more characters follow (within 100ms)
+                    if select.select([sys.stdin], [], [], 0.1)[0]:
+                        seq = sys.stdin.read(2)
+                        if seq == "[A":  # Up arrow
+                            return "UP_ARROW"
+                        # Other arrow keys would be [B, [C, [D
+                    # Just ESC pressed
+                    return None
+                return char
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    except Exception as e:
+        logger.debug(f"Key detection failed: {e}")
+        return ""  # Fall back to regular input
+
+
+def input_with_esc(prompt: str) -> Optional[str]:
+    """
+    Enhanced input() that detects ESC and arrow key presses.
+
+    Args:
+        prompt: The prompt to display
+
+    Returns:
+        The user's input string, None if ESC was pressed,
+        or "UP_ARROW" if up arrow was pressed
+    """
+    if not ESC_KEY_SUPPORT:
+        # Fall back to regular input
+        return input(prompt)
+
+    # Print the prompt
+    print(prompt, end="", flush=True)
+
+    # Try to detect ESC/arrows on first character
+    first_char = get_char_with_esc_detection()
+
+    if first_char is None:
+        # ESC was pressed
+        print()  # New line after ESC
+        return None
+    elif first_char == "UP_ARROW":
+        # Up arrow was pressed
+        print()  # New line
+        return "UP_ARROW"
+    elif first_char == "":
+        # Detection not available or failed, use regular input
+        # But we already printed the prompt, so use empty prompt
+        return input("")
+    else:
+        # Got a character, print it and continue with regular input
+        print(first_char, end="", flush=True)
+        rest_of_line = input("")
+        return first_char + rest_of_line
 
 
 class ChatLoop:
@@ -643,20 +757,99 @@ class ChatLoop:
             return False
 
     async def get_multiline_input(self) -> str:
-        """Get multi-line input from user. Empty line submits."""
+        """
+        Get multi-line input from user.
+
+        Features:
+        - Empty line submits
+        - ESC key or .cancel to cancel input
+        - Up arrow or .back to edit previous line
+        - Saves to history as single entry
+        """
         lines = []
-        print(Colors.system("Multi-line mode (empty line to submit):"))
+        print(Colors.system("Multi-line mode:"))
+        print(Colors.system("  • Empty line to submit"))
+        if ESC_KEY_SUPPORT:
+            print(Colors.system("  • ESC or .cancel to cancel"))
+            print(Colors.system("  • ↑ or .back to edit previous line"))
+        else:
+            print(Colors.system("  • .cancel to cancel"))
+            print(Colors.system("  • .back to edit previous line"))
 
         while True:
-            # Don't use executor - it breaks readline editing
-            line = input(Colors.user("... "))
+            try:
+                # Show line number for context
+                line_num = len(lines) + 1
+                prompt = Colors.user(f"{line_num:2d}│ ")
 
-            if not line.strip():  # Empty line submits
-                break
+                # Use input_with_esc for ESC/arrow key detection
+                line = input_with_esc(prompt)
 
-            lines.append(line)
+                # Check if ESC was pressed (returns None)
+                if line is None:
+                    print(Colors.system("✗ Multi-line input cancelled (ESC)"))
+                    return ""
 
-        return "\n".join(lines)
+                # Check if up arrow was pressed - edit previous line
+                if line == "UP_ARROW":
+                    if lines:
+                        # Pop the last line and let user edit it
+                        prev_line = lines.pop()
+                        print(Colors.system(f"↑ Editing line {len(lines) + 1}..."))
+                        # Use readline to pre-populate the input
+                        if READLINE_AVAILABLE:
+                            readline.add_history(prev_line)
+                    else:
+                        print(Colors.system("⚠ No previous line to edit"))
+                    continue
+
+                # Check for cancel command
+                if line.strip() == ".cancel":
+                    print(Colors.system("✗ Multi-line input cancelled"))
+                    return ""
+
+                # Check for back command - edit previous line
+                if line.strip() == ".back":
+                    if lines:
+                        # Pop the last line and let user edit it
+                        prev_line = lines.pop()
+                        print(Colors.system(f"↑ Editing line {len(lines) + 1}..."))
+                        # Use readline to pre-populate the input
+                        if READLINE_AVAILABLE:
+                            readline.add_history(prev_line)
+                    else:
+                        print(Colors.system("⚠ No previous line to edit"))
+                    continue
+
+                # Empty line submits (only if we have content)
+                if not line.strip():
+                    if lines:
+                        break
+                    else:
+                        # First line can't be empty
+                        print(Colors.system("⚠ Enter some text or use .cancel"))
+                        continue
+
+                # Add the line
+                lines.append(line)
+
+            except EOFError:
+                # Ctrl+D cancels
+                print(Colors.system("\n✗ Multi-line input cancelled (Ctrl+D)"))
+                return ""
+            except KeyboardInterrupt:
+                # Ctrl+C cancels
+                print(Colors.system("\n✗ Multi-line input cancelled (Ctrl+C)"))
+                return ""
+
+        result = "\n".join(lines)
+
+        # Save to readline history as single entry for later recall
+        if result and READLINE_AVAILABLE:
+            readline.add_history(result)
+
+        print(Colors.success(f"✓ {len(lines)} lines captured"))
+        return result
 
     async def _show_thinking_indicator(self, stop_event: asyncio.Event):
         """Show thinking indicator while waiting for response."""
