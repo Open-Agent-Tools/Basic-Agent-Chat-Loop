@@ -10,7 +10,7 @@ Features:
 - Command history with readline (↑↓ to navigate, saved to ~/.chat_history)
 - Agent logs with rotation and secure permissions (0600) in ~/.chat_loop_logs/
 - Multi-line input support (type \\\\ to enter multi-line mode)
-  - ESC to cancel, ↑ arrow to edit previous line
+  - Ctrl+D to cancel, ↑ arrow to edit previous line
   - Saves full block to history for later recall
 - Token tracking and cost estimation per query and session
 - Prompt templates from ~/.prompts/ with variable substitution
@@ -758,18 +758,17 @@ class ChatLoop:
 
         Features:
         - Empty line submits
-        - ESC key or .cancel to cancel input
+        - Ctrl+D or .cancel to cancel input
         - Up arrow or .back to edit previous line
         - Saves to history as single entry
         """
         lines: list[str] = []
         print(Colors.system("Multi-line mode:"))
         print(Colors.system("  • Empty line to submit"))
+        print(Colors.system("  • Ctrl+D or .cancel to cancel"))
         if ESC_KEY_SUPPORT:
-            print(Colors.system("  • ESC or .cancel to cancel"))
             print(Colors.system("  • ↑ or .back to edit previous line"))
         else:
-            print(Colors.system("  • .cancel to cancel"))
             print(Colors.system("  • .back to edit previous line"))
 
         while True:

@@ -3,23 +3,21 @@
 ## Overview
 
 The multi-line editor has been significantly enhanced with intuitive keyboard controls:
-1. **ESC key cancellation** - instantly cancel with ESC
+1. **Ctrl+D cancellation** - instantly cancel with Ctrl+D
 2. **Up arrow editing** - press ↑ at start of line to edit previous line
 3. **History integration** - recall entire multi-line blocks with up arrow at main prompt
-4. **Multiple cancel options** - ESC, .cancel, Ctrl+C, or Ctrl+D
+4. **Multiple cancel options** - Ctrl+D or .cancel command
 
 ## Features Implemented
 
 ### 1. Cancel Options
 
-Users can now cancel multi-line input in four ways:
+Users can now cancel multi-line input in two ways:
 
-- **ESC key**: Press ESC at the start of any line for instant cancellation (cross-platform)
+- **Ctrl+D**: Press Ctrl+D for instant EOF cancellation (works reliably across platforms)
 - **`.cancel` command**: Type `.cancel` at any prompt to cancel
-- **Ctrl+C**: Keyboard interrupt to cancel
-- **Ctrl+D**: EOF signal to cancel
 
-All cancel methods return empty string and show a clear cancellation message. The ESC key detection works on Unix/Linux/Mac (via termios) and Windows (via msvcrt).
+Both cancel methods return empty string and show a clear cancellation message.
 
 ### 2. Previous Line Editing with Up Arrow
 
@@ -88,12 +86,6 @@ Multi-line mode:
 
 The multi-line editor detects special keys at the start of each line:
 
-**ESC Key** - Instant cancellation:
-```
-1│ [press ESC]
-✗ Multi-line input cancelled (ESC)
-```
-
 **Up Arrow** - Edit previous line:
 ```
 1│ line one
@@ -101,23 +93,30 @@ The multi-line editor detects special keys at the start of each line:
 ↑ Editing line 1...
 ```
 
+**Ctrl+D** - Cancel input:
+```
+1│ started typing
+2│ [press Ctrl+D]
+✗ Multi-line input cancelled (Ctrl+D)
+```
+
 **Implementation Details**:
-- Uses platform-specific terminal control:
+- Uses platform-specific terminal control for up arrow detection:
   - Unix/Linux/Mac: `termios` and `tty` for raw input, `select` for sequence detection
   - Windows: `msvcrt` for character-level input
-- Detects special keys on the first character of each line
-- ESC key: ASCII 27 (`\x1b`)
+- Detects up arrow on the first character of each line
 - Up arrow: Escape sequence `\x1b[A` on Unix, `\xe0H` on Windows
+- Ctrl+D: Standard EOF signal handled by Python's EOFError exception
 - Falls back gracefully to `.cancel` and `.back` commands if detection unavailable
 - Zero dependencies - uses Python standard library only
 
 **How it works**:
 1. Before reading a line, attempts to read a single character in raw mode
-2. If ESC detected, checks within 100ms for following characters:
-   - If `[A` follows → Up arrow detected
-   - If no characters follow → ESC key detected
-3. If other character detected, includes it and continues with normal `input()`
-4. Maintains full readline editing capabilities for mid-line input
+2. If escape sequence detected:
+   - If `\x1b[A` follows → Up arrow detected
+3. If Ctrl+D pressed → EOFError caught and handled as cancellation
+4. If other character detected, includes it and continues with normal `input()`
+5. Maintains full readline editing capabilities for mid-line input
 
 ## Implementation Details
 
@@ -132,21 +131,19 @@ The multi-line editor detects special keys at the start of each line:
 
 1. **Up Arrow Editing**: The most intuitive way to edit previous lines - just press ↑ at the start of a line. Detects arrow key sequences in raw terminal mode before `input()` takes over.
 
-2. **ESC for Cancel**: ESC key provides instant cancellation, matching user expectations from other terminal applications and editors.
+2. **Ctrl+D for Cancel**: Uses standard EOF signal (Ctrl+D) which works reliably across all platforms and terminal emulators.
 
-3. **First-Character Detection Only**: Special keys (ESC, ↑) are only detected at the start of a line. Once typing begins, readline takes over with full editing capabilities (including mid-line arrow navigation).
+3. **First-Character Detection Only**: Up arrow is only detected at the start of a line. Once typing begins, readline takes over with full editing capabilities (including mid-line arrow navigation).
 
 4. **Graceful Fallback**: If terminal control is unavailable, `.back` and `.cancel` commands always work as alternatives.
 
 5. **Readline Integration**: Uses standard `readline` module for history and line editing, maintaining compatibility with existing infrastructure.
 
-6. **Sequence Timing**: 100ms timeout distinguishes ESC alone from ESC as part of arrow sequence on Unix systems.
+6. **Exception Handling**: Gracefully handles EOFError (Ctrl+D) for consistent cancel behavior.
 
-7. **Exception Handling**: Gracefully handles EOFError (Ctrl+D) and KeyboardInterrupt (Ctrl+C) for consistent cancel behavior.
+7. **Empty Line Validation**: First line cannot be empty - prompts user to enter content or cancel.
 
-8. **Empty Line Validation**: First line cannot be empty - prompts user to enter content or cancel.
-
-9. **Zero Dependencies**: Uses only Python standard library modules (`termios`, `tty`, `select` for Unix; `msvcrt` for Windows).
+8. **Zero Dependencies**: Uses only Python standard library modules (`termios`, `tty`, `select` for Unix; `msvcrt` for Windows).
 
 ## Usage Examples
 
@@ -155,8 +152,8 @@ The multi-line editor detects special keys at the start of each line:
 You: \\
 Multi-line mode:
   • Empty line to submit
-  • .cancel to cancel
-  • .back to edit previous line
+  • Ctrl+D or .cancel to cancel
+  • ↑ or .back to edit previous line
  1│ Here is a multi-line
  2│ code example:
  3│ def hello():
@@ -191,13 +188,13 @@ You: \\
 ✓ 2 lines captured
 ```
 
-### Cancelling Input (ESC Key)
+### Cancelling Input (Ctrl+D)
 ```
 You: \\
  1│ Started typing but
  2│ changed my mind
- 3│ [press ESC]
-✗ Multi-line input cancelled (ESC)
+ 3│ [press Ctrl+D]
+✗ Multi-line input cancelled (Ctrl+D)
 ```
 
 ### Cancelling Input (.cancel Command)
@@ -223,9 +220,7 @@ def hello():
 Comprehensive test suite with 13 test cases covering:
 - ✅ Basic submission
 - ✅ Cancel via `.cancel` command
-- ✅ Cancel via ESC key
 - ✅ Cancel via Ctrl+D (EOFError)
-- ✅ Cancel via Ctrl+C (KeyboardInterrupt)
 - ✅ `.back` command functionality
 - ✅ `.back` on empty lines
 - ✅ Up arrow key functionality

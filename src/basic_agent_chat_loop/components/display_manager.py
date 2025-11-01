@@ -112,7 +112,7 @@ class DisplayManager:
             print("  ↑↓        - Navigate command history")
         print("  Enter     - Submit single line")
         print("  \\\\        - Start multi-line input")
-        print("              (empty line submits, ESC cancels, ↑ edits previous line)")
+        print("              (empty line submits, Ctrl+D cancels, ↑ edits previous line)")
         if self.use_rich:
             print("  Rich      - Enhanced markdown rendering with syntax highlighting")
 
@@ -155,7 +155,7 @@ class DisplayManager:
         print("Multi-line Input:")
         print("  Type \\\\ to start multi-line mode")
         print("  Press Enter on empty line to submit")
-        print("  Press ESC to cancel (or type .cancel, Ctrl+C/Ctrl+D)")
+        print("  Press Ctrl+D to cancel (or type .cancel)")
         print("  Press ↑ at start of line to edit previous line (or type .back)")
         print("  Full block saved to history - use ↑ at main prompt to recall")
         print("  Great for code blocks and long prompts")
