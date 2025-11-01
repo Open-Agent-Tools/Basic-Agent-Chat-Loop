@@ -771,80 +771,101 @@ class ChatLoop:
         else:
             print(Colors.system("  • .back to edit previous line"))
 
-        while True:
-            try:
-                # Show line number for context
-                line_num = len(lines) + 1
-                prompt = Colors.user(f"{line_num:2d}│ ")
+        # Variable to hold text for pre-input hook
+        prefill_text = None
 
-                # Use input_with_esc for ESC/arrow key detection
-                line = input_with_esc(prompt)
+        def startup_hook():
+            """Readline startup hook to pre-fill input buffer."""
+            nonlocal prefill_text
+            if prefill_text is not None:
+                readline.insert_text(prefill_text)
+                readline.redisplay()
 
-                # Check if ESC was pressed (returns None)
-                if line is None:
-                    print(Colors.system("✗ Multi-line input cancelled (ESC)"))
-                    return ""
+        # Set the startup hook if readline is available
+        if READLINE_AVAILABLE:
+            readline.set_startup_hook(startup_hook)
 
-                # Check if up arrow was pressed - edit previous line
-                if line == "UP_ARROW":
-                    if lines:
-                        # Pop the last line and let user edit it
-                        prev_line = lines.pop()
-                        print(Colors.system(f"↑ Editing line {len(lines) + 1}..."))
-                        # Use readline to pre-populate the input
-                        if READLINE_AVAILABLE:
-                            readline.add_history(prev_line)
-                    else:
-                        print(Colors.system("⚠ No previous line to edit"))
-                    continue
+        try:
+            while True:
+                try:
+                    # Show line number for context
+                    line_num = len(lines) + 1
+                    prompt = Colors.user(f"{line_num:2d}│ ")
 
-                # Check for cancel command
-                if line.strip() == ".cancel":
-                    print(Colors.system("✗ Multi-line input cancelled"))
-                    return ""
+                    # Use input_with_esc for ESC/arrow key detection
+                    line = input_with_esc(prompt)
 
-                # Check for back command - edit previous line
-                if line.strip() == ".back":
-                    if lines:
-                        # Pop the last line and let user edit it
-                        prev_line = lines.pop()
-                        print(Colors.system(f"↑ Editing line {len(lines) + 1}..."))
-                        # Use readline to pre-populate the input
-                        if READLINE_AVAILABLE:
-                            readline.add_history(prev_line)
-                    else:
-                        print(Colors.system("⚠ No previous line to edit"))
-                    continue
+                    # Check if ESC was pressed (returns None)
+                    if line is None:
+                        print(Colors.system("✗ Multi-line input cancelled (ESC)"))
+                        return ""
 
-                # Empty line submits (only if we have content)
-                if not line.strip():
-                    if lines:
-                        break
-                    else:
-                        # First line can't be empty
-                        print(Colors.system("⚠ Enter some text or use .cancel"))
+                    # Check if up arrow was pressed - edit previous line
+                    if line == "UP_ARROW":
+                        if lines:
+                            # Pop the last line and let user edit it
+                            prev_line = lines.pop()
+                            print(Colors.system(f"↑ Editing line {len(lines) + 1}..."))
+                            # Set prefill text for next input
+                            prefill_text = prev_line
+                        else:
+                            print(Colors.system("⚠ No previous line to edit"))
                         continue
 
-                # Add the line
-                lines.append(line)
+                    # Clear prefill text after each input
+                    prefill_text = None
 
-            except EOFError:
-                # Ctrl+D cancels
-                print(Colors.system("\n✗ Multi-line input cancelled (Ctrl+D)"))
-                return ""
-            except KeyboardInterrupt:
-                # Ctrl+C cancels
-                print(Colors.system("\n✗ Multi-line input cancelled (Ctrl+C)"))
-                return ""
+                    # Check for cancel command
+                    if line.strip() == ".cancel":
+                        print(Colors.system("✗ Multi-line input cancelled"))
+                        return ""
 
-        result = "\n".join(lines)
+                    # Check for back command - edit previous line
+                    if line.strip() == ".back":
+                        if lines:
+                            # Pop the last line and let user edit it
+                            prev_line = lines.pop()
+                            print(Colors.system(f"↑ Editing line {len(lines) + 1}..."))
+                            # Set prefill text for next input
+                            prefill_text = prev_line
+                        else:
+                            print(Colors.system("⚠ No previous line to edit"))
+                        continue
 
-        # Save to readline history as single entry for later recall
-        if result and READLINE_AVAILABLE:
-            readline.add_history(result)
+                    # Empty line submits (only if we have content)
+                    if not line.strip():
+                        if lines:
+                            break
+                        else:
+                            # First line can't be empty
+                            print(Colors.system("⚠ Enter some text or use .cancel"))
+                            continue
 
-        print(Colors.success(f"✓ {len(lines)} lines captured"))
-        return result
+                    # Add the line
+                    lines.append(line)
+
+                except EOFError:
+                    # Ctrl+D cancels
+                    print(Colors.system("\n✗ Multi-line input cancelled (Ctrl+D)"))
+                    return ""
+                except KeyboardInterrupt:
+                    # Ctrl+C cancels
+                    print(Colors.system("\n✗ Multi-line input cancelled (Ctrl+C)"))
+                    return ""
+
+            result = "\n".join(lines)
+
+            # Save to readline history as single entry for later recall
+            if result and READLINE_AVAILABLE:
+                readline.add_history(result)
+
+            print(Colors.success(f"✓ {len(lines)} lines captured"))
+            return result
+
+        finally:
+            # Clean up the startup hook
+            if READLINE_AVAILABLE:
+                readline.set_startup_hook(None)
 
     async def _show_thinking_indicator(self, stop_event: asyncio.Event):
         """Show thinking indicator while waiting for response."""
