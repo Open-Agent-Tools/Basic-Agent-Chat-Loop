@@ -14,7 +14,7 @@ A feature-rich, interactive CLI for AI agents with token tracking, prompt templa
 - 📦 **Auto-Setup** - Automatically install agent dependencies from `requirements.txt` or `pyproject.toml`
 - 🔔 **Audio Notifications** - Play sound when agent completes a turn (cross-platform support)
 - 📜 **Command History** - Navigate previous queries with ↑↓ arrows (persisted to `~/.chat_history`)
-- ✍️ **Multi-line Input** - Type `\\` to enter multi-line mode for code blocks
+- ✍️ **Multi-line Input** - Type `\\` to enter multi-line mode with ESC to cancel and ↑ to edit previous lines
 - 💰 **Token Tracking** - Track tokens and costs per query and session
 - 📝 **Prompt Templates** - Reusable prompts from `~/.prompts/`
 - ⚙️ **Configuration** - YAML-based config with per-agent overrides

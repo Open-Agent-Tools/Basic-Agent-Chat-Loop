@@ -50,18 +50,14 @@ except ImportError:
     READLINE_AVAILABLE = False
 
 # Platform-specific imports for ESC key detection
+# Note: imports are done inside functions to avoid unused import warnings
 try:
     if sys.platform != "win32":
-        import termios
-        import tty
-
         TERMIOS_AVAILABLE = True
     else:
-        import msvcrt
-
         TERMIOS_AVAILABLE = False
     ESC_KEY_SUPPORT = True
-except ImportError:
+except Exception:
     ESC_KEY_SUPPORT = False
     TERMIOS_AVAILABLE = False
 
@@ -334,9 +330,9 @@ def get_char_with_esc_detection() -> Optional[str]:
             return ""
         else:
             # Unix/Linux/Mac implementation
+            import select
             import termios
             import tty
-            import select
 
             fd = sys.stdin.fileno()
             old_settings = termios.tcgetattr(fd)
@@ -766,7 +762,7 @@ class ChatLoop:
         - Up arrow or .back to edit previous line
         - Saves to history as single entry
         """
-        lines = []
+        lines: list[str] = []
         print(Colors.system("Multi-line mode:"))
         print(Colors.system("  • Empty line to submit"))
         if ESC_KEY_SUPPORT:
