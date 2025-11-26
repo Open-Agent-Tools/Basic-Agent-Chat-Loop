@@ -16,6 +16,7 @@ A feature-rich, interactive CLI for AI agents with token tracking, prompt templa
 - 📜 **Command History** - Navigate previous queries with ↑↓ arrows (persisted to `~/.chat_history`)
 - ✍️ **Multi-line Input** - Type `\\` to enter multi-line mode with Ctrl+D to cancel and ↑ to edit previous lines
 - 💾 **Session Management** - Save, resume, and search previous conversations with full context restoration
+- 📋 **Copy Commands** - Copy responses, queries, code blocks, or entire conversations to clipboard
 - 💰 **Token Tracking** - Track tokens and costs per query and session
 - 📝 **Prompt Templates** - Reusable prompts from `~/.prompts/`
 - ⚙️ **Configuration** - YAML-based config with per-agent overrides
@@ -241,6 +242,7 @@ See [CONFIG.md](CONFIG.md) for full configuration options.
 | `sessions` | List all saved conversation sessions |
 | `/name` | Use prompt template from `~/.prompts/name.md` |
 | `resume <#>` | Resume a previous session by number or ID |
+| `copy` | Copy last response to clipboard (see variants below) |
 | `clear` | Clear screen and reset agent session |
 | `exit`, `quit` | Exit chat (shows session summary) |
 
@@ -283,6 +285,42 @@ chat_loop --list-sessions
 ```
 
 Sessions are saved to `~/agent-conversations/` by default (configurable).
+
+### Copy Commands
+
+Quickly copy content to clipboard:
+
+**Available copy commands:**
+
+```bash
+# Copy last agent response (default)
+You: copy
+
+# Copy your last query
+You: copy query
+
+# Copy entire conversation as markdown
+You: copy all
+
+# Copy only code blocks from last response
+You: copy code
+```
+
+**Example workflow:**
+
+```
+You: Write a Python function to reverse a string
+
+Agent: Here's a function to reverse a string:
+
+    def reverse_string(s):
+        return s[::-1]
+
+You: copy code
+✓ Copied code blocks from last response to clipboard
+
+# Now paste into your editor with Cmd+V (Mac) or Ctrl+V (Windows/Linux)
+```
 
 ### Multi-line Input
 

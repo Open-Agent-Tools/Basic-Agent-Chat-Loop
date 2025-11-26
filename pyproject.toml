@@ -35,6 +35,7 @@ dependencies = [
     "pyyaml>=6.0.1",
     "rich>=13.7.0",
     "pyreadline3>=3.4.1; platform_system=='Windows'",  # Command history on Windows
+    "pyperclip>=1.8.0",  # Clipboard support for copy command
 ]
 
 [project.optional-dependencies]

@@ -42,6 +42,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import pyperclip
+
 try:
     import readline
 
@@ -416,6 +418,7 @@ class ChatLoop:
         self.agent_path = agent_path or "unknown"  # Store for session metadata
         self.history_file = None
         self.last_response = ""  # Track last response for copy command
+        self.last_query = ""  # Track last user query for copy command
 
         # Conversation tracking for auto-save
         self.conversation_history: list[Dict[str, Any]] = []
@@ -679,6 +682,68 @@ class ChatLoop:
             return {"input_tokens": input_tokens, "output_tokens": output_tokens}
 
         return None
+
+    def _extract_code_blocks(self, text: str) -> list:
+        """
+        Extract code blocks from markdown text.
+
+        Args:
+            text: Markdown text containing code blocks
+
+        Returns:
+            List of code block contents (without fence markers)
+        """
+        import re
+
+        # Match code blocks with triple backticks
+        pattern = r"```(?:\w+)?\n(.*?)```"
+        matches = re.findall(pattern, text, re.DOTALL)
+        return [match.strip() for match in matches]
+
+    def _format_conversation_as_markdown(self) -> str:
+        """
+        Format entire conversation history as markdown.
+
+        Returns:
+            Markdown-formatted conversation
+        """
+        from datetime import datetime
+
+        lines = []
+        lines.append(f"# {self.agent_name} - Conversation")
+        lines.append(f"\nSession ID: {self.session_id}")
+        lines.append(f"Agent: {self.agent_name}")
+
+        if self.conversation_history:
+            first_ts = self.conversation_history[0]["timestamp"]
+            lines.append(f"Started: {datetime.fromtimestamp(first_ts)}")
+
+        lines.append("\n---\n")
+
+        for i, entry in enumerate(self.conversation_history, 1):
+            timestamp = datetime.fromtimestamp(entry["timestamp"]).strftime(
+                "%H:%M:%S"
+            )
+            lines.append(f"\n## Query {i} ({timestamp})\n")
+            lines.append(f"**You:** {entry['query']}\n")
+            lines.append(f"**{self.agent_name}:**\n\n{entry['response']}\n")
+
+            if entry.get("duration"):
+                duration = entry["duration"]
+                lines.append(f"\n*Response time: {duration:.1f}s*")
+
+            if entry.get("usage"):
+                usage = entry["usage"]
+                input_tok = usage.get("input_tokens", 0)
+                output_tok = usage.get("output_tokens", 0)
+                total = input_tok + output_tok
+                lines.append(
+                    f" | *Tokens: {total:,} (in: {input_tok:,}, out: {output_tok:,})*"
+                )
+
+            lines.append("\n---\n")
+
+        return "\n".join(lines)
 
     async def restore_session(self, session_id: str) -> bool:
         """
@@ -1461,6 +1526,69 @@ class ChatLoop:
                             sessions, agent_name=self.agent_name
                         )
                         continue
+                    elif user_input.lower().startswith("copy"):
+                        # Copy command with variants
+                        parts = user_input.lower().split(maxsplit=1)
+                        copy_mode = parts[1] if len(parts) > 1 else ""
+
+                        try:
+                            content = None
+                            description = ""
+
+                            if copy_mode == "query":
+                                # Copy last user query
+                                if self.last_query:
+                                    content = self.last_query
+                                    description = "last query"
+                                else:
+                                    print(Colors.system("No query to copy yet"))
+                                    continue
+                            elif copy_mode == "all":
+                                # Copy entire conversation as markdown
+                                if self.conversation_history:
+                                    content = self._format_conversation_as_markdown()
+                                    description = "entire conversation"
+                                else:
+                                    print(Colors.system("No conversation to copy yet"))
+                                    continue
+                            elif copy_mode == "code":
+                                # Copy just code blocks from last response
+                                if self.last_response:
+                                    code_blocks = self._extract_code_blocks(
+                                        self.last_response
+                                    )
+                                    if code_blocks:
+                                        content = "\n\n".join(code_blocks)
+                                        description = "code blocks from last response"
+                                    else:
+                                        print(
+                                            Colors.system(
+                                                "No code blocks found in last response"
+                                            )
+                                        )
+                                        continue
+                                else:
+                                    print(Colors.system("No response to copy yet"))
+                                    continue
+                            else:
+                                # Default: copy last response
+                                if self.last_response:
+                                    content = self.last_response
+                                    description = "last response"
+                                else:
+                                    print(Colors.system("No response to copy yet"))
+                                    continue
+
+                            # Copy to clipboard
+                            pyperclip.copy(content)
+                            print(
+                                Colors.success(f"✓ Copied {description} to clipboard")
+                            )
+
+                        except Exception as e:
+                            print(Colors.error(f"Failed to copy: {e}"))
+                            logger.error(f"Copy command failed: {e}")
+                        continue
                     elif user_input.lower().startswith("resume "):
                         # Resume a previous session
                         parts = user_input.split(maxsplit=1)
@@ -1550,6 +1678,9 @@ class ChatLoop:
 
                     # Process query through agent
                     logger.info(f"Processing query: {user_input[:100]}...")
+
+                    # Track query for copy command
+                    self.last_query = user_input
 
                     # Update terminal title to show processing
                     if self.update_terminal_title:
