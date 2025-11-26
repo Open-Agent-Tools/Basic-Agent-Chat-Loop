@@ -114,7 +114,9 @@ class DisplayManager:
             print("  ↑↓        - Navigate command history")
         print("  Enter     - Submit single line")
         print("  \\\\        - Start multi-line input")
-        print("              (empty line submits, Ctrl+D cancels, ↑ edits previous line)")
+        print(
+            "              (empty line submits, Ctrl+D cancels, ↑ edits previous line)"
+        )
         if self.use_rich:
             print("  Rich      - Enhanced markdown rendering with syntax highlighting")
 
@@ -313,7 +315,6 @@ class DisplayManager:
             sessions: List of SessionInfo objects
             agent_name: Optional current agent name for highlighting
         """
-        from .session_manager import SessionInfo
 
         if not sessions:
             print(f"\n{Colors.system('No saved sessions found')}")
@@ -344,7 +345,7 @@ class DisplayManager:
                 print(session_line)
 
             # Show preview
-            preview_text = f"     \"{session.preview}\""
+            preview_text = f'     "{session.preview}"'
             print(f"{Colors.DIM}{preview_text}{Colors.RESET}")
 
         print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")

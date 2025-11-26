@@ -742,9 +742,7 @@ class ChatLoop:
             print(f"\n🔄 Loading session: {session_id}")
             print(f"   Agent: {session_data['agent_name']}")
             print(f"   Queries: {len(conversation)}")
-            print(
-                f"   Created: {session_info.created.strftime('%b %d, %Y at %H:%M')}"
-            )
+            print(f"   Created: {session_info.created.strftime('%b %d, %Y at %H:%M')}")
             if session_info.total_cost > 0:
                 print(f"   Cost so far: ${session_info.total_cost:.3f}")
             print()
@@ -758,7 +756,9 @@ class ChatLoop:
 
             if resume_confirmation:
                 print(
-                    Colors.system("⚠️  This will restore conversation context to the agent.")
+                    Colors.system(
+                        "⚠️  This will restore conversation context to the agent."
+                    )
                 )
                 confirm = input(Colors.system("Continue? (y/n): "))
                 if confirm.lower() != "y":
@@ -801,8 +801,7 @@ class ChatLoop:
             print()  # Clear progress line
             print(
                 Colors.success(
-                    f"✓ Replayed {len(conversation)} queries "
-                    f"in {replay_duration:.1f}s"
+                    f"✓ Replayed {len(conversation)} queries in {replay_duration:.1f}s"
                 )
             )
 
@@ -817,7 +816,9 @@ class ChatLoop:
                 # Approximate token restoration (not exact, but close)
                 # We can't perfectly restore because we don't have per-query tokens
                 # But we can set the total
-                self.token_tracker.total_input_tokens = int(session_info.total_tokens * 0.6)
+                self.token_tracker.total_input_tokens = int(
+                    session_info.total_tokens * 0.6
+                )
                 self.token_tracker.total_output_tokens = int(
                     session_info.total_tokens * 0.4
                 )
@@ -1396,9 +1397,10 @@ class ChatLoop:
                     )
                     print()
                     try:
-                        choice = input(
-                            Colors.system("Enter session number to resume (or press Enter to skip): ")
-                        ).strip()
+                        prompt = (
+                            "Enter session number to resume (or press Enter to skip): "
+                        )
+                        choice = input(Colors.system(prompt)).strip()
 
                         if choice:
                             success = await self.restore_session(choice)
@@ -1407,7 +1409,9 @@ class ChatLoop:
                                 self.display_manager.display_banner()
                     except (KeyboardInterrupt, EOFError):
                         print()
-                        print(Colors.system("Skipping resume, starting fresh session..."))
+                        print(
+                            Colors.system("Skipping resume, starting fresh session...")
+                        )
                         print()
             else:
                 # Direct resume with specific session ID/number
@@ -1810,7 +1814,9 @@ Examples:
         # List sessions and exit
         config = get_config(config_path=args.config) if args.config else get_config()
         sessions_dir = (
-            config.expand_path(config.get("paths.save_location", "~/agent-conversations"))
+            config.expand_path(
+                config.get("paths.save_location", "~/agent-conversations")
+            )
             if config
             else Path.home() / "agent-conversations"
         )
@@ -1828,7 +1834,7 @@ Examples:
                 if session.total_cost > 0:
                     session_line += f"  ${session.total_cost:.2f}"
                 print(session_line)
-                preview_text = f"      \"{session.preview}\""
+                preview_text = f'      "{session.preview}"'
                 print(f"{Colors.DIM}{preview_text}{Colors.RESET}")
 
             print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
