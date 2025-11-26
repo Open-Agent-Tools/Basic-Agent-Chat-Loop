@@ -99,7 +99,7 @@ class TestChatLoopInitialization:
             assert chat_loop.show_duration is True
             assert chat_loop.show_banner is True
 
-    def test_initialization_with_config(self, mock_agent):
+    def test_initialization_with_config(self, mock_agent, tmp_path):
         """Test initialization with custom config."""
         config = Mock()
         config.get.side_effect = lambda key, default, agent_name=None: {
@@ -116,6 +116,8 @@ class TestChatLoopInitialization:
             "ui.show_banner": False,
             "ui.show_status_bar": False,
         }.get(key, default)
+        # Mock expand_path to return a real Path
+        config.expand_path = Mock(return_value=tmp_path / "sessions")
 
         chat_loop = ChatLoop(
             agent=mock_agent,

@@ -15,6 +15,7 @@ A feature-rich, interactive CLI for AI agents with token tracking, prompt templa
 - 🔔 **Audio Notifications** - Play sound when agent completes a turn (cross-platform support)
 - 📜 **Command History** - Navigate previous queries with ↑↓ arrows (persisted to `~/.chat_history`)
 - ✍️ **Multi-line Input** - Type `\\` to enter multi-line mode with Ctrl+D to cancel and ↑ to edit previous lines
+- 💾 **Session Management** - Save, resume, and search previous conversations with full context restoration
 - 💰 **Token Tracking** - Track tokens and costs per query and session
 - 📝 **Prompt Templates** - Reusable prompts from `~/.prompts/`
 - ⚙️ **Configuration** - YAML-based config with per-agent overrides
@@ -237,9 +238,51 @@ See [CONFIG.md](CONFIG.md) for full configuration options.
 | `help` | Show help message |
 | `info` | Show agent details (model, tools) |
 | `templates` | List available prompt templates |
+| `sessions` | List all saved conversation sessions |
 | `/name` | Use prompt template from `~/.prompts/name.md` |
+| `resume <#>` | Resume a previous session by number or ID |
 | `clear` | Clear screen and reset agent session |
 | `exit`, `quit` | Exit chat (shows session summary) |
+
+### Session Management
+
+**Save conversations automatically:**
+
+```bash
+# Enable auto-save in config
+features:
+  auto_save: true
+```
+
+**Resume a previous conversation:**
+
+```bash
+# In chat - list sessions
+You: sessions
+
+Available Sessions (3):
+  1. MyAgent - Jan 26, 14:30 - 15 queries - $0.48
+     "Can you help me build a REST API..."
+
+  2. MyAgent - Jan 25, 09:15 - 7 queries - $0.23
+     "Explain async/await in Python..."
+
+# Resume by number
+You: resume 1
+
+# Or resume on startup
+chat_loop myagent --resume
+chat_loop myagent --resume 1
+chat_loop myagent --resume myagent_20250126_143022
+```
+
+**List all saved sessions:**
+
+```bash
+chat_loop --list-sessions
+```
+
+Sessions are saved to `~/agent-conversations/` by default (configurable).
 
 ### Multi-line Input
 

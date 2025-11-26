@@ -72,6 +72,7 @@ from .components import (
     ConfigWizard,
     DependencyManager,
     DisplayManager,
+    SessionManager,
     StatusBar,
     TemplateManager,
     TokenTracker,
@@ -405,17 +406,26 @@ class ChatLoop:
         agent_name: str,
         agent_description: str,
         agent_factory=None,
+        agent_path: Optional[str] = None,
         config: Optional["ChatConfig"] = None,
     ):
         self.agent = agent
         self.agent_name = agent_name
         self.agent_description = agent_description
         self.agent_factory = agent_factory  # Function to create fresh agent instance
+        self.agent_path = agent_path or "unknown"  # Store for session metadata
         self.history_file = None
         self.last_response = ""  # Track last response for copy command
 
         # Conversation tracking for auto-save
         self.conversation_history: list[Dict[str, Any]] = []
+
+        # Generate session ID for this chat session
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_agent_name = agent_name.lower().replace(" ", "_").replace("/", "_")
+        self.session_id = f"{safe_agent_name}_{timestamp}"
 
         # Load or use provided config
         self.config = config if config else get_config()
@@ -570,6 +580,16 @@ class ChatLoop:
             enabled=audio_enabled, sound_file=audio_sound_file
         )
 
+        # Setup session manager for conversation persistence
+        sessions_dir = (
+            self.config.expand_path(
+                self.config.get("paths.save_location", "~/agent-conversations")
+            )
+            if self.config
+            else Path.home() / "agent-conversations"
+        )
+        self.session_manager = SessionManager(sessions_dir=sessions_dir)
+
     def _extract_token_usage(self, response_obj) -> Optional[Dict[str, int]]:
         """
         Extract token usage from response object.
@@ -660,9 +680,167 @@ class ChatLoop:
 
         return None
 
+    async def restore_session(self, session_id: str) -> bool:
+        """
+        Restore a previous session by replaying conversation to agent.
+
+        Args:
+            session_id: Session ID or number from sessions list
+
+        Returns:
+            True if session was successfully restored, False otherwise
+        """
+        try:
+            # If session_id is a number, resolve it from the list
+            if session_id.isdigit():
+                session_num = int(session_id)
+                sessions = self.session_manager.list_sessions(
+                    agent_name=self.agent_name, limit=20
+                )
+
+                if session_num < 1 or session_num > len(sessions):
+                    print(Colors.error(f"Invalid session number: {session_num}"))
+                    print(f"Valid range: 1-{len(sessions)}")
+                    return False
+
+                # Get actual session_id from the list (1-indexed)
+                session_info = sessions[session_num - 1]
+                session_id = session_info.session_id
+            else:
+                # Get session metadata for display
+                session_info = self.session_manager.get_session_metadata(session_id)
+                if not session_info:
+                    print(Colors.error(f"Session not found: {session_id}"))
+                    return False
+
+            # Load the session data
+            session_data = self.session_manager.load_session(session_id)
+            if not session_data:
+                print(Colors.error(f"Could not load session: {session_id}"))
+                return False
+
+            conversation = session_data.get("conversation", [])
+            if not conversation:
+                print(Colors.error("Session has no conversation history"))
+                return False
+
+            # Check if agent matches
+            if session_data["agent_name"] != self.agent_name:
+                print(
+                    Colors.system(
+                        f"⚠️  Warning: Session was created with "
+                        f"'{session_data['agent_name']}' "
+                        f"but you're using '{self.agent_name}'"
+                    )
+                )
+                confirm = input(Colors.system("Continue anyway? (y/n): "))
+                if confirm.lower() != "y":
+                    print(Colors.system("Resume cancelled"))
+                    return False
+
+            # Display what we're loading
+            print(f"\n🔄 Loading session: {session_id}")
+            print(f"   Agent: {session_data['agent_name']}")
+            print(f"   Queries: {len(conversation)}")
+            print(
+                f"   Created: {session_info.created.strftime('%b %d, %Y at %H:%M')}"
+            )
+            if session_info.total_cost > 0:
+                print(f"   Cost so far: ${session_info.total_cost:.3f}")
+            print()
+
+            # Ask for confirmation (if enabled in config)
+            resume_confirmation = (
+                self.config.get("sessions.resume_confirmation", True)
+                if self.config
+                else True
+            )
+
+            if resume_confirmation:
+                print(
+                    Colors.system("⚠️  This will restore conversation context to the agent.")
+                )
+                confirm = input(Colors.system("Continue? (y/n): "))
+                if confirm.lower() != "y":
+                    print(Colors.system("Resume cancelled"))
+                    return False
+
+            # Replay strategy: Silent replay of all queries
+            print(Colors.system(f"\nReplaying {len(conversation)} previous queries..."))
+            print(Colors.system("(This restores the agent's context)"))
+
+            replay_start = time.time()
+
+            for i, entry in enumerate(conversation, 1):
+                query = entry["query"]
+                # Display progress every 5 queries
+                if i % 5 == 0 or i == len(conversation):
+                    print(
+                        Colors.system(f"  Progress: {i}/{len(conversation)} queries"),
+                        end="\r",
+                    )
+
+                try:
+                    # Replay query silently (don't display response)
+                    # Check if agent supports streaming
+                    if hasattr(self.agent, "stream_async"):
+                        # Consume the stream but don't display
+                        async for _ in self.agent.stream_async(query):
+                            pass
+                    else:
+                        # Non-streaming agent
+                        await asyncio.get_event_loop().run_in_executor(
+                            None, self.agent, query
+                        )
+
+                except Exception as e:
+                    logger.warning(f"Error replaying query {i}: {e}")
+                    # Continue with next query
+
+            replay_duration = time.time() - replay_start
+            print()  # Clear progress line
+            print(
+                Colors.success(
+                    f"✓ Replayed {len(conversation)} queries "
+                    f"in {replay_duration:.1f}s"
+                )
+            )
+
+            # Restore conversation history
+            self.conversation_history = conversation.copy()
+
+            # Update session ID to continue this session
+            self.session_id = session_id
+
+            # Restore token tracker state
+            if session_info.total_tokens > 0:
+                # Approximate token restoration (not exact, but close)
+                # We can't perfectly restore because we don't have per-query tokens
+                # But we can set the total
+                self.token_tracker.total_input_tokens = int(session_info.total_tokens * 0.6)
+                self.token_tracker.total_output_tokens = int(
+                    session_info.total_tokens * 0.4
+                )
+
+            # Update query count
+            self.query_count = len(conversation)
+
+            # Display confirmation
+            self.display_manager.display_session_loaded(session_info, len(conversation))
+
+            logger.info(f"Successfully restored session: {session_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to restore session: {e}", exc_info=True)
+            print(Colors.error(f"\n⚠️  Failed to restore session: {e}"))
+            return False
+
     def save_conversation(self) -> bool:
         """
-        Save conversation history to markdown file.
+        Save conversation history using SessionManager.
+
+        Saves both JSON (for resume) and markdown (for humans) formats.
 
         Returns:
             True if save was successful, False otherwise
@@ -673,82 +851,36 @@ class ChatLoop:
             return False
 
         try:
-            # Get save location from config or use default
-            save_location = (
-                self.config.expand_path(
-                    self.config.get("paths.save_location", "~/agent-conversations")
-                )
-                if self.config
-                else Path.home() / "agent-conversations"
+            # Calculate total cost for metadata
+            total_cost = self.token_tracker.get_cost()
+            session_duration = time.time() - self.session_start_time
+
+            metadata = {
+                "total_cost": total_cost,
+                "duration": session_duration,
+            }
+
+            # Use SessionManager to save
+            success, message = self.session_manager.save_session(
+                session_id=self.session_id,
+                agent_name=self.agent_name,
+                agent_path=self.agent_path,
+                agent_description=self.agent_description,
+                conversation=self.conversation_history,
+                metadata=metadata,
             )
 
-            # Ensure directory exists
-            save_location.mkdir(parents=True, exist_ok=True)
-
-            # Generate filename with timestamp
-            from datetime import datetime
-
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe_agent_name = self.agent_name.lower()
-            safe_agent_name = safe_agent_name.replace(" ", "_").replace("/", "_")
-            filename = f"{safe_agent_name}_{timestamp}.md"
-            filepath = save_location / filename
-
-            # Format conversation as markdown
-            content_lines = [
-                f"# {self.agent_name} Conversation",
-                f"\n**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                f"\n**Agent:** {self.agent_name}",
-                f"\n**Description:** {self.agent_description}",
-                f"\n**Total Queries:** {len(self.conversation_history)}",
-                "\n---\n",
-            ]
-
-            # Add each conversation entry
-            for i, entry in enumerate(self.conversation_history, 1):
-                ts = entry["timestamp"]
-                entry_timestamp = datetime.fromtimestamp(ts).strftime("%H:%M:%S")
-                duration = entry.get("duration", 0)
-
-                # Add query
-                content_lines.append(f"\n## Query {i} ({entry_timestamp})\n")
-                content_lines.append(f"**You:** {entry['query']}\n")
-
-                # Add response
-                content_lines.append(f"\n**{self.agent_name}:** {entry['response']}\n")
-
-                # Add metadata
-                metadata_parts = [f"Time: {duration:.1f}s"]
-
-                # Add token info if available
-                usage = entry.get("usage")
-                if usage and usage is not None:
-                    input_tok = usage.get("input_tokens", 0)
-                    output_tok = usage.get("output_tokens", 0)
-                    total_tok = input_tok + output_tok
-                    if total_tok > 0:
-                        tok_str = f"Tokens: {total_tok:,} "
-                        tok_str += f"(in: {input_tok:,}, out: {output_tok:,})"
-                        metadata_parts.append(tok_str)
-
-                if metadata_parts:
-                    content_lines.append(f"\n*{' | '.join(metadata_parts)}*\n")
-
-                content_lines.append("\n---\n")
-
-            # Write to file
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.writelines(content_lines)
-
-            # Set secure permissions (readable/writable by owner only)
-            filepath.chmod(0o600)
-
-            logger.info(f"Conversation saved to: {filepath}")
-            print(Colors.success(f"\n💾 Conversation saved to: {filepath}"))
-            return True
+            if success:
+                logger.info(f"Conversation saved: {self.session_id}")
+                print(Colors.success(f"\n💾 {message}"))
+                return True
+            else:
+                logger.warning(f"Failed to save conversation: {message}")
+                print(Colors.error(f"\n⚠️  {message}"))
+                return False
 
         except Exception as e:
-            logger.warning(f"Failed to save conversation: {e}")
+            logger.warning(f"Failed to save conversation: {e}", exc_info=True)
             print(Colors.error(f"\n⚠️  Could not save conversation: {e}"))
             return False
 
@@ -1245,6 +1377,47 @@ class ChatLoop:
 
         self.display_manager.display_banner()
 
+        # Handle --resume flag if specified
+        if hasattr(self, "resume_session_ref") and self.resume_session_ref:
+            session_ref = self.resume_session_ref
+
+            # If "pick" mode, show session picker
+            if session_ref == "pick":
+                sessions = self.session_manager.list_sessions(
+                    agent_name=self.agent_name, limit=20
+                )
+
+                if not sessions:
+                    print(Colors.system("\nNo saved sessions found to resume."))
+                    print("Continue with fresh session...\n")
+                else:
+                    self.display_manager.display_sessions(
+                        sessions, agent_name=self.agent_name
+                    )
+                    print()
+                    try:
+                        choice = input(
+                            Colors.system("Enter session number to resume (or press Enter to skip): ")
+                        ).strip()
+
+                        if choice:
+                            success = await self.restore_session(choice)
+                            if success:
+                                # Clear and redisplay banner after resume
+                                self.display_manager.display_banner()
+                    except (KeyboardInterrupt, EOFError):
+                        print()
+                        print(Colors.system("Skipping resume, starting fresh session..."))
+                        print()
+            else:
+                # Direct resume with specific session ID/number
+                success = await self.restore_session(session_ref)
+                if success:
+                    # Clear and redisplay banner after resume
+                    self.display_manager.display_banner()
+                else:
+                    print(Colors.system("\nContinuing with fresh session...\n"))
+
         try:
             while True:
                 try:
@@ -1274,6 +1447,30 @@ class ChatLoop:
                         self.display_manager.display_templates(
                             templates, self.prompts_dir
                         )
+                        continue
+                    elif user_input.lower() == "sessions":
+                        # List saved sessions
+                        sessions = self.session_manager.list_sessions(
+                            agent_name=self.agent_name, limit=20
+                        )
+                        self.display_manager.display_sessions(
+                            sessions, agent_name=self.agent_name
+                        )
+                        continue
+                    elif user_input.lower().startswith("resume "):
+                        # Resume a previous session
+                        parts = user_input.split(maxsplit=1)
+                        if len(parts) < 2:
+                            print(Colors.error("Usage: resume <session_id or number>"))
+                            print("Use 'sessions' command to see available sessions")
+                            continue
+
+                        session_ref = parts[1].strip()
+                        success = await self.restore_session(session_ref)
+
+                        if success:
+                            # Show banner after resume
+                            self.display_manager.display_banner()
                         continue
                     elif user_input.startswith("/") and len(user_input) > 1:
                         # Template command: /template_name <optional input>
@@ -1508,6 +1705,27 @@ Examples:
         ),
     )
 
+    # Session management
+    session_group = parser.add_argument_group("session management")
+
+    session_group.add_argument(
+        "--resume",
+        "-r",
+        nargs="?",
+        const="pick",
+        metavar="SESSION",
+        help=(
+            "Resume a previous session (optionally specify session ID or number, "
+            "otherwise shows picker)"
+        ),
+    )
+
+    session_group.add_argument(
+        "--list-sessions",
+        action="store_true",
+        help="List all saved sessions and exit",
+    )
+
     # Configuration wizard
     parser.add_argument(
         "--wizard",
@@ -1586,6 +1804,41 @@ Examples:
         else:
             print(Colors.error(message))
             sys.exit(1)
+
+    # Handle session management commands
+    if args.list_sessions:
+        # List sessions and exit
+        config = get_config(config_path=args.config) if args.config else get_config()
+        sessions_dir = (
+            config.expand_path(config.get("paths.save_location", "~/agent-conversations"))
+            if config
+            else Path.home() / "agent-conversations"
+        )
+
+        session_manager = SessionManager(sessions_dir=sessions_dir)
+        sessions = session_manager.list_sessions(limit=50)
+
+        if sessions:
+            print(f"\n{Colors.system('Saved Sessions')} ({len(sessions)}):")
+            print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+            for i, session in enumerate(sessions, 1):
+                created_str = session.created.strftime("%b %d, %Y %H:%M")
+                session_line = f"  {i:2}. {session.agent_name:<20} {created_str}"
+                session_line += f"  {session.query_count:3} queries"
+                if session.total_cost > 0:
+                    session_line += f"  ${session.total_cost:.2f}"
+                print(session_line)
+                preview_text = f"      \"{session.preview}\""
+                print(f"{Colors.DIM}{preview_text}{Colors.RESET}")
+
+            print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+            print(f"\nResume: {Colors.system('chat_loop <agent> --resume <number>')}")
+            print(f"        {Colors.system('chat_loop <agent> --resume <session_id>')}")
+        else:
+            print(f"\n{Colors.system('No saved sessions found')}")
+            print(f"Sessions will be saved to: {sessions_dir}")
+
+        sys.exit(0)
 
     # Require agent argument if not doing alias management
     if not args.agent:
@@ -1699,8 +1952,17 @@ Examples:
             agent_name,
             agent_description,
             agent_factory=create_fresh_agent,
+            agent_path=str(agent_path),
             config=config,
         )
+
+        # Handle --resume flag if provided
+        if args.resume:
+            # Store resume session for processing in _async_run
+            chat_loop.resume_session_ref = args.resume
+        else:
+            chat_loop.resume_session_ref = None
+
         chat_loop.run()
 
     except Exception as e:

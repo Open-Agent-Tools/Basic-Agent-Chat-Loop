@@ -102,7 +102,9 @@ class DisplayManager:
         print("  help      - Show this help message")
         print("  info      - Show detailed agent information")
         print("  templates - List available prompt templates")
+        print("  sessions  - List saved conversation sessions")
         print("  /name     - Use prompt template from ~/.prompts/name.md")
+        print("  resume <#>- Resume a previous session by number or ID")
         print("  clear     - Clear screen and reset agent session")
         print("  quit      - Exit the chat")
         print("  exit      - Exit the chat")
@@ -141,10 +143,18 @@ class DisplayManager:
         print("  help      - Show this help message")
         print("  info      - Show detailed agent information")
         print("  templates - List available prompt templates")
+        print("  sessions  - List saved conversation sessions")
         print("  /name     - Use prompt template from ~/.prompts/name.md")
+        print("  resume <#>- Resume a previous session by number or ID")
         print("  clear     - Clear screen and reset agent session")
         print("  quit      - Exit the chat")
         print("  exit      - Exit the chat")
+        print()
+        print("Session Management:")
+        print("  sessions  - See all saved conversations")
+        print("  resume 1  - Resume session by number from list")
+        print("  resume ID - Resume session by full ID")
+        print("  Auto-save - Enabled with --auto-save or in config")
         print()
         print("Prompt Templates:")
         print("  Create: Save markdown files to ~/.prompts/name.md")
@@ -294,3 +304,68 @@ class DisplayManager:
             print(f"\n{Colors.system('No prompt templates found')}")
             print(f"Create templates in: {prompts_dir}")
             print(f"Example: {prompts_dir}/review.md")
+
+    def display_sessions(self, sessions: list, agent_name: Optional[str] = None):
+        """
+        Display list of available sessions.
+
+        Args:
+            sessions: List of SessionInfo objects
+            agent_name: Optional current agent name for highlighting
+        """
+        from .session_manager import SessionInfo
+
+        if not sessions:
+            print(f"\n{Colors.system('No saved sessions found')}")
+            if agent_name:
+                print(f"Start chatting to create your first session with {agent_name}")
+            return
+
+        print(f"\n{Colors.system('Available Sessions')} ({len(sessions)}):")
+        print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+
+        for i, session in enumerate(sessions, 1):
+            # Format date
+            created_str = session.created.strftime("%b %d, %H:%M")
+
+            # Build session line
+            session_line = f"  {i}. {session.agent_name} - {created_str}"
+            session_line += f" - {session.query_count} "
+            session_line += "query" if session.query_count == 1 else "queries"
+
+            # Add cost if available
+            if session.total_cost > 0:
+                session_line += f" - ${session.total_cost:.2f}"
+
+            # Highlight if same agent
+            if agent_name and session.agent_name == agent_name:
+                print(Colors.success(session_line))
+            else:
+                print(session_line)
+
+            # Show preview
+            preview_text = f"     \"{session.preview}\""
+            print(f"{Colors.DIM}{preview_text}{Colors.RESET}")
+
+        print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+        print(Colors.system("Use: resume <number> or resume <session_id>"))
+
+    def display_session_loaded(self, session_info, query_count: int):
+        """
+        Display confirmation that a session was loaded.
+
+        Args:
+            session_info: SessionInfo object
+            query_count: Number of queries in the session
+        """
+        print(f"\n{Colors.success('✓ Session Restored!')}")
+        print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+        print(f"  Agent: {session_info.agent_name}")
+        print(f"  Created: {session_info.created.strftime('%b %d, %Y at %H:%M')}")
+        print(f"  Previous queries: {query_count}")
+        if session_info.total_tokens > 0:
+            print(f"  Tokens used: {session_info.total_tokens:,}")
+        if session_info.total_cost > 0:
+            print(f"  Cost so far: ${session_info.total_cost:.3f}")
+        print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+        print(Colors.system("Continuing from where you left off...\n"))

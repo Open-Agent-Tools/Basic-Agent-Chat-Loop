@@ -66,6 +66,18 @@ ui:
   show_status_bar: false       # Show status bar at top (agent, model, queries, time)
 
 # ============================================================================
+# SESSIONS - Conversation session management
+# ============================================================================
+sessions:
+  resume_confirmation: true    # Ask for confirmation before resuming a session
+  max_sessions: 50             # Maximum number of sessions to keep (auto-cleanup)
+  auto_cleanup_days: 30        # Delete sessions older than this many days (0 = never)
+  resume_strategy: auto        # Session restore strategy:
+                               #   auto   - Try context injection, fallback to replay
+                               #   replay - Always replay all queries (slower, works everywhere)
+                               # Note: Currently only 'replay' is implemented
+
+# ============================================================================
 # PER-AGENT OVERRIDES
 # ============================================================================
 # Override settings for specific agents by name

@@ -153,6 +153,64 @@ audio:
   enabled: false
 ```
 
+### Sessions
+
+Conversation session management settings:
+
+```yaml
+sessions:
+  resume_confirmation: true    # Ask before resuming sessions
+  max_sessions: 50             # Max sessions to keep (auto-cleanup)
+  auto_cleanup_days: 30        # Delete sessions older than N days (0 = never)
+  resume_strategy: auto        # Strategy: auto|replay
+```
+
+**Resume confirmation:**
+- `true`: Always ask before replaying queries to restore context
+- `false`: Auto-resume without confirmation
+
+**Auto-cleanup:**
+- `max_sessions`: Limits total number of stored sessions
+- `auto_cleanup_days`: Deletes sessions older than specified days
+- Set `auto_cleanup_days: 0` to keep sessions forever
+
+**Resume strategies:**
+- `auto`: Try context injection, fallback to replay (future)
+- `replay`: Always replay all queries (current implementation)
+
+**Saved session structure:**
+```
+~/agent-conversations/         # Default location (configurable)
+├── myagent_20250126_143022.json    # Machine-readable
+├── myagent_20250126_143022.md      # Human-readable
+└── .index.json                      # Fast lookup index
+```
+
+**Enable auto-save to use sessions:**
+```yaml
+features:
+  auto_save: true              # Required for session persistence
+
+paths:
+  save_location: ~/agent-conversations  # Where sessions are stored
+```
+
+**Usage:**
+```bash
+# List all saved sessions
+You: sessions
+
+# Resume a session by number
+You: resume 1
+
+# Resume on startup
+chat_loop myagent --resume
+chat_loop myagent --resume 1
+
+# List sessions from CLI
+chat_loop --list-sessions
+```
+
 ## Per-Agent Configuration
 
 Override settings for specific agents:
