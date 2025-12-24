@@ -390,11 +390,13 @@ audio:
 # ============================================================================
 # HARMONY - OpenAI Harmony format settings (for gpt-oss models)
 # ============================================================================
+# IMPORTANT: Your agent must request logprobs=True in API calls for harmony
+# token parsing to work. Without logprobs, only text-based fallback is used.
 harmony:
-  enabled: auto                 # Enable harmony processing (auto/yes/no)
+  enabled: auto                 # Enable harmony processing
                                 # auto (default) = Auto-detect harmony agents
-                                # yes = Force enable for all agents
-                                # no = Disable harmony processing
+                                # yes/true/force/on = Force enable for all agents
+                                # no/false/off = Disable harmony processing
   show_detailed_thinking: true  # Show reasoning/analysis/commentary with prefixes
                                 # When true (default), displays internal reasoning,
                                 # analysis, and commentary channels with labeled

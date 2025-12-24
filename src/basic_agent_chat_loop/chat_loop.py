@@ -600,12 +600,21 @@ class ChatLoop:
 
         # Check if harmony should be enabled
         # Priority: config override > auto-detection
-        harmony_enabled_config = (
+        harmony_enabled_config_raw = (
             self.config.get("harmony.enabled", None) if self.config else None
         )
         uses_harmony = self.agent_metadata.get("uses_harmony", False)
 
-        logger.debug(f"Harmony config value: {harmony_enabled_config}")
+        # Normalize config value to handle string values from YAML
+        # "auto"/None → None (auto-detect)
+        # "yes"/"true"/"force"/True → True (force enable)
+        # "no"/"false"/False → False (force disable)
+        harmony_enabled_config = self._normalize_harmony_config(
+            harmony_enabled_config_raw
+        )
+
+        logger.debug(f"Harmony config value (raw): {harmony_enabled_config_raw!r}")
+        logger.debug(f"Harmony config value (normalized): {harmony_enabled_config!r}")
         logger.debug(f"Auto-detected harmony: {uses_harmony}")
 
         # Determine if harmony should be enabled
@@ -647,6 +656,58 @@ class ChatLoop:
                 "✗ Harmony NOT enabled "
                 "(agent not detected as harmony, config not set)"
             )
+
+    def _normalize_harmony_config(self, value: Any) -> Optional[bool]:
+        """
+        Normalize harmony config value from YAML to proper type.
+
+        Handles various string representations from YAML config files:
+        - "auto", None, "" → None (auto-detect)
+        - "yes", "true", "force", "on", True → True (force enable)
+        - "no", "false", "off", False → False (force disable)
+
+        Args:
+            value: Raw config value from YAML
+
+        Returns:
+            None for auto-detect, True to force enable, False to force disable
+        """
+        if value is None or value == "":
+            return None
+
+        # Handle boolean values
+        if isinstance(value, bool):
+            return value
+
+        # Handle string values (case-insensitive)
+        if isinstance(value, str):
+            value_lower = value.lower().strip()
+
+            # Auto-detect
+            if value_lower in ("auto", "detect"):
+                return None
+
+            # Force enable
+            if value_lower in ("yes", "true", "force", "on", "enable", "enabled"):
+                return True
+
+            # Force disable
+            if value_lower in ("no", "false", "off", "disable", "disabled"):
+                return False
+
+            # Unknown string - warn and default to auto-detect
+            logger.warning(
+                f"Unknown harmony.enabled value: {value!r} - "
+                f"using auto-detect (valid: auto/yes/no)"
+            )
+            return None
+
+        # Unknown type - warn and default to auto-detect
+        logger.warning(
+            f"Invalid harmony.enabled type: {type(value).__name__} - "
+            f"using auto-detect (expected: bool or string)"
+        )
+        return None
 
     def _extract_token_usage(self, response_obj) -> Optional[dict[str, int]]:
         """

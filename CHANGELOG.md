@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.5] - 2024-12-24
+
+### Fixed
+- **Harmony Config Value Normalization** - Fixed harmony processor not being enabled when config set to "force" or other string values
+  - Added `_normalize_harmony_config()` method to handle YAML string values ("auto", "yes", "no", "force", "true", "false", etc.)
+  - Config values now properly normalized to boolean True/False or None
+  - Enhanced logging shows both raw and normalized config values for debugging
+  - Resolves issue where `harmony.enabled: force` wasn't being recognized
+
+### Improved
+- **Harmony Error Handling** - Enhanced error reporting for harmony token parsing failures
+  - Added comprehensive error logging with token samples when parsing fails
+  - Shows token count and first 50 tokens for debugging malformed harmony responses
+  - Provides helpful error messages about common issues (e.g., missing logprobs)
+  - Falls back gracefully to text-based parsing when token parsing fails
+- **Harmony Documentation** - Clarified all acceptable config values
+  - Updated config example to show all valid values: "auto", "yes/true/force/on", "no/false/off"
+  - Added note about requiring logprobs=True in API calls for proper token parsing
+  - Better documentation of harmony configuration options
+
+## [1.3.4] - 2024-12-24
+
+### Added
+- **Enhanced Harmony Token Extraction** - Improved debugging for harmony response parsing
+  - Added comprehensive logging for response object structure analysis
+  - Token extraction now handles multiple response formats (OpenAI, Anthropic, custom)
+  - Detailed logging of token counts, samples, and parsing results
+  - Better error messages when logprobs are missing or malformed
+
+### Improved
+- **Harmony Channel Processing** - Better separation and display of harmony channels
+  - Messages now properly grouped by channel (reasoning, analysis, commentary, final)
+  - Improved logging shows channel detection and content extraction
+  - Enhanced format_for_display() with detailed thinking prefixes
+
 ## [1.3.3] - 2024-12-24
 
 ### Changed

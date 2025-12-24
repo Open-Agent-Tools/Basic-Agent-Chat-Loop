@@ -168,6 +168,8 @@ class HarmonyProcessor:
 
             if tokens:
                 logger.debug(f"Extracted {len(tokens)} tokens from response")
+                logger.debug(f"Token sample (first 20): {tokens[:20]}")
+
                 # Parse messages from tokens using Harmony encoding
                 try:
                     messages = self.encoding.parse_messages_from_completion_tokens(
@@ -195,8 +197,24 @@ class HarmonyProcessor:
                         logger.debug("No harmony channels found in messages")
 
                 except Exception as e:
+                    error_msg = str(e)
+                    logger.error("=" * 60)
+                    logger.error("HARMONY PARSING ERROR")
+                    logger.error("=" * 60)
+                    logger.error(f"Error type: {type(e).__name__}")
+                    logger.error(f"Error message: {error_msg}")
+                    logger.error(f"Number of tokens: {len(tokens)}")
+                    logger.error(f"First 50 tokens: {tokens[:50]}")
+                    logger.error(
+                        "This error often occurs when the model outputs harmony "
+                        "tokens in an unexpected format or sequence."
+                    )
+                    logger.error(
+                        "The chat will continue using text-based fallback parsing."
+                    )
+                    logger.error("=" * 60)
                     logger.warning(
-                        f"Failed to parse harmony tokens: {e}. "
+                        f"Failed to parse harmony tokens: {error_msg}. "
                         "Falling back to text-based extraction"
                     )
                     # Fall back to text-based parsing
