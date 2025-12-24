@@ -14,7 +14,7 @@ def temp_config_file(tmp_path):
     config_file.write_text(
         """
 features:
-  show_tokens: true
+  show_tokens: false
   rich_enabled: false
 
 behavior:
@@ -57,10 +57,13 @@ class TestChatConfigInitialization:
         """Test that default configuration is loaded."""
         config = ChatConfig()
 
-        assert config.get("features.show_tokens") is False
+        assert config.get("features.show_tokens") is True
+        assert config.get("features.auto_save") is True
         assert config.get("features.rich_enabled") is True
         assert config.get("behavior.max_retries") == 3
         assert config.get("ui.show_banner") is True
+        assert config.get("ui.show_status_bar") is True
+        assert config.get("harmony.show_detailed_thinking") is True
 
     def test_load_explicit_config(self, temp_config_file, tmp_path, monkeypatch):
         """Test loading explicit config file."""
@@ -70,7 +73,7 @@ class TestChatConfigInitialization:
 
         config = ChatConfig(temp_config_file)
 
-        assert config.get("features.show_tokens") is True
+        assert config.get("features.show_tokens") is False
         assert config.get("features.rich_enabled") is False
         assert config.get("behavior.max_retries") == 5
         assert config.get("behavior.timeout") == 60.0
@@ -79,7 +82,7 @@ class TestChatConfigInitialization:
         """Test that nonexistent config file falls back to defaults."""
         config = ChatConfig(Path("/nonexistent/.chatrc"))
 
-        assert config.get("features.show_tokens") is False
+        assert config.get("features.show_tokens") is True
         assert config.get("behavior.max_retries") == 3
 
 
@@ -94,7 +97,7 @@ class TestConfigGet:
 
         config = ChatConfig(temp_config_file)
 
-        assert config.get("features.show_tokens") is True
+        assert config.get("features.show_tokens") is False
         assert config.get("behavior.max_retries") == 5
 
     def test_get_with_default(self):
@@ -138,7 +141,7 @@ class TestConfigGetSection:
         config = ChatConfig(temp_config_file)
 
         features = config.get_section("features")
-        assert features["show_tokens"] is True
+        assert features["show_tokens"] is False
         assert features["rich_enabled"] is False
 
         behavior = config.get_section("behavior")
@@ -194,13 +197,13 @@ class TestConfigSet:
         """Test setting agent-specific configuration."""
         config = ChatConfig()
 
-        config.set("features.auto_save", True, agent_name="My Agent")
+        config.set("features.auto_save", False, agent_name="My Agent")
 
-        # Global should remain unchanged
-        assert config.get("features.auto_save") is False
+        # Global should remain unchanged (default is True now)
+        assert config.get("features.auto_save") is True
 
         # Agent-specific should be set
-        assert config.get("features.auto_save", agent_name="My Agent") is True
+        assert config.get("features.auto_save", agent_name="My Agent") is False
 
 
 class TestConfigMerging:
@@ -215,7 +218,7 @@ class TestConfigMerging:
         config = ChatConfig(temp_config_file)
 
         # User-defined values
-        assert config.get("features.show_tokens") is True
+        assert config.get("features.show_tokens") is False
 
         # Default values not in user config
         assert config.get("features.readline_enabled") is True
@@ -295,7 +298,7 @@ class TestInvalidConfig:
         config = ChatConfig(config_file)
 
         # Should use defaults
-        assert config.get("features.show_tokens") is False
+        assert config.get("features.show_tokens") is True
         assert config.get("behavior.max_retries") == 3
 
     def test_empty_config_file(self, tmp_path):
@@ -306,7 +309,7 @@ class TestInvalidConfig:
         config = ChatConfig(config_file)
 
         # Should use defaults
-        assert config.get("features.show_tokens") is False
+        assert config.get("features.show_tokens") is True
 
 
 class TestGetConfigFunction:

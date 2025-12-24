@@ -542,7 +542,8 @@ class ChatLoop:
                 if model_override:
                     model_info = model_override
 
-            # Shorten long model IDs
+            # Shorten long model IDs (ensure it's a string first)
+            model_info = str(model_info) if model_info else "Unknown Model"
             if len(model_info) > 30:
                 model_info = model_info[:27] + "..."
 
@@ -604,6 +605,9 @@ class ChatLoop:
         )
         uses_harmony = self.agent_metadata.get("uses_harmony", False)
 
+        logger.debug(f"Harmony config value: {harmony_enabled_config}")
+        logger.debug(f"Auto-detected harmony: {uses_harmony}")
+
         # Determine if harmony should be enabled
         # None = auto-detect, True = force enable, False = force disable
         should_enable_harmony = (
@@ -612,12 +616,14 @@ class ChatLoop:
             else uses_harmony
         )
 
+        logger.debug(f"Should enable harmony: {should_enable_harmony}")
+
         if should_enable_harmony:
             # Get detailed thinking config option
             show_detailed = (
-                self.config.get("harmony.show_detailed_thinking", False)
+                self.config.get("harmony.show_detailed_thinking", True)
                 if self.config
-                else False
+                else True
             )
             self.harmony_processor = HarmonyProcessor(
                 show_detailed_thinking=show_detailed
@@ -626,14 +632,18 @@ class ChatLoop:
             # Log how harmony was enabled
             if harmony_enabled_config is True:
                 logger.info(
-                    f"Harmony processor enabled via config override (detailed_thinking={show_detailed})"
+                    f"✓ Harmony processor ENABLED via config override (detailed_thinking={show_detailed})"
                 )
             elif harmony_enabled_config is False:
-                logger.info("Harmony processor disabled via config override")
+                logger.info("✗ Harmony processor DISABLED via config override")
             else:
                 logger.info(
-                    f"Harmony processor auto-detected (detailed_thinking={show_detailed})"
+                    f"✓ Harmony processor AUTO-DETECTED and enabled (detailed_thinking={show_detailed})"
                 )
+        else:
+            logger.info(
+                "✗ Harmony processor NOT enabled (agent not detected as harmony, config not set)"
+            )
 
     def _extract_token_usage(self, response_obj) -> Optional[dict[str, int]]:
         """

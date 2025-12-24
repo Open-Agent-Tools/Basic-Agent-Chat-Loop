@@ -37,9 +37,9 @@ class ChatConfig:
             "reset": "\033[0m",  # Reset (no named equivalent)
         },
         "features": {
-            "auto_save": False,
+            "auto_save": True,
             "rich_enabled": True,
-            "show_tokens": False,
+            "show_tokens": True,
             "show_metadata": True,
             "readline_enabled": True,
         },
@@ -57,7 +57,7 @@ class ChatConfig:
             "show_banner": True,
             "show_thinking_indicator": True,
             "show_duration": True,
-            "show_status_bar": False,
+            "show_status_bar": True,
             "update_terminal_title": True,
         },
         "audio": {
@@ -68,7 +68,7 @@ class ChatConfig:
             # Enable harmony processing (auto-detects by default, set to True to force)
             "enabled": None,  # None = auto-detect, True = force enable, False = disable
             # Show reasoning/analysis/commentary channels
-            "show_detailed_thinking": False,
+            "show_detailed_thinking": True,
         },
         # Per-agent overrides (example structure)
         "agents": {
@@ -349,9 +349,9 @@ colors:
 # FEATURES - Toggle optional functionality
 # ============================================================================
 features:
-  auto_save: false              # Automatically save conversations on exit
+  auto_save: true               # Automatically save conversations on exit
   rich_enabled: true            # Use rich library for formatting (if available)
-  show_tokens: false            # Display token counts and cost estimates
+  show_tokens: true             # Display token counts and cost estimates
   show_metadata: true           # Show agent metadata on startup
   readline_enabled: true        # Enable command history with readline
 
@@ -378,7 +378,7 @@ ui:
   show_banner: true            # Show welcome banner on startup
   show_thinking_indicator: true  # Show "Thinking..." spinner
   show_duration: true          # Show query duration
-  show_status_bar: false       # Show status bar at top (agent, model, queries, time)
+  show_status_bar: true        # Show status bar at top (agent, model, queries, time)
 
 # ============================================================================
 # AUDIO - Notification sounds
@@ -391,10 +391,14 @@ audio:
 # HARMONY - OpenAI Harmony format settings (for gpt-oss models)
 # ============================================================================
 harmony:
-  show_detailed_thinking: false  # Show reasoning/analysis/commentary with prefixes
-                                # When true, displays internal reasoning, analysis,
-                                # and commentary channels with labeled prefixes
-                                # When false (default), only shows final response
+  enabled: auto                 # Enable harmony processing (auto/yes/no)
+                                # auto (default) = Auto-detect harmony agents
+                                # yes = Force enable for all agents
+                                # no = Disable harmony processing
+  show_detailed_thinking: true  # Show reasoning/analysis/commentary with prefixes
+                                # When true (default), displays internal reasoning,
+                                # analysis, and commentary channels with labeled prefixes
+                                # When false, only shows final response
 
 # ============================================================================
 # PER-AGENT OVERRIDES
