@@ -74,6 +74,7 @@ from .components import (
     ConfigWizard,
     DependencyManager,
     DisplayManager,
+    HarmonyProcessor,
     SessionManager,
     StatusBar,
     TemplateManager,
@@ -592,6 +593,22 @@ class ChatLoop:
             else Path.home() / "agent-conversations"
         )
         self.session_manager = SessionManager(sessions_dir=sessions_dir)
+
+        # Setup Harmony processor if agent uses Harmony format
+        self.harmony_processor = None
+        if self.agent_metadata.get("uses_harmony", False):
+            # Get detailed thinking config option
+            show_detailed = (
+                self.config.get("harmony.show_detailed_thinking", False)
+                if self.config
+                else False
+            )
+            self.harmony_processor = HarmonyProcessor(
+                show_detailed_thinking=show_detailed
+            )
+            logger.info(
+                f"Harmony processor enabled (detailed_thinking={show_detailed})"
+            )
 
     def _extract_token_usage(self, response_obj) -> Optional[Dict[str, int]]:
         """
@@ -1212,17 +1229,31 @@ class ChatLoop:
             full_response = "".join(response_text)
             self.last_response = full_response
 
-            if self.use_rich and full_response.strip() and self.console:
+            # Process through Harmony if available
+            display_text = full_response
+            if self.harmony_processor:
+                processed = self.harmony_processor.process_response(
+                    full_response, metadata=None
+                )
+                display_text = self.harmony_processor.format_for_display(processed)
+
+                # Log if Harmony-specific features detected
+                if processed.get("has_reasoning"):
+                    logger.debug("Harmony response contains reasoning")
+                if processed.get("has_tools"):
+                    logger.debug("Harmony response contains tool calls")
+
+            if self.use_rich and display_text.strip() and self.console:
                 # Use rich markdown rendering
                 print()  # New line after agent name
-                md = Markdown(full_response)
+                md = Markdown(display_text)
                 self.console.print(md)
             elif not self.use_rich and response_text:
                 # Already printed during streaming, just add newline
                 if not first_token_received:
                     # Non-streaming case where nothing was printed yet
                     # Apply colorization for tool messages
-                    formatted_response = Colors.format_agent_response(full_response)
+                    formatted_response = Colors.format_agent_response(display_text)
                     print(formatted_response)
 
             duration = time.time() - start_time

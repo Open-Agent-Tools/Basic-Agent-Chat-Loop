@@ -64,6 +64,9 @@ class ChatConfig:
             "enabled": True,
             "notification_sound": None,  # Uses bundled notification.wav if None
         },
+        "harmony": {
+            "show_detailed_thinking": False,  # Show reasoning/analysis/commentary channels
+        },
         # Per-agent overrides (example structure)
         "agents": {
             # 'Complex Coding Clara': {
@@ -380,6 +383,15 @@ ui:
 audio:
   enabled: true                # Play sound when agent completes a turn
   notification_sound: null     # Path to custom WAV file (uses bundled sound if null)
+
+# ============================================================================
+# HARMONY - OpenAI Harmony format settings (for gpt-oss models)
+# ============================================================================
+harmony:
+  show_detailed_thinking: false  # Show reasoning/analysis/commentary with prefixes
+                                # When true, displays internal reasoning, analysis,
+                                # and commentary channels with labeled prefixes
+                                # When false (default), only shows final response
 
 # ============================================================================
 # PER-AGENT OVERRIDES

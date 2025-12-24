@@ -729,6 +729,8 @@ class TestRunMethod:
             # Audio
             "y",
             "",
+            # Harmony
+            "",
             # Behavior
             "",
             "",

@@ -13,6 +13,7 @@ A feature-rich, interactive CLI for AI agents with token tracking, prompt templa
 - 🏷️ **Agent Aliases** - Save agents as short names (`chat_loop pete` instead of full paths)
 - 📦 **Auto-Setup** - Automatically install agent dependencies from `requirements.txt` or `pyproject.toml`
 - 🔔 **Audio Notifications** - Play sound when agent completes a turn (cross-platform support)
+- 🎵 **Harmony Support** - Specialized processing for OpenAI Harmony format (gpt-oss models)
 - 📜 **Command History** - Navigate previous queries with ↑↓ arrows (persisted to `~/.chat_history`)
 - ✍️ **Multi-line Input** - Type `\\` to enter multi-line mode with Ctrl+D to cancel and ↑ to edit previous lines
 - 💾 **Session Management** - Save, resume, and search previous conversations with full context restoration
@@ -379,6 +380,82 @@ chat = ChatLoop(
 chat.run()
 ```
 
+## Harmony Format Support
+
+The chat loop includes built-in support for the [OpenAI Harmony](https://pypi.org/project/openai-harmony/) response format (designed for gpt-oss open-weight models). Harmony support is **included by default** in all installations.
+
+### What is Harmony?
+
+Harmony is OpenAI's response formatting standard for their open-weight model series (gpt-oss). It provides:
+- Structured conversation handling with multiple output channels
+- Reasoning output generation (internal analysis separate from final response)
+- Function call management with namespaces
+- Tool usage tracking and structured outputs
+
+### Automatic Detection
+
+The chat loop automatically detects Harmony agents by checking for:
+- Explicit `uses_harmony` attribute on the agent
+- Model names containing "gpt-oss" or "harmony"
+- Harmony-specific methods or attributes
+- Agent class names containing "harmony"
+
+### Enhanced Display
+
+When a Harmony agent is detected, responses are automatically processed to:
+- Extract and display multiple output channels (analysis, commentary, final)
+- Highlight internal reasoning separately from the final response
+- Detect and format tool calls appropriately
+- Parse structured Harmony response formats
+
+### Detailed Thinking Mode
+
+By default, only the final response is shown. You can enable detailed thinking mode to see the agent's internal reasoning with labeled prefixes:
+
+**Configuration:**
+```yaml
+# In ~/.chatrc or .chatrc
+harmony:
+  show_detailed_thinking: false  # Default - only show final response
+```
+
+**With detailed thinking enabled (`true`):**
+```
+💭 [REASONING]
+I need to analyze this query for potential bottlenecks...
+
+📊 [ANALYSIS]
+Looking at the query structure:
+- Multiple table joins without proper indexes
+- WHERE clause filtering happens after the joins
+
+📝 [COMMENTARY]
+This is a common pattern I see in legacy codebases...
+
+💬 [RESPONSE]
+Here are three optimizations for your database query...
+```
+
+**With detailed thinking disabled (`false`, default):**
+```
+Here are three optimizations for your database query...
+```
+
+### Example
+
+```python
+# Your agent using Harmony
+class MyHarmonyAgent:
+    uses_harmony = True  # Explicit marker
+
+    def __call__(self, query):
+        # Agent returns Harmony-formatted response
+        return harmony_response
+
+# Chat loop will automatically detect and handle Harmony format
+chat_loop my_harmony_agent
+```
+
 ## Requirements
 
 ### Core Dependencies
@@ -386,10 +463,12 @@ chat.run()
 - **Python 3.8+**
 - `pyyaml>=6.0.1` - Configuration file parsing
 - `rich>=13.7.0` - Enhanced terminal rendering
+- `pyperclip>=1.8.0` - Clipboard support for copy commands
+- `openai-harmony>=0.0.8` - OpenAI Harmony format support (built-in)
+- `pyreadline3>=3.4.1` - Command history on Windows (auto-installed on Windows)
 
 ### Optional Dependencies
 
-- `pyreadline3>=3.4.1` - Command history on Windows (**now auto-installed on Windows**)
 - `anthropic-bedrock>=0.8.0` - AWS Bedrock integration (install with `[bedrock]`)
 
 ### Built-in Features

@@ -265,6 +265,7 @@ class ConfigWizard:
             self._configure_features()
             self._configure_ui()
             self._configure_audio()
+            self._configure_harmony()
             self._configure_behavior()
             self._configure_paths()
             self._configure_colors()
@@ -508,6 +509,28 @@ class ConfigWizard:
                 self.config["audio"]["notification_sound"] = custom_sound
         else:
             self.config["audio"]["notification_sound"] = None
+
+    def _configure_harmony(self):
+        """Configure harmony section."""
+        print("\n" + "=" * 70)
+        print("HARMONY - OpenAI Harmony format settings (for gpt-oss models)")
+        print("=" * 70 + "\n")
+
+        self.config["harmony"] = {}
+
+        # show_detailed_thinking
+        current_show_detailed = (
+            self.current_config.get("harmony.show_detailed_thinking", False)
+            if self.current_config
+            else False
+        )
+        self.config["harmony"]["show_detailed_thinking"] = self._prompt_bool(
+            "Show detailed thinking with prefixes (reasoning, analysis, commentary)?",
+            default=current_show_detailed,
+            help_text="When enabled, Harmony agents will display internal reasoning, "
+            "analysis, and commentary channels with labeled prefixes. "
+            "When disabled (default), only shows final response.",
+        )
 
     def _configure_behavior(self):
         """Configure behavior section."""

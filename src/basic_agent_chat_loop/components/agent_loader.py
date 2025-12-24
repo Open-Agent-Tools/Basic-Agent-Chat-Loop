@@ -199,9 +199,14 @@ def extract_agent_metadata(agent: Any) -> Dict[str, Any]:
 
     Returns:
         Dictionary with agent metadata including model_id, max_tokens,
-        temperature, tool_count, and tools list
+        temperature, tool_count, tools list, and uses_harmony flag
     """
     metadata = {}
+
+    # Check for Harmony support
+    from .harmony_processor import HarmonyProcessor
+
+    metadata["uses_harmony"] = HarmonyProcessor.detect_harmony_agent(agent)
 
     # Try to extract model information
     if hasattr(agent, "model"):
