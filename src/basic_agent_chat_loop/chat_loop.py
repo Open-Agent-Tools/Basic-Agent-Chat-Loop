@@ -1332,7 +1332,8 @@ class ChatLoop:
                     response_text.append(str(response))
 
             # Render collected response
-            full_response = "".join(response_text)
+            # Use newline separator to prevent sentences from running together
+            full_response = "\n".join(response_text)
 
             # Process through Harmony if available
             display_text = full_response
