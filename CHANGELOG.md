@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2024-12-24
+
+### Fixed
+- **Verbose Payload Logging Level** - Changed from INFO to DEBUG level
+  - All verbose payload logging now uses `logger.debug()` instead of `logger.info()`
+  - Keeps standard logs clean while preserving diagnostic capabilities
+  - Users can enable verbose logging by setting logger level to DEBUG
+  - Prevents log clutter in production environments
+
+### Technical Details
+The verbose payload logging introduced in v1.4.0 was initially set to INFO level, which could clutter standard logs with detailed diagnostic information. This hotfix moves all payload logging to DEBUG level, following standard logging practices where detailed diagnostic information belongs at DEBUG level. To enable verbose payload logging, set the logger level to DEBUG before initializing the chat loop.
+
 ## [1.4.0] - 2024-12-24
 
 ### Added
