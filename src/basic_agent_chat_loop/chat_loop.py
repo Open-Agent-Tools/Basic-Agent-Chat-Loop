@@ -603,7 +603,13 @@ class ChatLoop:
         harmony_enabled_config_raw = (
             self.config.get("harmony.enabled", None) if self.config else None
         )
-        uses_harmony = self.agent_metadata.get("uses_harmony", False)
+
+        # Auto-detect harmony support
+        # Check both metadata (for loaded agents) and agent object itself
+        # (for dynamic agents)
+        uses_harmony_metadata = self.agent_metadata.get("uses_harmony", False)
+        uses_harmony_detected = HarmonyProcessor.detect_harmony_agent(self.agent)
+        uses_harmony = uses_harmony_metadata or uses_harmony_detected
 
         # Normalize config value to handle string values from YAML
         # "auto"/None → None (auto-detect)
@@ -615,7 +621,9 @@ class ChatLoop:
 
         logger.debug(f"Harmony config value (raw): {harmony_enabled_config_raw!r}")
         logger.debug(f"Harmony config value (normalized): {harmony_enabled_config!r}")
-        logger.debug(f"Auto-detected harmony: {uses_harmony}")
+        logger.debug(f"Harmony from metadata: {uses_harmony_metadata}")
+        logger.debug(f"Harmony from detection: {uses_harmony_detected}")
+        logger.debug(f"Auto-detected harmony (combined): {uses_harmony}")
 
         # Determine if harmony should be enabled
         # None = auto-detect, True = force enable, False = force disable

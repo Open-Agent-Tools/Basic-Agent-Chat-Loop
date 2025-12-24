@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.6] - 2024-12-24
+
+### Fixed
+- **Harmony Auto-Detection** - Fixed harmony processor not auto-detecting gpt-oss models
+  - Now properly calls `HarmonyProcessor.detect_harmony_agent()` during initialization
+  - Enhanced detection to check direct string attributes on agent (model, model_id, model_name)
+  - Updated agent_loader to handle agents where model is stored as direct string attribute
+  - Added comprehensive debug logging to show detection process
+  - Resolves issue where "openai/gpt-oss-120b" models weren't being auto-detected
+
 ## [1.3.5] - 2024-12-24
 
 ### Fixed

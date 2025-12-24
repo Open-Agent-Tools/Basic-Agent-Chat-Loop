@@ -209,19 +209,27 @@ def extract_agent_metadata(agent: Any) -> dict[str, Any]:
     metadata["uses_harmony"] = HarmonyProcessor.detect_harmony_agent(agent)
 
     # Try to extract model information
-    if hasattr(agent, "model"):
-        model = agent.model
+    model_id = None
 
-        # Try multiple attribute names for model ID
-        model_id = None
+    # First check if agent.model, agent.model_id, or agent.model_name are direct strings
+    for attr in ["model", "model_id", "model_name"]:
+        if hasattr(agent, attr):
+            value = getattr(agent, attr)
+            if value and isinstance(value, str):
+                model_id = value
+                break
+
+    # If not found as direct string, check agent.model as an object
+    if not model_id and hasattr(agent, "model"):
+        model = agent.model
 
         # Check for Strands-style config dict first
         if hasattr(model, "config") and isinstance(model.config, dict):
             model_id = model.config.get("model_id")
 
-        # Fall back to checking various attributes
+        # Fall back to checking various attributes on the model object
         if not model_id:
-            for attr in ["model_id", "model", "model_name", "_model_id", "name"]:
+            for attr in ["model_id", "model", "model_name", "_model_id", "name", "id"]:
                 if hasattr(model, attr):
                     model_id = getattr(model, attr)
                     if model_id and model_id != "Unknown":

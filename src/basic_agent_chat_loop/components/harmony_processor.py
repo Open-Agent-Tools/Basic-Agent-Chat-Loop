@@ -107,17 +107,33 @@ class HarmonyProcessor:
 
         # Strategy 3: Check model name/id for gpt-oss or harmony
         model_indicators = []
+
+        # Check direct string attributes on agent
+        for attr in ["model", "model_id", "model_name"]:
+            if hasattr(agent, attr):
+                model_value = getattr(agent, attr)
+                if model_value and isinstance(model_value, str):
+                    model_indicators.append(model_value.lower())
+                    logger.debug(f"Found model string on agent.{attr}: {model_value}")
+
+        # Check nested attributes on agent.model object
         if hasattr(agent, "model"):
             model = agent.model
-            for attr in ["model_id", "model", "model_name", "name"]:
-                if hasattr(model, attr):
-                    model_value = getattr(model, attr)
-                    if model_value:
-                        model_indicators.append(str(model_value).lower())
+            # If model itself is a string, we already captured it above
+            if not isinstance(model, str):
+                for attr in ["model_id", "model", "model_name", "name", "id"]:
+                    if hasattr(model, attr):
+                        model_value = getattr(model, attr)
+                        if model_value:
+                            model_indicators.append(str(model_value).lower())
+                            logger.debug(
+                                f"Found model on agent.model.{attr}: {model_value}"
+                            )
 
+        # Check if any indicator contains gpt-oss or harmony
         for indicator in model_indicators:
             if "gpt-oss" in indicator or "harmony" in indicator:
-                logger.info(f"Agent model contains harmony indicator: {indicator}")
+                logger.info(f"✓ Agent model contains harmony indicator: {indicator}")
                 return True
 
         # Strategy 4: Check agent class name
@@ -132,6 +148,13 @@ class HarmonyProcessor:
             logger.info("Agent has harmony-specific methods")
             return True
 
+        # No harmony indicators found
+        logger.debug(
+            f"No harmony indicators found. Checked: "
+            f"attributes (uses_harmony, harmony_encoding), "
+            f"model indicators: {model_indicators}, "
+            f"class: {agent.__class__.__name__}"
+        )
         return False
 
     def process_response(
