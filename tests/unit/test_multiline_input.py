@@ -99,7 +99,7 @@ async def test_multiline_input_back_command(chat_loop):
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
         with patch("basic_agent_chat_loop.chat_loop.READLINE_AVAILABLE", True):
-            with patch("readline.add_history") as mock_history:
+            with patch("readline.add_history"):
                 result = await chat_loop.get_multiline_input()
 
     assert result == "line 1\nline 2 edited"
@@ -119,7 +119,7 @@ async def test_multiline_input_up_arrow(chat_loop):
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
         with patch("basic_agent_chat_loop.chat_loop.READLINE_AVAILABLE", True):
-            with patch("readline.add_history") as mock_history:
+            with patch("readline.add_history"):
                 result = await chat_loop.get_multiline_input()
 
     assert result == "line 1\nline 2 edited"
@@ -170,7 +170,7 @@ async def test_multiline_input_history_saved(chat_loop):
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
         with patch("basic_agent_chat_loop.chat_loop.READLINE_AVAILABLE", True):
             with patch("readline.add_history") as mock_add_history:
-                result = await chat_loop.get_multiline_input()
+                _ = await chat_loop.get_multiline_input()
 
     # Verify the full block was added to history
     mock_add_history.assert_called_with("line 1\nline 2")
@@ -188,7 +188,7 @@ async def test_multiline_input_line_numbers(chat_loop):
         return inputs.pop(0)
 
     with patch(INPUT_PATCH_TARGET, side_effect=capture_prompts):
-        result = await chat_loop.get_multiline_input()
+        _ = await chat_loop.get_multiline_input()
 
     # Check that prompts contain line numbers
     assert any("1" in p for p in prompts_received)

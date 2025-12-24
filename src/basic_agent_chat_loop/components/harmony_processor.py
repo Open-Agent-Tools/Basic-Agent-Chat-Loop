@@ -260,7 +260,7 @@ class HarmonyProcessor:
 
             # Strategy 1: OpenAI style - choices[0].logprobs
             if hasattr(metadata, "choices"):
-                logger.info(f"✓ Has 'choices' attribute")
+                logger.info("✓ Has 'choices' attribute")
                 if metadata.choices:
                     logger.info(f"  Choices count: {len(metadata.choices)}")
                     choice = metadata.choices[0]
@@ -271,7 +271,7 @@ class HarmonyProcessor:
 
                     # Check for logprobs attribute
                     if hasattr(choice, "logprobs"):
-                        logger.info(f"  ✓ Choice has 'logprobs' attribute")
+                        logger.info("  ✓ Choice has 'logprobs' attribute")
                         logprobs = choice.logprobs
 
                         if logprobs is None:
@@ -307,7 +307,7 @@ class HarmonyProcessor:
 
                             # Check for content array with token_ids
                             if hasattr(logprobs, "content"):
-                                logger.info(f"  ✓ Has 'content' attribute")
+                                logger.info("  ✓ Has 'content' attribute")
                                 if logprobs.content:
                                     logger.info(
                                         f"  Content items: {len(logprobs.content)}"
