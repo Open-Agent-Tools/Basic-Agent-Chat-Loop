@@ -142,7 +142,7 @@ class HarmonyProcessor:
 
         Args:
             response_text: Raw response text from agent
-            metadata: Optional metadata from response object
+            metadata: Optional metadata from response object (for token access)
 
         Returns:
             Dict with processed response data including:
@@ -158,24 +158,57 @@ class HarmonyProcessor:
             "channels": {},
         }
 
+        if not HARMONY_AVAILABLE or not self.encoding:
+            logger.debug("Harmony not available, skipping processing")
+            return result
+
         try:
-            # Look for Harmony-specific markers in the text
-            # Harmony can have multiple output channels (analysis, commentary, final)
-            channels = self._extract_channels(response_text)
-            if channels:
-                result["channels"] = channels
+            # Try to extract tokens from metadata (OpenAI-compatible response)
+            tokens = self._extract_tokens_from_metadata(metadata)
 
-                # If we found structured channels, use the 'final' channel
-                # as primary text
-                if "final" in channels:
-                    result["text"] = channels["final"]
+            if tokens:
+                logger.debug(f"Extracted {len(tokens)} tokens from response")
+                # Parse messages from tokens using Harmony encoding
+                try:
+                    messages = self.encoding.parse_messages_from_completion_tokens(
+                        tokens
+                    )
+                    logger.info(f"Parsed {len(messages)} harmony messages")
 
-            # Check for reasoning indicators
-            if any(
-                marker in response_text.lower()
-                for marker in ["<reasoning>", "<analysis>", "<thinking>"]
-            ):
-                result["has_reasoning"] = True
+                    # Group messages by channel
+                    channels = self._group_messages_by_channel(messages)
+                    if channels:
+                        result["channels"] = channels
+                        result["has_reasoning"] = any(
+                            ch in channels
+                            for ch in ["reasoning", "analysis", "thinking"]
+                        )
+
+                        # Use final channel as primary text if available
+                        if "final" in channels:
+                            result["text"] = channels["final"]
+                        elif "response" in channels:
+                            result["text"] = channels["response"]
+
+                        logger.info(f"Found channels: {list(channels.keys())}")
+                    else:
+                        logger.debug("No harmony channels found in messages")
+
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to parse harmony tokens: {e}. "
+                        "Falling back to text-based extraction"
+                    )
+                    # Fall back to text-based parsing
+                    channels = self._extract_channels(response_text)
+                    if channels:
+                        result["channels"] = channels
+            else:
+                logger.debug("No tokens found, using text-based parsing")
+                # Fallback: Look for text-based markers
+                channels = self._extract_channels(response_text)
+                if channels:
+                    result["channels"] = channels
 
             # Check for tool call indicators
             if any(
@@ -185,8 +218,121 @@ class HarmonyProcessor:
                 result["has_tools"] = True
 
         except Exception as e:
-            logger.warning(f"Error processing Harmony response: {e}")
+            logger.warning(f"Error processing Harmony response: {e}", exc_info=True)
             # Return original text on error
+
+        return result
+
+    def _extract_tokens_from_metadata(
+        self, metadata: Optional[Any]
+    ) -> Optional[list[int]]:
+        """
+        Extract raw tokens from response metadata.
+
+        Looks for tokens in OpenAI-compatible response structures:
+        - response.choices[0].logprobs.tokens (OpenAI style)
+        - response.choices[0].logprobs.content[].token_ids
+        - response.logprobs (direct access)
+
+        Args:
+            metadata: Response object from model
+
+        Returns:
+            List of token IDs or None if not found
+        """
+        if not metadata:
+            return None
+
+        try:
+            # Strategy 1: OpenAI style - choices[0].logprobs
+            if hasattr(metadata, "choices") and metadata.choices:
+                choice = metadata.choices[0]
+
+                # Check for logprobs attribute
+                if hasattr(choice, "logprobs") and choice.logprobs:
+                    logprobs = choice.logprobs
+
+                    # Check for direct tokens list
+                    if hasattr(logprobs, "tokens"):
+                        logger.debug("Found tokens in logprobs.tokens")
+                        return logprobs.tokens
+
+                    # Check for content array with token_ids
+                    if hasattr(logprobs, "content") and logprobs.content:
+                        token_ids = []
+                        for item in logprobs.content:
+                            if hasattr(item, "token_id"):
+                                token_ids.append(item.token_id)
+                            elif hasattr(item, "token"):
+                                # Might be token text, need to encode
+                                pass
+                        if token_ids:
+                            logger.debug(
+                                f"Found {len(token_ids)} token IDs in logprobs.content"
+                            )
+                            return token_ids
+
+            # Strategy 2: Direct logprobs attribute
+            if hasattr(metadata, "logprobs") and metadata.logprobs:
+                if hasattr(metadata.logprobs, "tokens"):
+                    logger.debug("Found tokens in metadata.logprobs.tokens")
+                    return metadata.logprobs.tokens
+
+            # Strategy 3: Check if metadata itself is a list of tokens
+            if isinstance(metadata, list) and all(isinstance(x, int) for x in metadata):
+                logger.debug(f"Metadata is token list: {len(metadata)} tokens")
+                return metadata
+
+            logger.debug("No tokens found in metadata")
+            return None
+
+        except Exception as e:
+            logger.warning(f"Error extracting tokens from metadata: {e}")
+            return None
+
+    def _group_messages_by_channel(
+        self, messages: list[Any]
+    ) -> dict[str, str]:
+        """
+        Group Harmony messages by their channel attribute.
+
+        Args:
+            messages: List of Harmony Message objects
+
+        Returns:
+            Dict mapping channel names to combined content
+        """
+        channels: dict[str, list[str]] = {}
+
+        for msg in messages:
+            try:
+                # Get channel name (default to 'default' if not specified)
+                channel = "default"
+                if hasattr(msg, "channel") and msg.channel:
+                    channel = str(msg.channel).lower()
+
+                # Get content
+                content = ""
+                if hasattr(msg, "content"):
+                    if isinstance(msg.content, str):
+                        content = msg.content
+                    else:
+                        content = str(msg.content)
+
+                # Add to channel group
+                if channel not in channels:
+                    channels[channel] = []
+                if content.strip():
+                    channels[channel].append(content)
+
+            except Exception as e:
+                logger.warning(f"Error processing message: {e}")
+                continue
+
+        # Combine content for each channel
+        result = {}
+        for channel, content_list in channels.items():
+            result[channel] = "\n".join(content_list)
 
         return result
 

@@ -1268,8 +1268,24 @@ class ChatLoop:
             # Process through Harmony if available
             display_text = full_response
             if self.harmony_processor:
+                # Debug: Log response object structure
+                logger.debug(f"Response object type: {type(response_obj)}")
+                logger.debug(f"Response object attrs: {dir(response_obj)[:20]}")
+                if hasattr(response_obj, "choices"):
+                    logger.debug(
+                        f"Response has choices: {len(response_obj.choices)}"
+                    )
+                    if response_obj.choices:
+                        choice = response_obj.choices[0]
+                        logger.debug(f"Choice type: {type(choice)}")
+                        logger.debug(f"Choice attrs: {dir(choice)[:20]}")
+                        if hasattr(choice, "logprobs"):
+                            logger.debug(f"Has logprobs: {choice.logprobs is not None}")
+                        if hasattr(choice, "message"):
+                            logger.debug(f"Message type: {type(choice.message)}")
+
                 processed = self.harmony_processor.process_response(
-                    full_response, metadata=None
+                    full_response, metadata=response_obj
                 )
                 display_text = self.harmony_processor.format_for_display(processed)
 
