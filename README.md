@@ -179,6 +179,7 @@ A configuration file (`~/.chatrc`) is automatically created on first use with re
 
 ```yaml
 features:
+  auto_save: true             # Automatically save conversations on exit
   show_tokens: true           # Display token counts
   show_metadata: true         # Show agent model/tools info
   rich_enabled: true          # Enhanced formatting
@@ -190,6 +191,10 @@ ui:
 audio:
   enabled: true               # Play sound when agent completes
   notification_sound: null    # Custom WAV file (null = bundled sound)
+
+harmony:
+  enabled: auto               # Harmony processing (auto/yes/no)
+  show_detailed_thinking: true  # Show reasoning with labeled prefixes
 
 behavior:
   max_retries: 3              # Retry attempts on failure
@@ -408,18 +413,27 @@ When a Harmony agent is detected, responses are automatically processed to:
 - Detect and format tool calls appropriately
 - Parse structured Harmony response formats
 
-### Detailed Thinking Mode
+### Configuration
 
-By default, only the final response is shown. You can enable detailed thinking mode to see the agent's internal reasoning with labeled prefixes:
+Control Harmony processing behavior:
 
-**Configuration:**
 ```yaml
 # In ~/.chatrc or .chatrc
 harmony:
-  show_detailed_thinking: false  # Default - only show final response
+  enabled: auto                 # auto (default) / yes / no
+  show_detailed_thinking: true  # Default - show all channels with labels
 ```
 
-**With detailed thinking enabled (`true`):**
+**`harmony.enabled` options:**
+- `auto` (default) - Automatically detect harmony agents
+- `yes` - Force enable harmony processing for all agents
+- `no` - Disable harmony processing completely
+
+### Detailed Thinking Mode
+
+**By default, detailed thinking is enabled** - showing all channels with labeled prefixes:
+
+**With detailed thinking enabled (`true`, default):**
 ```
 💭 [REASONING]
 I need to analyze this query for potential bottlenecks...
@@ -436,7 +450,13 @@ This is a common pattern I see in legacy codebases...
 Here are three optimizations for your database query...
 ```
 
-**With detailed thinking disabled (`false`, default):**
+**To disable detailed thinking (set to `false`):**
+```yaml
+harmony:
+  show_detailed_thinking: false  # Only show final response
+```
+
+**Output with detailed thinking disabled:**
 ```
 Here are three optimizations for your database query...
 ```
@@ -543,18 +563,17 @@ MIT License - see LICENSE file for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-### Latest Release: v0.1.0 (2025-10-09)
+### Latest Release: v1.3.3 (2024-12-24)
 
-Initial public release with:
-- 🏷️ Agent alias system
-- 📝 Prompt templates with auto-setup
-- 💰 Token tracking and cost estimation
-- ⚙️ YAML configuration with auto-setup
-- 📊 Status bar and session summaries
-- 🎨 Rich markdown rendering
-- 🔄 Automatic error recovery
-- 📜 Persistent command history
-- ✅ 61% test coverage (158 tests)
+Hotfix release with default features enabled and harmony improvements:
+- ✨ **Default Features Enabled** - All features now enabled by default for better UX
+  - `auto_save: true` - Save conversations automatically
+  - `show_tokens: true` - Display token counts and costs
+  - `show_status_bar: true` - Status bar with agent, model, queries, time
+  - `show_detailed_thinking: true` - Show harmony reasoning channels
+- 🔧 **Status Bar Fix** - Status bar now displays correctly between messages
+- 📊 **Harmony Improvements** - Enhanced detection logging and documentation
+- 🎨 **Better Defaults** - Optimized out-of-the-box experience for new users
 
 ## Troubleshooting
 

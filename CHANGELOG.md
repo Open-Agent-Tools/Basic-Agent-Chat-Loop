@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] - 2024-12-24
+
+### Changed
+- **Default Features Enabled** - All wizard options now default to enabled
+  - `features.auto_save: true` (was false)
+  - `features.show_tokens: true` (was false)
+  - `ui.show_status_bar: true` (was false)
+  - `harmony.show_detailed_thinking: true` (was false)
+  - Provides better out-of-the-box experience for new users
+
+### Fixed
+- **Status Bar Display** - Fixed status bar not showing between messages
+  - Status bar now displays by default with agent name, model, query count, and session time
+  - Resolves issue where status bar was hidden due to false default
+- **Harmony Detection Improvements** - Enhanced logging and documentation
+  - Added detailed logging for harmony auto-detection process
+  - Better documentation of `harmony.enabled` config options in example config
+  - Fixed model_info type handling to prevent TypeError with status bar display
+
 ## [1.3.2] - 2024-12-24
 
 ### Added
@@ -334,6 +353,10 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
+[1.3.3]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.3
+[1.3.2]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.2
+[1.3.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.1
+[1.3.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.0
 [0.3.7]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.7
 [0.3.6]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.6
 [0.3.5]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v0.3.5

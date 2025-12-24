@@ -68,9 +68,9 @@ Toggle functionality on/off:
 
 ```yaml
 features:
-  auto_save: false              # Save conversations on exit
+  auto_save: true               # Save conversations on exit (default: true)
   rich_enabled: true            # Use rich library for formatting
-  show_tokens: false            # Display token counts (future)
+  show_tokens: true             # Display token counts (default: true)
   show_metadata: true           # Show agent metadata on startup
   readline_enabled: true        # Command history
 ```
@@ -109,11 +109,11 @@ ui:
   show_banner: true            # Welcome banner
   show_thinking_indicator: true  # "Thinking..." spinner
   show_duration: true          # Query duration
-  show_status_bar: false       # Top status bar (agent, model, queries, time)
+  show_status_bar: true        # Top status bar (agent, model, queries, time)
 ```
 
 **Status Bar:**
-When enabled, shows a persistent status bar at the top:
+Enabled by default, shows a persistent status bar at the top:
 ```
 ┌─────────────────────────────────────────────────┐
 │ Clara │ Sonnet 4.5 │ 3 queries │ 12m 34s        │
@@ -151,6 +151,55 @@ The notification sound must be a WAV file. The bundled sound (when `notification
 ```yaml
 audio:
   enabled: false
+```
+
+### Harmony
+
+OpenAI Harmony format support for gpt-oss models:
+
+```yaml
+harmony:
+  enabled: auto                 # Harmony processing (auto/yes/no)
+  show_detailed_thinking: true  # Show reasoning with labeled prefixes
+```
+
+**`harmony.enabled` options:**
+- `auto` (default) - Automatically detect harmony agents by checking for:
+  - Explicit `uses_harmony` attribute on the agent
+  - Model names containing "gpt-oss" or "harmony"
+  - Harmony-specific methods or attributes
+  - Agent class names containing "harmony"
+- `yes` - Force enable harmony processing for all agents
+- `no` - Disable harmony processing completely
+
+**Detailed thinking mode:**
+When `show_detailed_thinking: true` (default), the agent's internal reasoning is displayed with labeled prefixes:
+```
+💭 [REASONING]
+I need to analyze this query...
+
+📊 [ANALYSIS]
+Looking at the structure...
+
+📝 [COMMENTARY]
+This is a common pattern...
+
+💬 [RESPONSE]
+Here are the optimizations...
+```
+
+When `show_detailed_thinking: false`, only the final response is shown:
+```
+Here are the optimizations...
+```
+
+**Per-agent harmony settings:**
+```yaml
+agents:
+  'My Harmony Agent':
+    harmony:
+      enabled: yes              # Force enable for this agent
+      show_detailed_thinking: false  # Hide internal reasoning
 ```
 
 ### Sessions
@@ -468,6 +517,10 @@ audio:
   enabled: boolean          # Play sound when agent completes
   notification_sound: string | null  # Path to WAV file or null for bundled sound
 
+harmony:
+  enabled: string           # auto / yes / no - Harmony processing control
+  show_detailed_thinking: boolean  # Show reasoning with labeled prefixes
+
 agents:
   '<agent_name>':
     # Any of the above sections can be overridden
@@ -477,6 +530,7 @@ agents:
     behavior: {...}
     ui: {...}
     audio: {...}
+    harmony: {...}
 ```
 
 ## See Also
