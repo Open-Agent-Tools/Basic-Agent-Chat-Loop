@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.7] - 2024-12-24
+
+### Fixed
+- **CRITICAL: Harmony Detection Order Bug** - Fixed harmony detection running before model extraction
+  - Harmony detection was being called before model_id was extracted from agent, causing auto-detection to fail
+  - Now extracts model_id first, then passes it to `HarmonyProcessor.detect_harmony_agent()`
+  - Resolves issue where "openai/gpt-oss-120b" models showed in banner but harmony wasn't enabled
+  - Added model_id parameter to detect_harmony_agent() for more reliable detection
+
+### Improved
+- **Code Quality** - Comprehensive cleanup of harmony processor implementation
+  - Removed 165 lines of excessive debug logging (25% reduction: 656→491 lines)
+  - Removed duplicate harmony detection call (was being called twice)
+  - Removed dead code: create_conversation() method and unused imports
+  - Changed verbose INFO logging to DEBUG level for non-critical messages
+  - Added clear documentation for weak fallback parsing method
+- **Type Safety** - Fixed all mypy type checking errors
+  - Fixed Collection indexing error in session_manager.py
+  - Fixed optional type handling for session metadata
+  - Added type ignore comments for untyped third-party imports (openai_harmony, pyperclip)
+- **Enhanced Logging** - Added diagnostic logging for harmony detection
+  - Added "Model Detected:" log message after agent load for debugging
+  - Added "Harmony Detected:" log message to confirm detection status
+  - Simplified detection logging to show only essential information
+
+### Technical Details
+This release fixes a critical bug where the harmony detection logic was executing before the model_id was extracted from the agent object. This caused the detection to fail even when the model was correctly identified as "openai/gpt-oss-120b" and shown in the status banner. The fix ensures model extraction happens first, then passes the extracted model_id to the detection function for reliable harmony format identification.
+
 ## [1.3.6] - 2024-12-24
 
 ### Fixed
