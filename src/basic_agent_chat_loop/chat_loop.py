@@ -913,7 +913,9 @@ class ChatLoop:
                 session_id = session_info.session_id
             else:
                 # Get session metadata for display
-                maybe_session_info = self.session_manager.get_session_metadata(session_id)
+                maybe_session_info = self.session_manager.get_session_metadata(
+                    session_id
+                )
                 if not maybe_session_info:
                     print(Colors.error(f"Session not found: {session_id}"))
                     return False
@@ -1524,7 +1526,8 @@ class ChatLoop:
                     {
                         "timestamp": time.time(),
                         "query": query,
-                        "response": display_text,  # Save what user sees (includes harmony formatting)
+                        # Save what user sees (includes harmony formatting)
+                        "response": display_text,
                         "duration": duration,
                         "usage": usage_info,
                     }

@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 # Import openai-harmony components
 # This is a core dependency and should always be available when installed via pip
 try:
-    from openai_harmony import HarmonyEncodingName, load_harmony_encoding  # type: ignore[import-untyped]
+    from openai_harmony import (  # type: ignore[import-untyped]
+        HarmonyEncodingName,
+        load_harmony_encoding,
+    )
 
     HARMONY_AVAILABLE = True
 except ImportError:
