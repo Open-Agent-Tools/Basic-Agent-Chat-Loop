@@ -7,7 +7,7 @@ name = "basic-agent-chat-loop"
 version = "1.2.1"
 description = "Feature-rich interactive CLI for AI agents with token tracking, prompt templates, aliases, and configuration"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = "MIT"
 authors = [
     {name = "Wes", email = "unseriousai@gmail.com"}
@@ -19,7 +19,6 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -76,11 +75,11 @@ python_functions = "test_*"
 
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py39']
 
 [tool.ruff]
 line-length = 88
-target-version = "py38"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]

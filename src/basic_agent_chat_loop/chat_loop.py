@@ -40,7 +40,7 @@ import stat
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pyperclip
 
@@ -422,7 +422,7 @@ class ChatLoop:
         self.last_query = ""  # Track last user query for copy command
 
         # Conversation tracking for auto-save
-        self.conversation_history: list[Dict[str, Any]] = []
+        self.conversation_history: list[dict[str, Any]] = []
 
         # Generate session ID for this chat session
         from datetime import datetime
@@ -610,7 +610,7 @@ class ChatLoop:
                 f"Harmony processor enabled (detailed_thinking={show_detailed})"
             )
 
-    def _extract_token_usage(self, response_obj) -> Optional[Dict[str, int]]:
+    def _extract_token_usage(self, response_obj) -> Optional[dict[str, int]]:
         """
         Extract token usage from response object.
 
@@ -738,9 +738,7 @@ class ChatLoop:
         lines.append("\n---\n")
 
         for i, entry in enumerate(self.conversation_history, 1):
-            timestamp = datetime.fromtimestamp(entry["timestamp"]).strftime(
-                "%H:%M:%S"
-            )
+            timestamp = datetime.fromtimestamp(entry["timestamp"]).strftime("%H:%M:%S")
             lines.append(f"\n## Query {i} ({timestamp})\n")
             lines.append(f"**You:** {entry['query']}\n")
             lines.append(f"**{self.agent_name}:**\n\n{entry['response']}\n")
@@ -1115,7 +1113,7 @@ class ChatLoop:
                 while not stop_event.is_set():
                     await asyncio.sleep(0.1)
 
-    async def _stream_agent_response(self, query: str) -> Dict[str, Any]:
+    async def _stream_agent_response(self, query: str) -> dict[str, Any]:
         """
         Stream agent response asynchronously.
 

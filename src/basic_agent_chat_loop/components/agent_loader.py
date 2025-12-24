@@ -10,12 +10,12 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def _find_package_root(agent_path: Path) -> Tuple[Path, str]:
+def _find_package_root(agent_path: Path) -> tuple[Path, str]:
     """
     Find the package root by walking up directories looking for __init__.py files.
 
@@ -104,7 +104,7 @@ def _ensure_package_loaded(package_root: Path, package_name: str) -> None:
         # relative imports within the agent.
 
 
-def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
+def load_agent_module(agent_path: str) -> tuple[Any, str, str]:
     """
     Dynamically load agent module and extract root_agent.
 
@@ -190,7 +190,7 @@ def load_agent_module(agent_path: str) -> Tuple[Any, str, str]:
     return agent, agent_name, agent_description
 
 
-def extract_agent_metadata(agent: Any) -> Dict[str, Any]:
+def extract_agent_metadata(agent: Any) -> dict[str, Any]:
     """
     Extract metadata from agent for display.
 

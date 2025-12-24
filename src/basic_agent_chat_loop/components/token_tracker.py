@@ -4,7 +4,6 @@ Token tracking and cost estimation.
 Tracks token usage per query and session with model-based cost estimation.
 """
 
-from typing import List, Tuple
 
 
 class TokenTracker:
@@ -37,7 +36,7 @@ class TokenTracker:
         self.model_name = model_name
         self.total_input_tokens = 0
         self.total_output_tokens = 0
-        self.query_history: List[Tuple[int, int]] = []  # List of (input, output) tuples
+        self.query_history: list[tuple[int, int]] = []  # List of (input, output) tuples
 
     def add_usage(self, input_tokens: int, output_tokens: int):
         """

@@ -5,7 +5,7 @@ Interactive wizard to help users configure their .chatrc settings.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from ..chat_config import ChatConfig
 from .ui_components import COLOR_PALETTE
@@ -57,7 +57,7 @@ def reset_config_to_defaults() -> Optional[Path]:
             return None
 
         # Create default config
-        default_config: Dict[str, Any] = {
+        default_config: dict[str, Any] = {
             "colors": {
                 "user": "bright_white",
                 "agent": "bright_blue",
@@ -224,7 +224,7 @@ class ConfigWizard:
 
     def __init__(self):
         """Initialize the wizard."""
-        self.config: Dict[str, Any] = {}
+        self.config: dict[str, Any] = {}
         self.current_config: Optional[ChatConfig] = None
 
     def run(self) -> Optional[Path]:

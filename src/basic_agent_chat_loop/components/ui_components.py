@@ -5,7 +5,6 @@ Contains terminal color codes and status bar rendering.
 """
 
 import time
-from typing import Dict
 
 # Named color palette - maps color names to ANSI escape codes
 COLOR_PALETTE = {
@@ -58,7 +57,7 @@ class Colors:
         return color_value
 
     @classmethod
-    def configure(cls, config: Dict[str, str]):
+    def configure(cls, config: dict[str, str]):
         """
         Configure colors from config dictionary.
 

@@ -9,7 +9,7 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class DependencyManager:
         self.agent_path = Path(agent_path).resolve()
         self.agent_dir = self.agent_path.parent
 
-    def detect_dependency_file(self) -> Optional[Tuple[str, Path]]:
+    def detect_dependency_file(self) -> Optional[tuple[str, Path]]:
         """
         Detect dependency files in agent directory.
 
@@ -58,7 +58,7 @@ class DependencyManager:
 
         return None
 
-    def install_dependencies(self, file_type: str, file_path: Path) -> Tuple[bool, str]:
+    def install_dependencies(self, file_type: str, file_path: Path) -> tuple[bool, str]:
         """
         Install dependencies from detected file.
 
@@ -82,7 +82,7 @@ class DependencyManager:
             logger.error(f"Failed to install dependencies: {e}", exc_info=True)
             return (False, f"Installation failed: {e}")
 
-    def _install_from_requirements(self, requirements_file: Path) -> Tuple[bool, str]:
+    def _install_from_requirements(self, requirements_file: Path) -> tuple[bool, str]:
         """Install dependencies from requirements.txt."""
         try:
             # Use subprocess to call pip
@@ -107,7 +107,7 @@ class DependencyManager:
         except Exception as e:
             return (False, f"Installation error: {e}")
 
-    def _install_from_pyproject(self, pyproject_file: Path) -> Tuple[bool, str]:
+    def _install_from_pyproject(self, pyproject_file: Path) -> tuple[bool, str]:
         """Install dependencies from pyproject.toml."""
         try:
             # Install in editable mode from directory containing pyproject.toml
@@ -132,7 +132,7 @@ class DependencyManager:
         except Exception as e:
             return (False, f"Installation error: {e}")
 
-    def _install_from_setup(self, setup_file: Path) -> Tuple[bool, str]:
+    def _install_from_setup(self, setup_file: Path) -> tuple[bool, str]:
         """Install dependencies from setup.py."""
         try:
             # Install in editable mode from directory containing setup.py

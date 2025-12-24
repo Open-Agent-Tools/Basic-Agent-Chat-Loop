@@ -6,7 +6,7 @@ Handles all display methods including banner, help, info, and session summary.
 
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from .token_tracker import TokenTracker
 from .ui_components import Colors
@@ -27,7 +27,7 @@ class DisplayManager:
         self,
         agent_name: str,
         agent_description: str,
-        agent_metadata: Optional[Dict[str, Any]] = None,
+        agent_metadata: Optional[dict[str, Any]] = None,
         show_banner: bool = True,
         show_metadata: bool = False,
         use_rich: bool = False,

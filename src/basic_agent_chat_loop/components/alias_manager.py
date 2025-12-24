@@ -7,7 +7,7 @@ Handles saving, loading, and managing agent aliases in ~/.chat_aliases.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class AliasManager:
         """
         self.aliases_file = aliases_file or Path.home() / ".chat_aliases"
 
-    def load_aliases(self) -> Dict[str, str]:
+    def load_aliases(self) -> dict[str, str]:
         """
         Load aliases from file.
 
@@ -52,7 +52,7 @@ class AliasManager:
             logger.error(f"Failed to load aliases: {e}")
             return {}
 
-    def save_aliases(self, aliases: Dict[str, str]) -> bool:
+    def save_aliases(self, aliases: dict[str, str]) -> bool:
         """
         Save aliases to file.
 
@@ -171,7 +171,7 @@ class AliasManager:
         else:
             return False, "Failed to save aliases file"
 
-    def list_aliases(self) -> Dict[str, str]:
+    def list_aliases(self) -> dict[str, str]:
         """
         List all aliases.
 

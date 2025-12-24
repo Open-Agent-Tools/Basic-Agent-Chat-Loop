@@ -9,7 +9,7 @@ when the package is properly installed.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +65,7 @@ class HarmonyProcessor:
             return
 
         try:
-            self.encoding = load_harmony_encoding(
-                HarmonyEncodingName.HARMONY_GPT_OSS
-            )
+            self.encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
             logger.info("Harmony encoding initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Harmony encoding: {e}")
@@ -137,8 +135,8 @@ class HarmonyProcessor:
         return False
 
     def process_response(
-        self, response_text: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, response_text: str, metadata: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
         """
         Process a response that may contain Harmony-formatted content.
 
@@ -167,7 +165,8 @@ class HarmonyProcessor:
             if channels:
                 result["channels"] = channels
 
-                # If we found structured channels, use the 'final' channel as primary text
+                # If we found structured channels, use the 'final' channel
+                # as primary text
                 if "final" in channels:
                     result["text"] = channels["final"]
 
@@ -191,7 +190,7 @@ class HarmonyProcessor:
 
         return result
 
-    def _extract_channels(self, text: str) -> Dict[str, str]:
+    def _extract_channels(self, text: str) -> dict[str, str]:
         """
         Extract output channels from Harmony-formatted text.
 
@@ -220,7 +219,7 @@ class HarmonyProcessor:
 
         return channels
 
-    def format_for_display(self, processed_response: Dict[str, Any]) -> str:
+    def format_for_display(self, processed_response: dict[str, Any]) -> str:
         """
         Format processed Harmony response for terminal display.
 

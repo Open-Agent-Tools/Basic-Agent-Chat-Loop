@@ -460,7 +460,7 @@ chat_loop my_harmony_agent
 
 ### Core Dependencies
 
-- **Python 3.8+**
+- **Python 3.9+** (required by openai-harmony dependency)
 - `pyyaml>=6.0.1` - Configuration file parsing
 - `rich>=13.7.0` - Enhanced terminal rendering
 - `pyperclip>=1.8.0` - Clipboard support for copy commands

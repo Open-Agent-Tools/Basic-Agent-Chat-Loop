@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class SessionInfo:
     total_cost: float
     preview: str  # First query text
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "session_id": self.session_id,
@@ -44,7 +44,7 @@ class SessionInfo:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SessionInfo":
+    def from_dict(cls, data: dict[str, Any]) -> "SessionInfo":
         """Create SessionInfo from dictionary."""
         return cls(
             session_id=data["session_id"],
@@ -87,7 +87,7 @@ class SessionManager:
             logger.error(f"Failed to create sessions directory: {e}")
             return False
 
-    def _load_index(self) -> Dict[str, Any]:
+    def _load_index(self) -> dict[str, Any]:
         """
         Load session index.
 
@@ -114,7 +114,7 @@ class SessionManager:
             logger.error(f"Failed to load index: {e}")
             return {"sessions": [], "last_updated": datetime.now().isoformat()}
 
-    def _save_index(self, index: Dict[str, Any]) -> bool:
+    def _save_index(self, index: dict[str, Any]) -> bool:
         """
         Save session index.
 
@@ -188,8 +188,8 @@ class SessionManager:
         agent_name: str,
         agent_path: str,
         agent_description: str,
-        conversation: List[Dict[str, Any]],
-        metadata: Optional[Dict[str, Any]] = None,
+        conversation: list[dict[str, Any]],
+        metadata: Optional[dict[str, Any]] = None,
     ) -> tuple[bool, str]:
         """
         Save session to both JSON and markdown formats.
@@ -280,7 +280,7 @@ class SessionManager:
             return False, f"Failed to save session: {e}"
 
     def _save_markdown(
-        self, md_path: Path, session_id: str, json_data: Dict[str, Any]
+        self, md_path: Path, session_id: str, json_data: dict[str, Any]
     ) -> None:
         """
         Save session as markdown file.
@@ -341,7 +341,7 @@ class SessionManager:
         # Set secure permissions
         md_path.chmod(0o600)
 
-    def load_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def load_session(self, session_id: str) -> Optional[dict[str, Any]]:
         """
         Load session data from JSON file.
 
@@ -373,7 +373,7 @@ class SessionManager:
 
     def list_sessions(
         self, agent_name: Optional[str] = None, limit: int = 20
-    ) -> List[SessionInfo]:
+    ) -> list[SessionInfo]:
         """
         List available sessions.
 
@@ -432,7 +432,7 @@ class SessionManager:
             logger.error(f"Failed to delete session: {e}")
             return False, f"Failed to delete session: {e}"
 
-    def search_sessions(self, query: str) -> List[SessionInfo]:
+    def search_sessions(self, query: str) -> list[SessionInfo]:
         """
         Search sessions by query text.
 

@@ -6,7 +6,7 @@ Handles loading and listing markdown-based prompt templates.
 
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +175,7 @@ Include:
             logger.error(f"Error loading template {template_name}: {e}")
             return None
 
-    def list_templates(self) -> List[str]:
+    def list_templates(self) -> list[str]:
         """
         List available prompt templates from ~/.prompts/
 
@@ -191,7 +191,7 @@ Include:
 
         return sorted(templates)
 
-    def get_template_info(self, template_name: str) -> Optional[Tuple[str, str]]:
+    def get_template_info(self, template_name: str) -> Optional[tuple[str, str]]:
         """
         Get template description from first line.
 
@@ -218,7 +218,7 @@ Include:
         except Exception:
             return (template_name, template_name)
 
-    def list_templates_with_descriptions(self) -> List[Tuple[str, str]]:
+    def list_templates_with_descriptions(self) -> list[tuple[str, str]]:
         """
         List templates with their descriptions.
 

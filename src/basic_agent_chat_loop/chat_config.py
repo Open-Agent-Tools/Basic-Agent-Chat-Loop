@@ -12,7 +12,7 @@ Configuration file format: YAML
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 try:
     import yaml  # type: ignore[import-untyped]
@@ -65,7 +65,8 @@ class ChatConfig:
             "notification_sound": None,  # Uses bundled notification.wav if None
         },
         "harmony": {
-            "show_detailed_thinking": False,  # Show reasoning/analysis/commentary channels
+            # Show reasoning/analysis/commentary channels
+            "show_detailed_thinking": False,
         },
         # Per-agent overrides (example structure)
         "agents": {
@@ -84,7 +85,7 @@ class ChatConfig:
         """
         self.config = self._load_config(config_path)
 
-    def _load_config(self, explicit_path: Optional[Path] = None) -> Dict[str, Any]:
+    def _load_config(self, explicit_path: Optional[Path] = None) -> dict[str, Any]:
         """
         Load configuration with hierarchical precedence.
 
@@ -140,13 +141,13 @@ class ChatConfig:
 
         return config
 
-    def _deep_copy(self, d: Dict) -> Dict:
+    def _deep_copy(self, d: dict) -> dict:
         """Deep copy a dictionary."""
         import copy
 
         return copy.deepcopy(d)
 
-    def _merge_config(self, base: Dict, override: Dict) -> Dict:
+    def _merge_config(self, base: dict, override: dict) -> dict:
         """
         Recursively merge override config into base config.
 
@@ -203,7 +204,7 @@ class ChatConfig:
         value = self._get_nested(self.config, key)
         return value if value is not None else default
 
-    def _get_nested(self, d: Dict, key: str) -> Any:
+    def _get_nested(self, d: dict, key: str) -> Any:
         """
         Get nested dictionary value using dot notation.
 
@@ -227,7 +228,7 @@ class ChatConfig:
 
     def get_section(
         self, section: str, agent_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get entire configuration section with agent overrides applied.
 
