@@ -214,11 +214,18 @@ def extract_agent_metadata(agent: Any) -> dict[str, Any]:
 
         # Try multiple attribute names for model ID
         model_id = None
-        for attr in ["model_id", "model", "model_name", "_model_id", "name"]:
-            if hasattr(model, attr):
-                model_id = getattr(model, attr)
-                if model_id and model_id != "Unknown":
-                    break
+
+        # Check for Strands-style config dict first
+        if hasattr(model, "config") and isinstance(model.config, dict):
+            model_id = model.config.get("model_id")
+
+        # Fall back to checking various attributes
+        if not model_id:
+            for attr in ["model_id", "model", "model_name", "_model_id", "name"]:
+                if hasattr(model, attr):
+                    model_id = getattr(model, attr)
+                    if model_id and model_id != "Unknown":
+                        break
 
         # Clean up model_id if it's a long AWS model string
         if model_id and isinstance(model_id, str):
@@ -238,8 +245,17 @@ def extract_agent_metadata(agent: Any) -> dict[str, Any]:
                 model_id = "Claude Haiku"
 
         metadata["model_id"] = model_id or "Unknown Model"
-        metadata["max_tokens"] = getattr(model, "max_tokens", "Unknown")
-        metadata["temperature"] = getattr(model, "temperature", "Unknown")
+
+        # Try to get max_tokens and temperature
+        # Check config dict first (Strands-style), then attributes
+        if hasattr(model, "config") and isinstance(model.config, dict):
+            metadata["max_tokens"] = model.config.get("max_tokens", "Unknown")
+            # Temperature might be in params dict within config
+            params = model.config.get("params", {})
+            metadata["temperature"] = params.get("temperature", "Unknown")
+        else:
+            metadata["max_tokens"] = getattr(model, "max_tokens", "Unknown")
+            metadata["temperature"] = getattr(model, "temperature", "Unknown")
 
     # Try to extract tools - check multiple attributes
     tools = None

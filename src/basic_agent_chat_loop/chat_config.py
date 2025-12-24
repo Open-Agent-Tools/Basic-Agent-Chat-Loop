@@ -65,6 +65,8 @@ class ChatConfig:
             "notification_sound": None,  # Uses bundled notification.wav if None
         },
         "harmony": {
+            # Enable harmony processing (auto-detects by default, set to True to force)
+            "enabled": None,  # None = auto-detect, True = force enable, False = disable
             # Show reasoning/analysis/commentary channels
             "show_detailed_thinking": False,
         },

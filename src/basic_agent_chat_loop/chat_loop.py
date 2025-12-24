@@ -596,7 +596,23 @@ class ChatLoop:
 
         # Setup Harmony processor if agent uses Harmony format
         self.harmony_processor = None
-        if self.agent_metadata.get("uses_harmony", False):
+
+        # Check if harmony should be enabled
+        # Priority: config override > auto-detection
+        harmony_enabled_config = (
+            self.config.get("harmony.enabled", None) if self.config else None
+        )
+        uses_harmony = self.agent_metadata.get("uses_harmony", False)
+
+        # Determine if harmony should be enabled
+        # None = auto-detect, True = force enable, False = force disable
+        should_enable_harmony = (
+            harmony_enabled_config
+            if harmony_enabled_config is not None
+            else uses_harmony
+        )
+
+        if should_enable_harmony:
             # Get detailed thinking config option
             show_detailed = (
                 self.config.get("harmony.show_detailed_thinking", False)
@@ -606,9 +622,18 @@ class ChatLoop:
             self.harmony_processor = HarmonyProcessor(
                 show_detailed_thinking=show_detailed
             )
-            logger.info(
-                f"Harmony processor enabled (detailed_thinking={show_detailed})"
-            )
+
+            # Log how harmony was enabled
+            if harmony_enabled_config is True:
+                logger.info(
+                    f"Harmony processor enabled via config override (detailed_thinking={show_detailed})"
+                )
+            elif harmony_enabled_config is False:
+                logger.info("Harmony processor disabled via config override")
+            else:
+                logger.info(
+                    f"Harmony processor auto-detected (detailed_thinking={show_detailed})"
+                )
 
     def _extract_token_usage(self, response_obj) -> Optional[dict[str, int]]:
         """

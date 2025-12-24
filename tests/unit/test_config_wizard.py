@@ -730,7 +730,8 @@ class TestRunMethod:
             "y",
             "",
             # Harmony
-            "",
+            "",  # enabled (auto/yes/no)
+            "",  # show_detailed_thinking
             # Behavior
             "",
             "",

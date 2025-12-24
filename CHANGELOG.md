@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2024-12-24
+
+### Added
+- **Harmony Config Override** - Manual control for harmony processing
+  - New `harmony.enabled` config option with tri-state values (auto/yes/no)
+  - `auto` (default) - Auto-detect harmony agents
+  - `yes` - Force enable harmony processing for all agents
+  - `no` - Disable harmony processing entirely
+  - Added to config wizard with validation
+  - Fixes issue where harmony wasn't activating despite being configured
+
+### Fixed
+- **Model Detection for Strands Agents** - Correctly extract model metadata
+  - Fixed "Unknown Model" display for Strands-based agents
+  - Now checks `model.config` dict for Strands-style configuration
+  - Properly extracts `model_id`, `max_tokens`, and `temperature` from config
+  - Agent metadata now displays correctly for all Strands agents
+
+### Changed
+- Harmony processor initialization now respects config override priority
+- Improved logging for harmony enablement (shows whether forced or auto-detected)
+
+## [1.3.1] - 2024-12-24
+
+### Fixed
+- **Package Metadata** - Removed setuptools deprecation warnings
+  - Removed deprecated `license = "MIT"` table format
+  - Removed deprecated "License :: OSI Approved :: MIT License" classifier
+  - Added modern `license-files = ["LICENSE"]` reference
+  - Added `maintainers` field
+  - Fixes "invalid distribution" warning on Windows
+
+## [1.3.0] - 2024-12-24
+
+### Added
+- **OpenAI Harmony Support** - Full integration for gpt-oss models
+  - Automatic detection of harmony-formatted agents
+  - Specialized `HarmonyProcessor` for parsing structured responses
+  - Multi-channel output support (reasoning, analysis, commentary, final)
+  - Configurable detailed thinking mode with labeled prefixes
+  - New `harmony.show_detailed_thinking` config option
+  - Added to config wizard
+  - Now a core dependency (openai-harmony>=0.0.8)
+
+### Changed
+- **Python 3.9+ Required** - Upgraded from Python 3.8
+  - Required by openai-harmony dependency (pydantic>=2.11.7)
+  - Updated all documentation and classifiers
+  - Modernized type annotations (Dict→dict, List→list, Tuple→tuple)
+
 ## [0.3.7] - 2025-10-20
 
 ### Fixed

@@ -518,6 +518,49 @@ class ConfigWizard:
 
         self.config["harmony"] = {}
 
+        # enabled (tri-state: None/auto, True/force, False/disable)
+        current_enabled = (
+            self.current_config.get("harmony.enabled", None)
+            if self.current_config
+            else None
+        )
+
+        # Convert tri-state to user-friendly options
+        if current_enabled is None:
+            default_enabled_str = "auto"
+        elif current_enabled:
+            default_enabled_str = "yes"
+        else:
+            default_enabled_str = "no"
+
+        # Prompt for choice with validation
+        print(
+            "Enable Harmony processing? (auto/yes/no)\n"
+            "  auto = Auto-detect harmony agents (default)\n"
+            "  yes  = Force enable for all agents\n"
+            "  no   = Disable harmony processing"
+        )
+
+        enabled_response = None
+        while enabled_response is None:
+            response = self._prompt_string(
+                f"Enter choice [auto/yes/no] (default: {default_enabled_str})",
+                default=default_enabled_str,
+            ).lower()
+
+            if response in ["auto", "yes", "no"]:
+                enabled_response = response
+            else:
+                print("Invalid choice. Please enter 'auto', 'yes', or 'no'.")
+
+        # Convert back to tri-state
+        if enabled_response == "auto":
+            self.config["harmony"]["enabled"] = None
+        elif enabled_response == "yes":
+            self.config["harmony"]["enabled"] = True
+        else:
+            self.config["harmony"]["enabled"] = False
+
         # show_detailed_thinking
         current_show_detailed = (
             self.current_config.get("harmony.show_detailed_thinking", False)
