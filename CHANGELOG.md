@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.8] - 2024-12-24
+
+### Fixed
+- **Session Logging Bug** - Fixed conversation logs only saving user input, missing agent responses
+  - Was saving `full_response` (raw text) instead of `display_text` (what user sees)
+  - With harmony processing, if token extraction fails, `full_response` could be empty while `display_text` has content
+  - Now saves `display_text` to ensure logs match what's displayed on screen
+  - Also updated `self.last_response` to use `display_text` for clipboard copy commands
+  - Ensures "what you see is what gets saved" consistency across display, logs, and clipboard
+
+### Technical Details
+This fixes a bug introduced with harmony processing where the conversation history was saving the raw response text before harmony formatting, while displaying the formatted version to the user. When harmony's token-level parsing wasn't available (missing logprobs), the raw text could be empty while the display text contained properly formatted content. The fix ensures session saves, clipboard copies, and display all use the same processed response text.
+
 ## [1.3.7] - 2024-12-24
 
 ### Fixed
