@@ -203,12 +203,8 @@ def extract_agent_metadata(agent: Any) -> dict[str, Any]:
     """
     metadata = {}
 
-    # Check for Harmony support
-    from .harmony_processor import HarmonyProcessor
-
-    metadata["uses_harmony"] = HarmonyProcessor.detect_harmony_agent(agent)
-
-    # Try to extract model information
+    # Try to extract model information FIRST
+    # (needed for harmony detection)
     model_id = None
 
     # First check if agent.model, agent.model_id, or agent.model_name are direct strings
@@ -253,6 +249,13 @@ def extract_agent_metadata(agent: Any) -> dict[str, Any]:
                 model_id = "Claude Haiku"
 
         metadata["model_id"] = model_id or "Unknown Model"
+
+        # Check for Harmony support (after extracting model_id)
+        from .harmony_processor import HarmonyProcessor
+
+        metadata["uses_harmony"] = HarmonyProcessor.detect_harmony_agent(
+            agent, model_id=model_id
+        )
 
         # Try to get max_tokens and temperature
         # Check config dict first (Strands-style), then attributes

@@ -16,15 +16,7 @@ logger = logging.getLogger(__name__)
 # Import openai-harmony components
 # This is a core dependency and should always be available when installed via pip
 try:
-    from openai_harmony import (
-        Conversation,
-        DeveloperContent,
-        HarmonyEncodingName,
-        Message,
-        Role,
-        SystemContent,
-        load_harmony_encoding,
-    )
+    from openai_harmony import HarmonyEncodingName, load_harmony_encoding  # type: ignore[import-untyped]
 
     HARMONY_AVAILABLE = True
 except ImportError:
@@ -72,17 +64,18 @@ class HarmonyProcessor:
             self.encoding = None
 
     @staticmethod
-    def detect_harmony_agent(agent: Any) -> bool:
+    def detect_harmony_agent(agent: Any, model_id: Optional[str] = None) -> bool:
         """
         Detect if an agent uses Harmony format.
 
         Detection strategies:
         1. Check for harmony-specific attributes
-        2. Check agent metadata for harmony indicators
-        3. Check agent model name for gpt-oss references
+        2. Check provided model_id parameter
+        3. Check agent model attributes for gpt-oss references
 
         Args:
             agent: Agent instance to check
+            model_id: Optional pre-extracted model ID (recommended)
 
         Returns:
             True if agent appears to use Harmony format
@@ -97,15 +90,24 @@ class HarmonyProcessor:
 
         # Strategy 1: Check for explicit harmony attribute
         if hasattr(agent, "uses_harmony") and agent.uses_harmony:
-            logger.info("Agent has explicit uses_harmony=True")
+            logger.info("✓ Harmony: Agent has explicit uses_harmony=True")
             return True
 
         # Strategy 2: Check for harmony encoding attribute
         if hasattr(agent, "harmony_encoding"):
-            logger.info("Agent has harmony_encoding attribute")
+            logger.info("✓ Harmony: Agent has harmony_encoding attribute")
             return True
 
-        # Strategy 3: Check model name/id for gpt-oss or harmony
+        # Strategy 3: Check provided model_id (preferred method)
+        if model_id:
+            model_lower = model_id.lower()
+            if "gpt-oss" in model_lower or "harmony" in model_lower:
+                logger.info(f"✓ Harmony: Model ID contains indicator: {model_id}")
+                return True
+            else:
+                logger.debug(f"Model ID does not indicate harmony: {model_id}")
+
+        # Strategy 4: Check model attributes on agent as fallback
         model_indicators = []
 
         # Check direct string attributes on agent
@@ -133,7 +135,9 @@ class HarmonyProcessor:
         # Check if any indicator contains gpt-oss or harmony
         for indicator in model_indicators:
             if "gpt-oss" in indicator or "harmony" in indicator:
-                logger.info(f"✓ Agent model contains harmony indicator: {indicator}")
+                logger.info(
+                    f"✓ Harmony: Model attribute contains indicator: {indicator}"
+                )
                 return True
 
         # Strategy 4: Check agent class name
@@ -286,146 +290,65 @@ class HarmonyProcessor:
             return None
 
         try:
-            # Log detailed response structure for debugging
-            logger.info("=" * 60)
-            logger.info("HARMONY DEBUG: Response Structure Analysis")
-            logger.info("=" * 60)
-            logger.info(f"Response type: {type(metadata).__name__}")
-            logger.info(
-                f"Response module: {type(metadata).__module__}"
-            )
-
-            # Log all non-private attributes
-            attrs = [a for a in dir(metadata) if not a.startswith("_")]
-            logger.info(f"Available attributes: {attrs[:30]}")
+            # Log basic response structure
+            logger.debug(f"Extracting tokens from {type(metadata).__name__}")
 
             # Strategy 1: OpenAI style - choices[0].logprobs
-            if hasattr(metadata, "choices"):
-                logger.info("✓ Has 'choices' attribute")
-                if metadata.choices:
-                    logger.info(f"  Choices count: {len(metadata.choices)}")
-                    choice = metadata.choices[0]
-                    logger.info(f"  Choice[0] type: {type(choice).__name__}")
-
-                    choice_attrs = [a for a in dir(choice) if not a.startswith("_")]
-                    logger.info(f"  Choice[0] attributes: {choice_attrs[:20]}")
-
-                    # Check for logprobs attribute
-                    if hasattr(choice, "logprobs"):
-                        logger.info("  ✓ Choice has 'logprobs' attribute")
-                        logprobs = choice.logprobs
-
-                        if logprobs is None:
-                            logger.warning(
-                                "  ✗ logprobs is None - you need to enable "
-                                "logprobs in your API call!"
-                            )
-                            logger.warning(
-                                "  Add 'logprobs=True' to your completion request"
-                            )
-                        else:
-                            logger.info(f"  Logprobs type: {type(logprobs).__name__}")
-                            logprobs_attrs = [
-                                a for a in dir(logprobs) if not a.startswith("_")
-                            ]
-                            logger.info(
-                                f"  Logprobs attributes: {logprobs_attrs[:20]}"
-                            )
-
-                            # Check for direct tokens list
-                            if hasattr(logprobs, "tokens"):
-                                tokens = logprobs.tokens
-                                logger.info(
-                                    f"  ✓ Found tokens in logprobs.tokens: "
-                                    f"{len(tokens) if tokens else 0} tokens"
-                                )
-                                if tokens:
-                                    logger.info(
-                                        f"  First 5 tokens: {tokens[:5]}"
-                                    )
-                                    logger.info("=" * 60)
-                                    return tokens
-
-                            # Check for content array with token_ids
-                            if hasattr(logprobs, "content"):
-                                logger.info("  ✓ Has 'content' attribute")
-                                if logprobs.content:
-                                    logger.info(
-                                        f"  Content items: {len(logprobs.content)}"
-                                    )
-                                    if logprobs.content:
-                                        first_item = logprobs.content[0]
-                                        logger.info(
-                                            f"  First item type: "
-                                            f"{type(first_item).__name__}"
-                                        )
-                                        item_attrs = [
-                                            a
-                                            for a in dir(first_item)
-                                            if not a.startswith("_")
-                                        ]
-                                        logger.info(
-                                            f"  First item attrs: {item_attrs[:20]}"
-                                        )
-
-                                    token_ids = []
-                                    for item in logprobs.content:
-                                        if hasattr(item, "token_id"):
-                                            token_ids.append(item.token_id)
-                                        elif hasattr(item, "token"):
-                                            # Log token text for debugging
-                                            logger.debug(
-                                                f"  Found token text: "
-                                                f"{getattr(item, 'token', '')[:20]}"
-                                            )
-                                    if token_ids:
-                                        logger.info(
-                                            f"  ✓ Extracted {len(token_ids)} "
-                                            f"token IDs from content"
-                                        )
-                                        logger.info(
-                                            f"  First 5 token IDs: {token_ids[:5]}"
-                                        )
-                                        logger.info("=" * 60)
-                                        return token_ids
+            if hasattr(metadata, "choices") and metadata.choices:
+                choice = metadata.choices[0]
+                if hasattr(choice, "logprobs"):
+                    logprobs = choice.logprobs
+                    if logprobs is None:
+                        logger.warning(
+                            "logprobs is None - enable logprobs=True in your API call"
+                        )
                     else:
-                        logger.warning("  ✗ Choice has no 'logprobs' attribute")
-                else:
-                    logger.warning("  ✗ Choices list is empty")
-            else:
-                logger.info("✗ No 'choices' attribute")
+                        # Check for direct tokens list
+                        if hasattr(logprobs, "tokens") and logprobs.tokens:
+                            logger.debug(
+                                f"Extracted {len(logprobs.tokens)} tokens from logprobs"
+                            )
+                            return logprobs.tokens
+
+                        # Check for content array with token_ids
+                        if hasattr(logprobs, "content") and logprobs.content:
+                            token_ids = [
+                                item.token_id
+                                for item in logprobs.content
+                                if hasattr(item, "token_id")
+                            ]
+                            if token_ids:
+                                logger.debug(
+                                    f"Extracted {len(token_ids)} token IDs from content"
+                                )
+                                return token_ids
 
             # Strategy 2: Direct logprobs attribute
-            if hasattr(metadata, "logprobs"):
-                logger.info("✓ Has direct 'logprobs' attribute")
-                if metadata.logprobs and hasattr(metadata.logprobs, "tokens"):
-                    logger.info("  ✓ Found tokens in metadata.logprobs.tokens")
-                    logger.info("=" * 60)
-                    return metadata.logprobs.tokens
+            if (
+                hasattr(metadata, "logprobs")
+                and metadata.logprobs
+                and hasattr(metadata.logprobs, "tokens")
+            ):
+                logger.debug("Found tokens in metadata.logprobs")
+                return metadata.logprobs.tokens
 
             # Strategy 3: Check if metadata itself is a list of tokens
-            if isinstance(metadata, list):
-                logger.info(f"✓ Metadata is a list with {len(metadata)} items")
-                if all(isinstance(x, int) for x in metadata[:10]):
-                    logger.info("  ✓ Items appear to be integers (tokens)")
-                    logger.info("=" * 60)
-                    return metadata
+            if isinstance(metadata, list) and all(
+                isinstance(x, int) for x in metadata[:10]
+            ):
+                logger.debug(f"Metadata is token list ({len(metadata)} tokens)")
+                return metadata
 
-            logger.warning("✗ No tokens found in any expected location")
             logger.warning(
-                "Make sure your API call includes 'logprobs=True' parameter"
+                "No tokens found - ensure your API call includes logprobs=True"
             )
-            logger.info("=" * 60)
             return None
 
         except Exception as e:
-            logger.error(f"Error extracting tokens from metadata: {e}", exc_info=True)
-            logger.info("=" * 60)
+            logger.error(f"Error extracting tokens: {e}")
             return None
 
-    def _group_messages_by_channel(
-        self, messages: list[Any]
-    ) -> dict[str, str]:
+    def _group_messages_by_channel(self, messages: list[Any]) -> dict[str, str]:
         """
         Group Harmony messages by their channel attribute.
 
@@ -435,92 +358,61 @@ class HarmonyProcessor:
         Returns:
             Dict mapping channel names to combined content
         """
-        logger.info("=" * 60)
-        logger.info("HARMONY DEBUG: Grouping Messages by Channel")
-        logger.info("=" * 60)
-        logger.info(f"Total messages to process: {len(messages)}")
+        logger.debug(f"Grouping {len(messages)} harmony messages by channel")
 
         channels: dict[str, list[str]] = {}
 
         for i, msg in enumerate(messages):
             try:
-                logger.info(f"\nMessage {i + 1}:")
-                logger.info(f"  Type: {type(msg).__name__}")
-
                 # Get channel name (default to 'default' if not specified)
                 channel = "default"
-                if hasattr(msg, "channel"):
-                    channel_val = msg.channel
-                    logger.info(f"  Has 'channel' attribute: {channel_val}")
-                    if channel_val:
-                        channel = str(channel_val).lower()
-                else:
-                    logger.info("  No 'channel' attribute")
-
-                logger.info(f"  Using channel: '{channel}'")
+                if hasattr(msg, "channel") and msg.channel:
+                    channel = str(msg.channel).lower()
 
                 # Get content
                 content = ""
                 if hasattr(msg, "content"):
                     content_val = msg.content
-                    logger.info(
-                        f"  Content type: {type(content_val).__name__}"
+                    content = (
+                        content_val
+                        if isinstance(content_val, str)
+                        else str(content_val)
                     )
-                    if isinstance(content_val, str):
-                        content = content_val
-                        logger.info(
-                            f"  Content length: {len(content)} chars"
-                        )
-                        logger.info(
-                            f"  Content preview: {content[:100]}..."
-                        )
-                    else:
-                        content = str(content_val)
-                        logger.info(
-                            f"  Content (stringified): {content[:100]}..."
-                        )
-                else:
-                    logger.warning("  No 'content' attribute!")
 
                 # Add to channel group
                 if channel not in channels:
                     channels[channel] = []
-                    logger.info(f"  Created new channel group: '{channel}'")
 
                 if content.strip():
                     channels[channel].append(content)
-                    logger.info(f"  Added content to '{channel}' channel")
-                else:
-                    logger.warning("  Content was empty, skipping")
 
             except Exception as e:
-                logger.error(
-                    f"Error processing message {i + 1}: {e}", exc_info=True
-                )
+                logger.warning(f"Error processing message {i + 1}: {e}")
                 continue
 
         # Combine content for each channel
-        logger.info("\n" + "=" * 60)
-        logger.info("Channel Summary:")
-        logger.info("=" * 60)
+        result = {
+            channel: "\n".join(content_list)
+            for channel, content_list in channels.items()
+        }
 
-        result = {}
-        for channel, content_list in channels.items():
-            combined = "\n".join(content_list)
-            result[channel] = combined
-            logger.info(
-                f"  '{channel}': {len(content_list)} messages, "
-                f"{len(combined)} total chars"
-            )
-
-        logger.info(f"\nTotal channels found: {list(result.keys())}")
-        logger.info("=" * 60)
+        if result:
+            logger.info(f"Found harmony channels: {list(result.keys())}")
+        else:
+            logger.warning("No harmony channels found in messages")
 
         return result
 
     def _extract_channels(self, text: str) -> dict[str, str]:
         """
         Extract output channels from Harmony-formatted text.
+
+        NOTE: This is a simple text-based fallback for when token parsing fails.
+        It uses basic regex patterns and will NOT properly parse real harmony output.
+        Proper harmony parsing requires token-level processing via
+        parse_messages_from_completion_tokens().
+
+        This fallback is kept as a last resort but should not be relied upon.
 
         Harmony supports multiple output channels like:
         - analysis: Internal reasoning/analysis
@@ -531,14 +423,13 @@ class HarmonyProcessor:
             text: Response text to parse
 
         Returns:
-            Dict mapping channel names to content
+            Dict mapping channel names to content (likely empty for real harmony output)
         """
         channels = {}
 
-        # Simple channel extraction based on common patterns
-        # More sophisticated parsing could use the Harmony encoding directly
         import re
 
+        # Simple XML-style tag extraction (won't match real harmony format)
         channel_pattern = r"<(\w+)>(.*?)</\1>"
         matches = re.findall(channel_pattern, text, re.DOTALL)
 
@@ -607,49 +498,3 @@ class HarmonyProcessor:
             lines.append(final_response)
 
         return "\n".join(lines)
-
-    def create_conversation(self, messages: list) -> Optional[Any]:
-        """
-        Create a Harmony Conversation object from message history.
-
-        Args:
-            messages: List of message dicts with 'role' and 'content'
-
-        Returns:
-            Harmony Conversation object or None if not available or on error
-        """
-        if not HARMONY_AVAILABLE:
-            logger.warning(
-                "Cannot create Harmony conversation: openai-harmony not installed"
-            )
-            return None
-
-        try:
-            harmony_messages = []
-            for msg in messages:
-                role_str = msg.get("role", "user").upper()
-                content = msg.get("content", "")
-
-                # Map role strings to Harmony Role enum
-                if role_str == "SYSTEM":
-                    role = Role.SYSTEM
-                    msg_content = SystemContent.new()
-                elif role_str == "DEVELOPER":
-                    role = Role.DEVELOPER
-                    msg_content = DeveloperContent.new().with_instructions(content)
-                elif role_str == "ASSISTANT":
-                    role = Role.ASSISTANT
-                    msg_content = content
-                else:  # USER
-                    role = Role.USER
-                    msg_content = content
-
-                harmony_messages.append(
-                    Message.from_role_and_content(role, msg_content)
-                )
-
-            return Conversation.from_messages(harmony_messages)
-
-        except Exception as e:
-            logger.error(f"Failed to create Harmony conversation: {e}")
-            return None

@@ -5,7 +5,6 @@ Tracks token usage per query and session with model-based cost estimation.
 """
 
 
-
 class TokenTracker:
     """Track token usage and cost estimation."""
 

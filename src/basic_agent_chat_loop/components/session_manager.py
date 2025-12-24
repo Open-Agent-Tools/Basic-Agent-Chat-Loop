@@ -258,6 +258,7 @@ class SessionManager:
             self._save_markdown(md_path, session_id, json_data)
 
             # Update index
+            metadata_dict: dict[str, Any] = json_data["metadata"]  # type: ignore[assignment]
             session_info = SessionInfo(
                 session_id=session_id,
                 agent_name=agent_name,
@@ -266,7 +267,7 @@ class SessionManager:
                 last_updated=last_updated,
                 query_count=len(conversation),
                 total_tokens=total_tokens,
-                total_cost=json_data["metadata"]["total_cost"],
+                total_cost=float(metadata_dict["total_cost"]),
                 preview=preview,
             )
 

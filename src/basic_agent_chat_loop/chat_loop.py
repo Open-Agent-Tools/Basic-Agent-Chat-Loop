@@ -42,7 +42,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-import pyperclip
+import pyperclip  # type: ignore[import-untyped]
 
 try:
     import readline
@@ -494,6 +494,12 @@ class ChatLoop:
         # Extract agent metadata
         self.agent_metadata = extract_agent_metadata(self.agent)
 
+        # Log model detection for debugging
+        detected_model = self.agent_metadata.get("model_id", "Unknown")
+        uses_harmony = self.agent_metadata.get("uses_harmony", False)
+        logger.info(f"Model Detected: {detected_model}")
+        logger.info(f"Harmony Detected: {uses_harmony}")
+
         # Setup prompt templates directory
         self.prompts_dir = Path.home() / ".prompts"
 
@@ -605,11 +611,8 @@ class ChatLoop:
         )
 
         # Auto-detect harmony support
-        # Check both metadata (for loaded agents) and agent object itself
-        # (for dynamic agents)
-        uses_harmony_metadata = self.agent_metadata.get("uses_harmony", False)
-        uses_harmony_detected = HarmonyProcessor.detect_harmony_agent(self.agent)
-        uses_harmony = uses_harmony_metadata or uses_harmony_detected
+        # Detection already performed by extract_agent_metadata()
+        uses_harmony = self.agent_metadata.get("uses_harmony", False)
 
         # Normalize config value to handle string values from YAML
         # "auto"/None → None (auto-detect)
@@ -621,9 +624,7 @@ class ChatLoop:
 
         logger.debug(f"Harmony config value (raw): {harmony_enabled_config_raw!r}")
         logger.debug(f"Harmony config value (normalized): {harmony_enabled_config!r}")
-        logger.debug(f"Harmony from metadata: {uses_harmony_metadata}")
-        logger.debug(f"Harmony from detection: {uses_harmony_detected}")
-        logger.debug(f"Auto-detected harmony (combined): {uses_harmony}")
+        logger.debug(f"Auto-detected harmony: {uses_harmony}")
 
         # Determine if harmony should be enabled
         # None = auto-detect, True = force enable, False = force disable
@@ -661,8 +662,7 @@ class ChatLoop:
                 )
         else:
             logger.info(
-                "✗ Harmony NOT enabled "
-                "(agent not detected as harmony, config not set)"
+                "✗ Harmony NOT enabled (agent not detected as harmony, config not set)"
             )
 
     def _normalize_harmony_config(self, value: Any) -> Optional[bool]:
@@ -895,10 +895,11 @@ class ChatLoop:
                 session_id = session_info.session_id
             else:
                 # Get session metadata for display
-                session_info = self.session_manager.get_session_metadata(session_id)
-                if not session_info:
+                maybe_session_info = self.session_manager.get_session_metadata(session_id)
+                if not maybe_session_info:
                     print(Colors.error(f"Session not found: {session_id}"))
                     return False
+                session_info = maybe_session_info
 
             # Load the session data
             session_data = self.session_manager.load_session(session_id)
@@ -1340,10 +1341,8 @@ class ChatLoop:
                 # Debug: Log response object structure
                 logger.debug(f"Response object type: {type(response_obj)}")
                 logger.debug(f"Response object attrs: {dir(response_obj)[:20]}")
-                if hasattr(response_obj, "choices"):
-                    logger.debug(
-                        f"Response has choices: {len(response_obj.choices)}"
-                    )
+                if response_obj and hasattr(response_obj, "choices"):
+                    logger.debug(f"Response has choices: {len(response_obj.choices)}")
                     if response_obj.choices:
                         choice = response_obj.choices[0]
                         logger.debug(f"Choice type: {type(choice)}")
