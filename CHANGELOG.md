@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.9] - 2024-12-24
+
+### Fixed
+- **Multipart Response Formatting** - Added newline separator when joining multiple response chunks
+  - Prevents sentences from running together when agents return structured/multipart responses
+  - Changed from empty string join to newline join in response text assembly
+  - Improves readability for harmony multi-channel responses and structured content blocks
+  - Example: `"Analysis.Conclusion."` → `"Analysis.\nConclusion."`
+
+### Technical Details
+When agents return responses as multiple content blocks or text chunks (common with streaming responses and harmony format), the code was concatenating them with no separator. This caused sentences to run together without proper spacing. The fix adds a newline separator (`"\n".join()` instead of `"".join()`) to ensure proper formatting and readability in both display and saved logs.
+
 ## [1.3.8] - 2024-12-24
 
 ### Fixed
