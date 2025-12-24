@@ -33,6 +33,7 @@ Usage:
 
 import argparse
 import asyncio
+import json
 import logging
 import logging.handlers
 import os
@@ -107,6 +108,23 @@ READLINE_HISTORY_LENGTH = 1000
 
 # Use a single consistent logger throughout the module
 logger = logging.getLogger("basic_agent_chat_loop")
+
+
+def _serialize_for_logging(obj: Any) -> str:
+    """
+    Serialize an object to JSON string for logging, with repr() fallback.
+
+    Args:
+        obj: The object to serialize
+
+    Returns:
+        JSON string if serializable, otherwise repr() string
+    """
+    try:
+        return json.dumps(obj, indent=2, default=str)
+    except (TypeError, ValueError):
+        # Fallback to repr() for non-serializable objects
+        return repr(obj)
 
 
 def setup_logging(agent_name: str) -> bool:
@@ -1248,11 +1266,21 @@ class ChatLoop:
 
             first_token_received = False
 
+            # Log request payload sent to agent
+            logger.info("=" * 60)
+            logger.info("REQUEST TO AGENT:")
+            logger.info(f"Query: {_serialize_for_logging(query)}")
+            logger.info("=" * 60)
+
             # Check if agent supports streaming
             if hasattr(self.agent, "stream_async"):
                 async for event in self.agent.stream_async(query):
                     # Store last event for token extraction
                     response_obj = event
+
+                    # Log streaming event received from agent
+                    logger.info("STREAMING EVENT FROM AGENT:")
+                    logger.info(_serialize_for_logging(event))
 
                     # Stop thinking indicator on first token
                     if not first_token_received:
@@ -1310,6 +1338,11 @@ class ChatLoop:
                 )
                 response_obj = response  # Store for token extraction
 
+                # Log response received from agent
+                logger.info("RESPONSE FROM AGENT:")
+                logger.info(_serialize_for_logging(response))
+                logger.info("=" * 60)
+
                 # Stop thinking indicator
                 stop_thinking.set()
                 if thinking_task:
@@ -1330,6 +1363,12 @@ class ChatLoop:
                         response_text.append(str(message))
                 else:
                     response_text.append(str(response))
+
+            # Log final response object (for streaming, this is the last event)
+            if hasattr(self.agent, "stream_async"):
+                logger.info("FINAL RESPONSE OBJECT (last streaming event):")
+                logger.info(_serialize_for_logging(response_obj))
+                logger.info("=" * 60)
 
             # Render collected response
             # Use newline separator to prevent sentences from running together
