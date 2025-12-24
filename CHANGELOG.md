@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.4.0] - 2024-12-24
 
 ### Added
-- **Verbose Payload Logging** - Comprehensive logging of request/response data at INFO level
+- **Verbose Payload Logging** - Comprehensive logging of request/response data at DEBUG level
   - Added `_serialize_for_logging()` helper to serialize objects to JSON with repr() fallback
   - Logs request query before sending to agent
   - Logs each streaming event received from agent during streaming responses
@@ -18,9 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Logs complete response for non-streaming agents
   - All logs include clear separators for easy parsing in agent log files
   - Enables detailed debugging and monitoring of agent communication
+  - DEBUG level keeps logs clean by default, enable with logger.setLevel(logging.DEBUG)
 
 ### Technical Details
-This feature adds comprehensive visibility into the data exchanged between the chat loop and agent. All request/response payloads are logged at INFO level in the agent log files (~/.chat_loop_logs/*_chat.log). The serialization helper attempts JSON formatting first (with pretty printing and default=str for common types), falling back to repr() for non-serializable objects. This makes it easy to debug agent behavior, track API changes, and monitor system health.
+This feature adds comprehensive visibility into the data exchanged between the chat loop and agent. All request/response payloads are logged at DEBUG level in the agent log files (~/.chat_loop_logs/*_chat.log). The serialization helper attempts JSON formatting first (with pretty printing and default=str for common types), falling back to repr() for non-serializable objects. This makes it easy to debug agent behavior, track API changes, and monitor system health. To enable verbose logging, set the logger level to DEBUG before initializing the chat loop.
 
 ## [1.3.9] - 2024-12-24
 
