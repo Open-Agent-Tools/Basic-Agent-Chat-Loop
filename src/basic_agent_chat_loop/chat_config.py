@@ -397,8 +397,8 @@ harmony:
                                 # no = Disable harmony processing
   show_detailed_thinking: true  # Show reasoning/analysis/commentary with prefixes
                                 # When true (default), displays internal reasoning,
-                                # analysis, and commentary channels with labeled prefixes
-                                # When false, only shows final response
+                                # analysis, and commentary channels with labeled
+                                # prefixes. When false, only shows final response
 
 # ============================================================================
 # PER-AGENT OVERRIDES

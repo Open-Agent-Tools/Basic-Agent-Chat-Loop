@@ -632,17 +632,20 @@ class ChatLoop:
             # Log how harmony was enabled
             if harmony_enabled_config is True:
                 logger.info(
-                    f"✓ Harmony processor ENABLED via config override (detailed_thinking={show_detailed})"
+                    f"✓ Harmony ENABLED via config override "
+                    f"(detailed_thinking={show_detailed})"
                 )
             elif harmony_enabled_config is False:
-                logger.info("✗ Harmony processor DISABLED via config override")
+                logger.info("✗ Harmony DISABLED via config override")
             else:
                 logger.info(
-                    f"✓ Harmony processor AUTO-DETECTED and enabled (detailed_thinking={show_detailed})"
+                    f"✓ Harmony AUTO-DETECTED and enabled "
+                    f"(detailed_thinking={show_detailed})"
                 )
         else:
             logger.info(
-                "✗ Harmony processor NOT enabled (agent not detected as harmony, config not set)"
+                "✗ Harmony NOT enabled "
+                "(agent not detected as harmony, config not set)"
             )
 
     def _extract_token_usage(self, response_obj) -> Optional[dict[str, int]]:
