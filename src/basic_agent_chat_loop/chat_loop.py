@@ -1333,7 +1333,6 @@ class ChatLoop:
 
             # Render collected response
             full_response = "".join(response_text)
-            self.last_response = full_response
 
             # Process through Harmony if available
             display_text = full_response
@@ -1362,6 +1361,9 @@ class ChatLoop:
                     logger.debug("Harmony response contains reasoning")
                 if processed.get("has_tools"):
                     logger.debug("Harmony response contains tool calls")
+
+            # Store last response for copy commands (what user sees)
+            self.last_response = display_text
 
             if self.use_rich and display_text.strip() and self.console:
                 # Use rich markdown rendering
@@ -1482,7 +1484,7 @@ class ChatLoop:
                     {
                         "timestamp": time.time(),
                         "query": query,
-                        "response": full_response,
+                        "response": display_text,  # Save what user sees (includes harmony formatting)
                         "duration": duration,
                         "usage": usage_info,
                     }
