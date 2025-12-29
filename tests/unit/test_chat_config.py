@@ -1,5 +1,7 @@
 """Tests for ChatConfig component."""
 
+import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -161,8 +163,12 @@ class TestConfigGetSection:
         assert agent_features["show_tokens"] is True
         assert agent_features["auto_save"] is True
 
-    def test_get_colors_section_decodes_escapes(self):
+    def test_get_colors_section_decodes_escapes(self, tmp_path, monkeypatch):
         """Test that colors section contains valid color values."""
+        # Isolate by redirecting home and cwd to temp directories with no configs
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
+        monkeypatch.setattr(Path, "cwd", lambda: tmp_path / "cwd")
+
         config = ChatConfig()
 
         colors = config.get_section("colors")
@@ -282,9 +288,13 @@ class TestExpandPath:
         monkeypatch.setenv("TEST_VAR", "/test/value")
 
         config = ChatConfig()
-        expanded = config.expand_path("$TEST_VAR/path")
+        # Use platform-appropriate syntax
+        if sys.platform == "win32":
+            expanded = config.expand_path("%TEST_VAR%/path")
+        else:
+            expanded = config.expand_path("$TEST_VAR/path")
 
-        assert "/test/value/path" in str(expanded)
+        assert "/test/value/path" in str(expanded) or "\\test\\value\\path" in str(expanded)
 
 
 class TestInvalidConfig:

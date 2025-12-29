@@ -1,5 +1,6 @@
 """Tests for ConfigWizard component."""
 
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -634,6 +635,10 @@ class TestWriteConfig:
         # Content should be changed
         assert existing_config.read_text() != "existing content"
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="File permissions work differently on Windows"
+    )
     def test_write_config_secure_permissions(self, wizard, tmp_path, monkeypatch):
         """Test that config file has secure permissions."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -876,6 +881,10 @@ class TestResetConfigToDefaults:
         assert "bright_white" in content
 
     @patch("builtins.input")
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="File permissions work differently on Windows"
+    )
     def test_reset_config_sets_secure_permissions(
         self, mock_input, tmp_path, monkeypatch
     ):

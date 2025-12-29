@@ -321,9 +321,9 @@ class TestSavedFileContent:
         success = chat_loop.save_conversation()
         assert success is True
 
-        # Find and read JSON file
+        # Find and read JSON file (exclude .index.json)
         sessions_dir = tmp_path / "sessions"
-        json_files = list(sessions_dir.glob("*.json"))
+        json_files = [f for f in sessions_dir.glob("*.json") if not f.name.startswith('.')]
         assert len(json_files) == 1
 
         with open(json_files[0]) as f:
@@ -367,7 +367,7 @@ class TestSavedFileContent:
         chat_loop.save_conversation()
 
         sessions_dir = tmp_path / "sessions"
-        json_files = list(sessions_dir.glob("*.json"))
+        json_files = [f for f in sessions_dir.glob("*.json") if not f.name.startswith('.')]
 
         with open(json_files[0]) as f:
             data = json.load(f)
@@ -384,10 +384,10 @@ class TestHarmonyProcessorNonInterference:
 
     def test_harmony_not_enabled_for_claude_agents(self):
         """Test that Harmony is not enabled for Claude Sonnet agents."""
-        # Create mock Claude agent
-        agent = Mock()
+        # Create mock Claude agent with spec to prevent auto-attribute creation
+        agent = Mock(spec=['name', 'model', '__class__'])
         agent.name = "Claude Agent"
-        agent.model = Mock()
+        agent.model = Mock(spec=['model_id'])
         agent.model.model_id = "claude-sonnet-4-20250514"
 
         # Harmony should not detect this as a Harmony agent
@@ -447,7 +447,7 @@ class TestManualVsAutoSave:
 
         # Verify file exists and has content
         sessions_dir = tmp_path / "sessions"
-        json_files = list(sessions_dir.glob("*.json"))
+        json_files = [f for f in sessions_dir.glob("*.json") if not f.name.startswith('.')]
         assert len(json_files) == 1
 
         with open(json_files[0]) as f:
@@ -517,7 +517,7 @@ class TestMultipleQueryConversation:
 
         # Verify all saved in JSON
         sessions_dir = tmp_path / "sessions"
-        json_files = list(sessions_dir.glob("*.json"))
+        json_files = [f for f in sessions_dir.glob("*.json") if not f.name.startswith('.')]
 
         with open(json_files[0]) as f:
             data = json.load(f)

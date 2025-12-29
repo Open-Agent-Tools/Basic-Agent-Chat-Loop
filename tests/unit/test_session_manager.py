@@ -1,6 +1,7 @@
 """Tests for SessionManager component."""
 
 import json
+import sys
 import time
 from datetime import datetime
 
@@ -135,6 +136,10 @@ class TestSaveSession:
         assert success is False
         assert "No conversation to save" in message
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="File permissions work differently on Windows"
+    )
     def test_save_session_sets_secure_permissions(
         self, session_manager, sample_conversation
     ):

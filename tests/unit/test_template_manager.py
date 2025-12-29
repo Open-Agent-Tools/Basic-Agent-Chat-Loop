@@ -211,7 +211,8 @@ class TestEdgeCases:
     def test_unicode_in_template(self, prompts_dir):
         """Test template with unicode characters."""
         (prompts_dir / "unicode.md").write_text(
-            "Template with émojis 🎉 and spëcial çharacters: {input}"
+            "Template with émojis 🎉 and spëcial çharacters: {input}",
+            encoding="utf-8"
         )
 
         manager = TemplateManager(prompts_dir)
