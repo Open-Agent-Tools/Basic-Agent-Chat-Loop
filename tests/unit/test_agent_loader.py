@@ -1,6 +1,5 @@
 """Tests for agent_loader module."""
 
-
 import pytest
 
 from basic_agent_chat_loop.components.agent_loader import (

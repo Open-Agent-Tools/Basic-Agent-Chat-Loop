@@ -44,8 +44,9 @@ model = AnthropicModel(
     max_tokens=4096,
     params={
         "temperature": 0.7,
-    }
+    },
 )
+
 
 def create_agent() -> Agent:
     """Create Simple Sally agent."""
@@ -54,8 +55,9 @@ def create_agent() -> Agent:
         description="A friendly minimal agent",
         model=model,
         system_prompt=SYSTEM_PROMPT,
-        tools=[]
+        tools=[],
     )
+
 
 # Module-level agent
 root_agent = create_agent()

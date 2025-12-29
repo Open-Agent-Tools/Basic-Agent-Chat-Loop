@@ -80,9 +80,7 @@ class TestAudioNotifierPlayMacOS:
 
     @patch("basic_agent_chat_loop.components.audio_notifier.platform.system")
     @patch("basic_agent_chat_loop.components.audio_notifier.subprocess.run")
-    def test_play_on_macos_success(
-        self, mock_run, mock_platform, temp_wav_file
-    ):
+    def test_play_on_macos_success(self, mock_run, mock_platform, temp_wav_file):
         """Test successful audio playback on macOS."""
         mock_platform.return_value = "Darwin"
         notifier = AudioNotifier(sound_file=str(temp_wav_file))
@@ -127,9 +125,7 @@ class TestAudioNotifierPlayLinux:
 
     @patch("basic_agent_chat_loop.components.audio_notifier.platform.system")
     @patch("basic_agent_chat_loop.components.audio_notifier.subprocess.run")
-    def test_play_on_linux_with_aplay(
-        self, mock_run, mock_platform, temp_wav_file
-    ):
+    def test_play_on_linux_with_aplay(self, mock_run, mock_platform, temp_wav_file):
         """Test successful audio playback on Linux with aplay."""
         mock_platform.return_value = "Linux"
         notifier = AudioNotifier(sound_file=str(temp_wav_file))

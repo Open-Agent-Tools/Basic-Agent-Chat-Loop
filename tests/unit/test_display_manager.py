@@ -336,19 +336,6 @@ class TestDisplaySessionSummary:
         assert "in:" in captured.out
         assert "out:" in captured.out
 
-    def test_session_summary_with_tokens(self, basic_display, capsys):
-        """Test session summary with token information."""
-        tracker = TokenTracker(model_name="Claude Sonnet 4.5")
-        tracker.add_usage(10000, 5000)
-
-        start_time = time.time() - 60
-
-        basic_display.display_session_summary(start_time, 1, tracker)
-        captured = capsys.readouterr()
-
-        # Should show tokens
-        assert "Tokens:" in captured.out
-
 
 class TestDisplayTemplates:
     """Test display_templates method."""

@@ -29,7 +29,7 @@ That's it!"""
             blocks = chat_loop._extract_code_blocks(text)
 
             assert len(blocks) == 1
-            assert 'def hello():' in blocks[0]
+            assert "def hello():" in blocks[0]
             assert 'print("Hello World")' in blocks[0]
 
     def test_extract_multiple_code_blocks(self):

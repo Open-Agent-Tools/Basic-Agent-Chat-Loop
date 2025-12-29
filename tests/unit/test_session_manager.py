@@ -327,9 +327,7 @@ class TestSearchSessions:
         assert len(results) == 1
         assert results[0].session_id == "python_session"
 
-    def test_search_sessions_by_agent_name(
-        self, session_manager, sample_conversation
-    ):
+    def test_search_sessions_by_agent_name(self, session_manager, sample_conversation):
         """Test searching sessions by agent name."""
         session_manager.save_session(
             session_id="test_session",

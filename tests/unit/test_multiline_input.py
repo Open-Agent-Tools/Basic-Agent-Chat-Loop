@@ -64,6 +64,7 @@ async def test_multiline_input_cancel_esc(chat_loop):
 @pytest.mark.asyncio
 async def test_multiline_input_cancel_ctrl_d(chat_loop):
     """Test cancelling multi-line input with Ctrl+D (EOFError)."""
+
     def mock_input_with_eof(prompt):
         raise EOFError()
 
@@ -76,6 +77,7 @@ async def test_multiline_input_cancel_ctrl_d(chat_loop):
 @pytest.mark.asyncio
 async def test_multiline_input_cancel_ctrl_c(chat_loop):
     """Test cancelling multi-line input with Ctrl+C (KeyboardInterrupt)."""
+
     def mock_input_with_interrupt(prompt):
         raise KeyboardInterrupt()
 
