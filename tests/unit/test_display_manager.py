@@ -336,8 +336,8 @@ class TestDisplaySessionSummary:
         assert "in:" in captured.out
         assert "out:" in captured.out
 
-    def test_session_summary_with_cost(self, basic_display, capsys):
-        """Test session summary with cost information."""
+    def test_session_summary_with_tokens(self, basic_display, capsys):
+        """Test session summary with token information."""
         tracker = TokenTracker(model_name="Claude Sonnet 4.5")
         tracker.add_usage(10000, 5000)
 
@@ -346,8 +346,8 @@ class TestDisplaySessionSummary:
         basic_display.display_session_summary(start_time, 1, tracker)
         captured = capsys.readouterr()
 
-        # Should show cost for Claude models
-        assert "Total Cost:" in captured.out or "Tokens:" in captured.out
+        # Should show tokens
+        assert "Tokens:" in captured.out
 
 
 class TestDisplayTemplates:

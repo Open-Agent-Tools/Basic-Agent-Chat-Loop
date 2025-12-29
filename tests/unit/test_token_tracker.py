@@ -20,14 +20,6 @@ def test_add_usage():
     assert tracker.get_total_tokens() == 150
 
 
-def test_cost_calculation():
-    """Test cost calculation for known model."""
-    tracker = TokenTracker("Claude Sonnet 4.5")
-    tracker.add_usage(1_000_000, 1_000_000)  # 1M tokens each
-    cost = tracker.get_cost()
-    assert cost == 18.0  # $3 input + $15 output
-
-
 def test_format_tokens():
     """Test token formatting with K/M suffixes."""
     tracker = TokenTracker()

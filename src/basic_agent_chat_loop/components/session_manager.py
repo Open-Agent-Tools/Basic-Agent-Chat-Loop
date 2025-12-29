@@ -26,7 +26,6 @@ class SessionInfo:
     last_updated: datetime
     query_count: int
     total_tokens: int
-    total_cost: float
     preview: str  # First query text
 
     def to_dict(self) -> dict[str, Any]:
@@ -39,7 +38,6 @@ class SessionInfo:
             "last_updated": self.last_updated.isoformat(),
             "query_count": self.query_count,
             "total_tokens": self.total_tokens,
-            "total_cost": self.total_cost,
             "preview": self.preview,
         }
 
@@ -54,7 +52,6 @@ class SessionInfo:
             last_updated=datetime.fromisoformat(data["last_updated"]),
             query_count=data["query_count"],
             total_tokens=data["total_tokens"],
-            total_cost=data["total_cost"],
             preview=data["preview"],
         )
 
@@ -241,7 +238,6 @@ class SessionManager:
                 "metadata": {
                     "total_queries": len(conversation),
                     "total_tokens": total_tokens,
-                    "total_cost": metadata.get("total_cost", 0.0) if metadata else 0.0,
                     "duration": metadata.get("duration", 0) if metadata else 0,
                 },
                 "conversation": conversation,
@@ -258,7 +254,6 @@ class SessionManager:
             self._save_markdown(md_path, session_id, json_data)
 
             # Update index
-            metadata_dict: dict[str, Any] = json_data["metadata"]  # type: ignore[assignment]
             session_info = SessionInfo(
                 session_id=session_id,
                 agent_name=agent_name,
@@ -267,7 +262,6 @@ class SessionManager:
                 last_updated=last_updated,
                 query_count=len(conversation),
                 total_tokens=total_tokens,
-                total_cost=float(metadata_dict["total_cost"]),
                 preview=preview,
             )
 

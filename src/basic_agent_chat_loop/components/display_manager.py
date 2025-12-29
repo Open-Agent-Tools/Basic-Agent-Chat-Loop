@@ -268,7 +268,7 @@ class DisplayManager:
         summary_parts.append(f"Duration: {duration_str}")
         summary_parts.append(f"Queries: {query_count}")
 
-        # Token and cost info
+        # Token info
         total_tokens = token_tracker.get_total_tokens()
         if total_tokens > 0:
             input_tok = token_tracker.total_input_tokens
@@ -278,10 +278,6 @@ class DisplayManager:
             token_str += f" (in: {token_tracker.format_tokens(input_tok)}, "
             token_str += f"out: {token_tracker.format_tokens(output_tok)})"
             summary_parts.append(token_str)
-
-            cost = token_tracker.get_cost()
-            if cost > 0:
-                summary_parts.append(f"Total Cost: {token_tracker.format_cost()}")
 
         for part in summary_parts:
             print(Colors.system(f"  {part}"))
@@ -342,10 +338,6 @@ class DisplayManager:
             session_line += f" - {session.query_count} "
             session_line += "query" if session.query_count == 1 else "queries"
 
-            # Add cost if available
-            if session.total_cost > 0:
-                session_line += f" - ${session.total_cost:.2f}"
-
             # Highlight if same agent
             if agent_name and session.agent_name == agent_name:
                 print(Colors.success(session_line))
@@ -374,7 +366,5 @@ class DisplayManager:
         print(f"  Previous queries: {query_count}")
         if session_info.total_tokens > 0:
             print(f"  Tokens used: {session_info.total_tokens:,}")
-        if session_info.total_cost > 0:
-            print(f"  Cost so far: ${session_info.total_cost:.3f}")
         print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
         print(Colors.system("Continuing from where you left off...\n"))

@@ -12,7 +12,7 @@ Features:
 - Multi-line input support (type \\\\ to enter multi-line mode)
   - Ctrl+D to cancel, ↑ arrow to edit previous line
   - Saves full block to history for later recall
-- Token tracking and cost estimation per query and session
+- Token tracking per query and session
 - Prompt templates from ~/.prompts/ with variable substitution
 - Configuration file support (~/.chatrc or .chatrc in project root)
 - Status bar with real-time metrics (queries, tokens, duration)
@@ -951,8 +951,6 @@ class ChatLoop:
             print(f"   Agent: {session_data['agent_name']}")
             print(f"   Queries: {len(conversation)}")
             print(f"   Created: {session_info.created.strftime('%b %d, %Y at %H:%M')}")
-            if session_info.total_cost > 0:
-                print(f"   Cost so far: ${session_info.total_cost:.3f}")
             print()
 
             # Ask for confirmation (if enabled in config)
@@ -1060,12 +1058,9 @@ class ChatLoop:
             return False
 
         try:
-            # Calculate total cost for metadata
-            total_cost = self.token_tracker.get_cost()
             session_duration = time.time() - self.session_start_time
 
             metadata = {
-                "total_cost": total_cost,
                 "duration": session_duration,
             }
 
@@ -1509,11 +1504,6 @@ class ChatLoop:
                     token_str += f"(in: {self.token_tracker.format_tokens(input_tok)}, "
                     token_str += f"out: {self.token_tracker.format_tokens(output_tok)})"
                     info_parts.append(token_str)
-
-                    # Show cost (session total)
-                    cost = self.token_tracker.get_cost()
-                    if cost > 0:
-                        info_parts.append(f"Cost: {self.token_tracker.format_cost()}")
 
                 if info_parts:  # Only print if we have something to show
                     print(Colors.system(" │ ".join(info_parts)))
@@ -2158,8 +2148,6 @@ Examples:
                 created_str = session.created.strftime("%b %d, %Y %H:%M")
                 session_line = f"  {i:2}. {session.agent_name:<20} {created_str}"
                 session_line += f"  {session.query_count:3} queries"
-                if session.total_cost > 0:
-                    session_line += f"  ${session.total_cost:.2f}"
                 print(session_line)
                 preview_text = f'      "{session.preview}"'
                 print(f"{Colors.DIM}{preview_text}{Colors.RESET}")

@@ -351,7 +351,7 @@ colors:
 features:
   auto_save: true               # Automatically save conversations on exit
   rich_enabled: true            # Use rich library for formatting (if available)
-  show_tokens: true             # Display token counts and cost estimates
+  show_tokens: true             # Display token counts
   show_metadata: true           # Show agent metadata on startup
   readline_enabled: true        # Enable command history with readline
 

@@ -362,9 +362,9 @@ class ConfigWizard:
             else False
         )
         self.config["features"]["show_tokens"] = self._prompt_bool(
-            "Display token counts and cost estimates?",
+            "Display token counts?",
             default=current_show_tokens,
-            help_text="Shows input/output tokens and estimated costs per query",
+            help_text="Shows input/output tokens per query",
         )
 
         # show_metadata

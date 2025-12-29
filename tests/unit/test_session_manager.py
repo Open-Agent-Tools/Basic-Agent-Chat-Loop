@@ -68,7 +68,7 @@ class TestSaveSession:
             agent_path="/path/to/agent.py",
             agent_description="A test agent",
             conversation=sample_conversation,
-            metadata={"total_cost": 0.10, "duration": 120},
+            metadata={"duration": 120},
         )
 
         assert success is True
@@ -89,7 +89,7 @@ class TestSaveSession:
             agent_path="/path/to/agent.py",
             agent_description="Test description",
             conversation=sample_conversation,
-            metadata={"total_cost": 0.10, "duration": 120},
+            metadata={"duration": 120},
         )
 
         json_path = session_manager.sessions_dir / "test_session.json"
@@ -101,7 +101,6 @@ class TestSaveSession:
         assert data["agent_path"] == "/path/to/agent.py"
         assert data["agent_description"] == "Test description"
         assert len(data["conversation"]) == 2
-        assert data["metadata"]["total_cost"] == 0.10
         assert data["metadata"]["total_queries"] == 2
 
     def test_save_session_updates_index(self, session_manager, sample_conversation):
@@ -372,7 +371,6 @@ class TestSessionInfo:
             last_updated=datetime(2025, 1, 26, 15, 45),
             query_count=10,
             total_tokens=5000,
-            total_cost=0.25,
             preview="Test query...",
         )
 
@@ -391,7 +389,6 @@ class TestSessionInfo:
             "last_updated": "2025-01-26T15:45:00",
             "query_count": 10,
             "total_tokens": 5000,
-            "total_cost": 0.25,
             "preview": "Test query...",
         }
 
