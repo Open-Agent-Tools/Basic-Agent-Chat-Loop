@@ -216,11 +216,12 @@ class HarmonyProcessor:
                             for ch in ["reasoning", "analysis", "thinking"]
                         )
 
-                        # Use final channel as primary text if available
-                        if "final" in channels:
+                        # Use final channel as primary text if available and non-empty
+                        if "final" in channels and channels["final"].strip():
                             result["text"] = channels["final"]
-                        elif "response" in channels:
+                        elif "response" in channels and channels["response"].strip():
                             result["text"] = channels["response"]
+                        # Otherwise keep original response_text as fallback
 
                         logger.info(f"Found channels: {list(channels.keys())}")
                     else:
@@ -459,8 +460,11 @@ class HarmonyProcessor:
 
         # If detailed thinking is disabled, only show final response or main text
         if not self.show_detailed_thinking:
-            # Return final channel if available, otherwise return main text
-            return channels.get("final", processed_response["text"])
+            # Return final channel if available and non-empty, otherwise return main text
+            final_text = channels.get("final", "").strip()
+            if final_text:
+                return final_text
+            return processed_response["text"]
 
         # Detailed thinking mode: show all channels with labeled prefixes
         lines = []
@@ -494,9 +498,9 @@ class HarmonyProcessor:
             lines.append(channels["tool_call"])
             lines.append("")
 
-        # Show final response
-        final_response = channels.get("final", processed_response["text"])
-        if final_response:
+        # Show final response - prefer final channel if non-empty, otherwise use main text
+        final_response = channels.get("final", "").strip() or processed_response["text"]
+        if final_response and final_response.strip():
             lines.append("💬 [RESPONSE]")
             lines.append(final_response)
 

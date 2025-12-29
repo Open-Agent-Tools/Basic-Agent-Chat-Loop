@@ -821,6 +821,13 @@ class ChatLoop:
             elif hasattr(usage, "completion_tokens"):
                 output_tokens = usage.completion_tokens
 
+        # Ensure tokens are integers (handle mocks/test objects)
+        try:
+            input_tokens = int(input_tokens) if input_tokens is not None else 0
+            output_tokens = int(output_tokens) if output_tokens is not None else 0
+        except (TypeError, ValueError):
+            return None
+
         if input_tokens > 0 or output_tokens > 0:
             return {"input_tokens": input_tokens, "output_tokens": output_tokens}
 
@@ -1367,47 +1374,52 @@ class ChatLoop:
                         first_token_received = True
 
                     # Handle different event types
+                    text_to_add = None  # Track text to add to response
+
                     if hasattr(event, "data"):
                         data = event.data
                         if isinstance(data, str):
-                            response_text.append(data)
-                            if self.use_rich:
-                                # Don't print during streaming, render at end
-                                pass
-                            else:
-                                # Apply colorization for tool messages during streaming
-                                formatted_data = Colors.format_agent_response(data)
-                                print(formatted_data, end="", flush=True)
+                            text_to_add = data
                         elif isinstance(data, dict):
                             # Handle structured data
                             if "text" in data:
-                                text = data["text"]
-                                response_text.append(text)
-                                if not self.use_rich:
-                                    formatted_text = Colors.format_agent_response(text)
-                                    print(formatted_text, end="", flush=True)
+                                text_to_add = data["text"]
                             elif "content" in data:
                                 content = data["content"]
                                 if isinstance(content, list):
                                     for block in content:
                                         if isinstance(block, dict) and "text" in block:
-                                            text = block["text"]
-                                            response_text.append(text)
-                                            if not self.use_rich:
-                                                formatted_text = (
-                                                    Colors.format_agent_response(text)
-                                                )
-                                                print(
-                                                    formatted_text, end="", flush=True
-                                                )
+                                            text_to_add = block["text"]
+                                            break
                                 else:
-                                    text = str(content)
-                                    response_text.append(text)
-                                    if not self.use_rich:
-                                        formatted_text = Colors.format_agent_response(
-                                            text
-                                        )
-                                        print(formatted_text, end="", flush=True)
+                                    text_to_add = str(content)
+
+                    # Fallback: Check for common streaming event patterns (AWS Strands, etc.)
+                    elif hasattr(event, "delta"):
+                        # AWS Strands/Anthropic delta events
+                        delta = event.delta
+                        if isinstance(delta, str):
+                            text_to_add = delta
+                        elif hasattr(delta, "text"):
+                            text_to_add = delta.text
+                        elif isinstance(delta, dict) and "text" in delta:
+                            text_to_add = delta["text"]
+
+                    elif hasattr(event, "text"):
+                        # Direct text attribute
+                        text_to_add = event.text
+
+                    elif isinstance(event, str):
+                        # Event is the text itself
+                        text_to_add = event
+
+                    # Append text if found and display it
+                    if text_to_add:
+                        response_text.append(text_to_add)
+                        if not self.use_rich:
+                            # Apply colorization for tool messages during streaming
+                            formatted_text = Colors.format_agent_response(text_to_add)
+                            print(formatted_text, end="", flush=True)
             else:
                 # Fallback to non-streaming call if streaming not supported
                 response = await asyncio.get_event_loop().run_in_executor(
@@ -1456,19 +1468,26 @@ class ChatLoop:
             # Process through Harmony if available
             display_text = full_response
             if self.harmony_processor:
-                # Debug: Log response object structure
-                logger.debug(f"Response object type: {type(response_obj)}")
-                logger.debug(f"Response object attrs: {dir(response_obj)[:20]}")
-                if response_obj and hasattr(response_obj, "choices"):
-                    logger.debug(f"Response has choices: {len(response_obj.choices)}")
-                    if response_obj.choices:
-                        choice = response_obj.choices[0]
-                        logger.debug(f"Choice type: {type(choice)}")
-                        logger.debug(f"Choice attrs: {dir(choice)[:20]}")
-                        if hasattr(choice, "logprobs"):
-                            logger.debug(f"Has logprobs: {choice.logprobs is not None}")
-                        if hasattr(choice, "message"):
-                            logger.debug(f"Message type: {type(choice.message)}")
+                # Debug: Log response object structure (safely handle mocks/test objects)
+                try:
+                    logger.debug(f"Response object type: {type(response_obj)}")
+                    logger.debug(f"Response object attrs: {dir(response_obj)[:20]}")
+                    if response_obj and hasattr(response_obj, "choices"):
+                        try:
+                            logger.debug(f"Response has choices: {len(response_obj.choices)}")
+                        except TypeError:
+                            logger.debug("Response has choices attribute (non-sequence)")
+
+                        if response_obj.choices:
+                            choice = response_obj.choices[0]
+                            logger.debug(f"Choice type: {type(choice)}")
+                            logger.debug(f"Choice attrs: {dir(choice)[:20]}")
+                            if hasattr(choice, "logprobs"):
+                                logger.debug(f"Has logprobs: {choice.logprobs is not None}")
+                            if hasattr(choice, "message"):
+                                logger.debug(f"Message type: {type(choice.message)}")
+                except Exception as e:
+                    logger.debug(f"Error logging response structure (safe to ignore): {e}")
 
                 processed = self.harmony_processor.process_response(
                     full_response, metadata=response_obj
@@ -1592,18 +1611,17 @@ class ChatLoop:
 
             logger.info(f"Query completed successfully in {duration:.1f}s")
 
-            # Track conversation for auto-save if enabled
-            if self.auto_save:
-                self.conversation_history.append(
-                    {
-                        "timestamp": time.time(),
-                        "query": query,
-                        # Save what user sees (includes harmony formatting)
-                        "response": display_text,
-                        "duration": duration,
-                        "usage": usage_info,
-                    }
-                )
+            # Track conversation for manual save, copy, and auto-save features
+            self.conversation_history.append(
+                {
+                    "timestamp": time.time(),
+                    "query": query,
+                    # Save what user sees (includes harmony formatting)
+                    "response": display_text,
+                    "duration": duration,
+                    "usage": usage_info,
+                }
+            )
 
             # Play audio notification on agent turn completion
             self.audio_notifier.play()
