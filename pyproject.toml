@@ -48,6 +48,7 @@ dev = [
     "black>=23.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+    "google-adk",  # For testing Google ADK agent compatibility
 ]
 windows = [
     # pyreadline3 is now installed automatically on Windows (kept for compatibility)

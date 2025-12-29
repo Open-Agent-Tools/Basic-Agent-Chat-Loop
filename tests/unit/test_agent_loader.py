@@ -485,3 +485,72 @@ root_agent = Agent()
 
         # Should preserve unknown model name
         assert metadata["model_id"] == "unknown-custom-model"
+
+
+class TestGoogleADKAgent:
+    """Test Google ADK agent compatibility."""
+
+    def test_load_google_adk_agent(self):
+        """Test loading Google ADK agent from test fixtures."""
+        from pathlib import Path
+
+        # Get the google_adk_test_agent directory
+        test_agent_path = (
+            Path(__file__).parent.parent / "google_adk_test_agent" / "agent.py"
+        )
+
+        agent, name, description = load_agent_module(str(test_agent_path))
+
+        assert agent is not None
+        assert name == "GoogleADK_Test_Agent"
+        assert "Google ADK" in description or "google adk" in description.lower()
+
+    def test_google_adk_agent_metadata(self):
+        """Test extracting metadata from Google ADK agent."""
+        from pathlib import Path
+
+        test_agent_path = (
+            Path(__file__).parent.parent / "google_adk_test_agent" / "agent.py"
+        )
+
+        agent, _, _ = load_agent_module(str(test_agent_path))
+        metadata = extract_agent_metadata(agent)
+
+        # Google ADK agents should have model attribute
+        assert hasattr(agent, "model")
+        assert agent.model == "gemini-2.0-flash"
+
+        # Metadata should be extractable (even if model_id format differs)
+        # Google ADK may not expose model_id in the same way as other frameworks
+        assert isinstance(metadata, dict)
+        assert "tool_count" in metadata
+        assert metadata["tool_count"] == 0
+
+    def test_google_adk_agent_has_run_method(self):
+        """Test that Google ADK agent has run method for chat loop integration."""
+        from pathlib import Path
+
+        test_agent_path = (
+            Path(__file__).parent.parent / "google_adk_test_agent" / "agent.py"
+        )
+
+        agent, _, _ = load_agent_module(str(test_agent_path))
+
+        # Google ADK Agent should have run_async or run_live method
+        # The chat loop can call these methods to interact with the agent
+        assert hasattr(agent, "run_async") or hasattr(agent, "run_live")
+
+    def test_google_adk_agent_attributes(self):
+        """Test that Google ADK agent has expected attributes."""
+        from pathlib import Path
+
+        test_agent_path = (
+            Path(__file__).parent.parent / "google_adk_test_agent" / "agent.py"
+        )
+
+        agent, _, _ = load_agent_module(str(test_agent_path))
+
+        # Check for Google ADK standard attributes
+        assert hasattr(agent, "name")
+        assert hasattr(agent, "description")
+        assert agent.name == "GoogleADK_Test_Agent"

@@ -385,7 +385,35 @@ chat = ChatLoop(
 chat.run()
 ```
 
-## Harmony Format Support
+## Supported Agent Frameworks
+
+The chat loop is designed to work with multiple agent frameworks out of the box:
+
+### AWS Strands
+
+Full support for AWS Strands agents with automatic metadata extraction and tool discovery.
+
+### Google ADK (Agent Development Kit)
+
+Native support for [Google ADK](https://github.com/google/adk) agents. Google ADK provides:
+- Integration with Gemini models (gemini-2.0-flash, etc.)
+- Built-in tool and function calling support
+- Structured agent workflows
+- MCP (Model Context Protocol) integration
+
+**Example Google ADK agent:**
+```python
+from google.adk.agents import Agent
+
+root_agent = Agent(
+    model="gemini-2.0-flash",
+    name="MyAgent",
+    instruction="Your agent instructions here",
+    tools=[],  # Your tools
+)
+```
+
+### OpenAI Harmony Format
 
 The chat loop includes built-in support for the [OpenAI Harmony](https://pypi.org/project/openai-harmony/) response format (designed for gpt-oss open-weight models). Harmony support is **included by default** in all installations.
 
