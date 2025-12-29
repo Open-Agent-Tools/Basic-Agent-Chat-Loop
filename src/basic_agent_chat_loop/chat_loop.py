@@ -1427,8 +1427,8 @@ class ChatLoop:
                         )
                     else:
                         raise TypeError(
-                            f"Agent of type {type(self.agent).__name__} is not callable "
-                            "and does not have run_async or run_live methods"
+                            f"Agent of type {type(self.agent).__name__} is not "
+                            "callable and does not have run_async or run_live methods"
                         )
                 response_obj = response  # Store for token extraction
 
