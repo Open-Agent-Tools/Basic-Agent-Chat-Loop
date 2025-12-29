@@ -1043,11 +1043,14 @@ class ChatLoop:
             print(Colors.error(f"\n⚠️  Failed to restore session: {e}"))
             return False
 
-    def save_conversation(self) -> bool:
+    def save_conversation(self, session_id: Optional[str] = None) -> bool:
         """
         Save conversation history using SessionManager.
 
         Saves both JSON (for resume) and markdown (for humans) formats.
+
+        Args:
+            session_id: Optional custom session ID. Uses self.session_id if not provided.
 
         Returns:
             True if save was successful, False otherwise
@@ -1056,6 +1059,9 @@ class ChatLoop:
         if not self.conversation_history:
             logger.debug("No conversation history to save")
             return False
+
+        # Use provided session_id or fall back to self.session_id
+        save_session_id = session_id or self.session_id
 
         try:
             session_duration = time.time() - self.session_start_time
@@ -1066,7 +1072,7 @@ class ChatLoop:
 
             # Use SessionManager to save
             success, message = self.session_manager.save_session(
-                session_id=self.session_id,
+                session_id=save_session_id,
                 agent_name=self.agent_name,
                 agent_path=self.agent_path,
                 agent_description=self.agent_description,
@@ -1075,8 +1081,7 @@ class ChatLoop:
             )
 
             if success:
-                logger.info(f"Conversation saved: {self.session_id}")
-                print(Colors.success(f"\n💾 {message}"))
+                logger.info(f"Conversation saved: {save_session_id}")
                 return True
             else:
                 logger.warning(f"Failed to save conversation: {message}")
@@ -1087,6 +1092,79 @@ class ChatLoop:
             logger.warning(f"Failed to save conversation: {e}", exc_info=True)
             print(Colors.error(f"\n⚠️  Could not save conversation: {e}"))
             return False
+
+    def _handle_save_command(self, custom_name: Optional[str] = None):
+        """Handle manual save command during conversation."""
+        # Check if there's anything to save
+        if not self.conversation_history:
+            print(Colors.system("No conversation to save yet. Start chatting first!"))
+            return
+
+        # Ask user what to do
+        print()
+        print(Colors.system("Save options:"))
+        print("  (u) Update current session")
+        print("  (n) Create new snapshot")
+        print("  (c) Cancel")
+        print()
+
+        try:
+            choice = input(Colors.user("Your choice [u/n/c]: ")).strip().lower() or "u"
+        except (EOFError, KeyboardInterrupt):
+            print()
+            print(Colors.system("Save cancelled."))
+            return
+
+        if choice == "c":
+            print(Colors.system("Save cancelled."))
+            return
+
+        if choice == "n":
+            # Create new session ID
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            if custom_name:
+                # Sanitize custom name for filesystem
+                safe_name = "".join(
+                    c if c.isalnum() or c in "-_" else "_" for c in custom_name
+                )
+                new_session_id = f"{self.agent_name}_{safe_name}_{timestamp}"
+            else:
+                new_session_id = f"{self.agent_name}_{timestamp}"
+
+            # Save with new ID
+            success = self.save_conversation(session_id=new_session_id)
+            if success:
+                self.session_id = new_session_id  # Update for future saves
+                self._show_save_confirmation(new_session_id)
+        else:
+            # Update current session (default)
+            success = self.save_conversation()
+            if success:
+                self._show_save_confirmation(self.session_id)
+
+    def _show_save_confirmation(self, session_id: str):
+        """Show user-friendly save confirmation with file paths."""
+        save_dir = self.session_manager.sessions_dir
+        json_path = save_dir / f"{session_id}.json"
+        md_path = save_dir / f"{session_id}.md"
+
+        print()
+        print(Colors.success("✓ Conversation saved successfully!"))
+        print()
+        print(Colors.system(f"  Session ID: {session_id}"))
+        print(Colors.system(f"  JSON:       {json_path}"))
+        print(Colors.system(f"  Markdown:   {md_path}"))
+        print(Colors.system(f"  Queries:    {len(self.conversation_history)}"))
+
+        # Show token count if available
+        total_tokens = self.token_tracker.get_total_tokens()
+        if total_tokens > 0:
+            print(
+                Colors.system(
+                    f"  Tokens:     {self.token_tracker.format_tokens(total_tokens)}"
+                )
+            )
+        print()
 
     async def get_multiline_input(self) -> str:
         """
@@ -1712,6 +1790,14 @@ class ChatLoop:
                             sessions, agent_name=self.agent_name
                         )
                         continue
+                    elif user_input.lower() == "save" or user_input.lower().startswith(
+                        "save "
+                    ):
+                        # Save conversation command
+                        parts = user_input.strip().split(maxsplit=1)
+                        custom_name = parts[1] if len(parts) > 1 else None
+                        self._handle_save_command(custom_name)
+                        continue
                     elif user_input.lower().startswith("copy"):
                         # Copy command with variants
                         parts = user_input.lower().split(maxsplit=1)
@@ -1911,7 +1997,9 @@ class ChatLoop:
 
             # Save conversation if auto-save is enabled
             if self.auto_save:
-                self.save_conversation()
+                success = self.save_conversation()
+                if success:
+                    self._show_save_confirmation(self.session_id)
 
             # Cleanup agent if it has cleanup method
             if hasattr(self.agent, "cleanup"):

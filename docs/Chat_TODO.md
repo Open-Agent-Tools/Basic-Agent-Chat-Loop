@@ -4,7 +4,7 @@ This document tracks planned enhancements for the AWS Strands chat loop interfac
 
 ## Status Summary
 
-**Recently Completed (11/27 features):**
+**Recently Completed (13/27 features):**
 - ✅ Command History with Readline (fully working with editing)
 - ✅ Multi-line Input Support
 - ✅ Automatic Error Recovery with Retry Logic
@@ -16,11 +16,13 @@ This document tracks planned enhancements for the AWS Strands chat loop interfac
 - ✅ Status Bar (Minimal)
 - ✅ Token/Cost Tracking
 - ✅ Prompt Templates
+- ✅ Save Conversation (manual save + better notifications)
+- ✅ Copy Last Response (clipboard integration with multiple modes)
 
 **Next Up (High Priority):**
-- ⏭️ Save Conversation - Export to markdown
+- ⏭️ Conversation Context Management
 
-**Total Progress:** 11 of 27 planned features completed (41%)
+**Total Progress:** 13 of 27 planned features completed (48%)
 
 ## High Priority - UX Enhancements
 
@@ -48,11 +50,14 @@ This document tracks planned enhancements for the AWS Strands chat loop interfac
 - [x] Works cross-platform (Windows + Unix)
 - [x] Reset agent session for fresh context
 
-### 5. Save Conversation
-- [ ] Export conversation to markdown
-- [ ] Include timestamps and metadata
-- [ ] Auto-save option on exit
-- [ ] Format: `conversations/YYYY-MM-DD_HH-MM-SS_agent-name.md`
+### 5. Save Conversation ✅ COMPLETED
+- [x] Export conversation to markdown
+- [x] Include timestamps and metadata
+- [x] Auto-save option on exit
+- [x] Format: `conversations/YYYY-MM-DD_HH-MM-SS_agent-name.md`
+- [x] Manual save command during conversation
+- [x] User choice: update current or create new snapshot
+- [x] Save confirmation with file paths
 
 ### 6. Better Error Recovery ✅ COMPLETED
 - [x] Retry logic for network failures (3 attempts with 2s delay)
@@ -67,10 +72,11 @@ This document tracks planned enhancements for the AWS Strands chat loop interfac
 - [x] Hide when streaming starts (first token arrives)
 - [x] Cleanup on errors and completion
 
-### 8. Copy Last Response
-- [ ] Add `copy` command to copy last response to clipboard
-- [ ] Cross-platform clipboard support (pyperclip)
-- [ ] Visual confirmation when copied
+### 8. Copy Last Response ✅ COMPLETED
+- [x] Add `copy` command to copy last response to clipboard
+- [x] Cross-platform clipboard support (pyperclip)
+- [x] Visual confirmation when copied
+- [x] Multiple modes: copy (last response), copy query, copy all, copy code
 
 ## Medium Priority - Features
 
@@ -428,6 +434,92 @@ You: /review def foo(): return bar
 - **Retry Strategy:** 3 attempts for transient errors, fail fast for others
 - **Rate Limits:** Exponential backoff prevents hammering the API
 - **User Experience:** Show attempt count and clear error messages
+
+---
+
+## Recently Completed (2025-12-29)
+
+### Save Conversation ✅
+- Manual save command during conversation (`save` or `save <custom-name>`)
+- User choice on each save: update current session OR create new snapshot
+- Better save notifications with file paths and metadata
+- Enhanced auto-save on exit with confirmation message
+- Sanitized custom names for filesystem compatibility
+- Session ID format: `{agent_name}_{custom_name}_{timestamp}` when custom name provided
+
+**Implementation:**
+- Added `_handle_save_command()` method to ChatLoop
+- Added `_show_save_confirmation()` method for better UX
+- Modified `save_conversation()` to accept optional session_id parameter
+- Updated auto-save in `_async_run()` to display confirmation
+- Updated help command with new save options
+
+**User Experience:**
+```
+You: save my-project
+Save options:
+  (u) Update current session
+  (n) Create new snapshot
+  (c) Cancel
+Your choice [u/n/c]: n
+
+✓ Conversation saved successfully!
+
+  Session ID: AgentName_my_project_20251229_150322
+  JSON:       /Users/user/.agent-conversations/AgentName_my_project_20251229_150322.json
+  Markdown:   /Users/user/.agent-conversations/AgentName_my_project_20251229_150322.md
+  Queries:    5
+  Tokens:     2.3K
+```
+
+**Benefits:**
+- Save anytime without exiting
+- Create multiple snapshots of important conversations
+- Clear visibility into what was saved and where
+- Custom naming for better organization
+- Backward compatible with existing sessions
+
+### Copy Last Response ✅ (2025-12-29)
+- Comprehensive clipboard integration with four copy modes
+- Cross-platform support via pyperclip library
+- Visual confirmation with success messages
+- Smart content extraction (code blocks, markdown formatting)
+
+**Implementation:**
+- Added copy command handler in chat_loop.py (lines 1801-1859)
+- Four copy modes:
+  - `copy` - Copy last agent response
+  - `copy query` - Copy your last query
+  - `copy all` - Copy entire conversation as markdown
+  - `copy code` - Extract and copy code blocks from last response
+- Uses pyperclip for cross-platform clipboard access
+- Graceful error handling with informative messages
+- Success confirmation: "✓ Copied {description} to clipboard"
+
+**User Experience:**
+```
+You: copy
+✓ Copied last response to clipboard
+
+You: copy code
+✓ Copied code blocks from last response to clipboard
+
+You: copy all
+✓ Copied entire conversation to clipboard
+```
+
+**Design Decisions:**
+- Simple command syntax (no subcommands, just space-separated)
+- Smart defaults (plain `copy` = last response, most common use case)
+- Helpful error messages when nothing to copy yet
+- Code block extraction preserves formatting and language tags
+- Conversation export formats as clean markdown
+
+**Benefits:**
+- Quick sharing of responses via paste
+- Easy extraction of code examples
+- Export full conversations for documentation
+- Copy queries for refinement or reuse
 
 ---
 
