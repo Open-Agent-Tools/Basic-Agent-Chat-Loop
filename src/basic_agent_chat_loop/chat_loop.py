@@ -40,6 +40,7 @@ import os
 import stat
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -1050,7 +1051,8 @@ class ChatLoop:
         Saves both JSON (for resume) and markdown (for humans) formats.
 
         Args:
-            session_id: Optional custom session ID. Uses self.session_id if not provided.
+            session_id: Optional custom session ID.
+                Uses self.session_id if not provided.
 
         Returns:
             True if save was successful, False otherwise

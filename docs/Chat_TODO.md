@@ -1,6 +1,6 @@
 # Chat Loop Improvement TODO
 
-This document tracks planned enhancements for the AWS Strands chat loop interface.
+This document tracks planned enhancements for the Basic Agent Chat Loop interface.
 
 ## Status Summary
 
