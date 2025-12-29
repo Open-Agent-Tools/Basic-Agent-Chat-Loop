@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "basic-agent-chat-loop"
 version = "1.4.5"
-description = "Feature-rich interactive CLI for AI agents with token tracking, prompt templates, aliases, and configuration"
+description = "Feature-rich interactive CLI for AWS Strands agents with token tracking, prompt templates, aliases, and configuration"
 readme = "README.md"
 requires-python = ">=3.9"
 license-files = ["LICENSE"]
@@ -48,7 +48,6 @@ dev = [
     "black>=23.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
-    "google-adk",  # For testing Google ADK agent compatibility
 ]
 windows = [
     # pyreadline3 is now installed automatically on Windows (kept for compatibility)

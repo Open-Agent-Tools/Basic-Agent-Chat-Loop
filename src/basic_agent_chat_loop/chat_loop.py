@@ -1410,39 +1410,9 @@ class ChatLoop:
                                         print(formatted_text, end="", flush=True)
             else:
                 # Fallback to non-streaming call if streaming not supported
-                # Check if agent has async run method (Google ADK agents)
-                if hasattr(self.agent, "run_async"):
-                    # Google ADK run_async returns an async generator
-                    # We need to consume it to get the final response
-                    result = self.agent.run_async(query)
-                    # Check if it's an async generator
-                    if hasattr(result, "__aiter__"):
-                        # Consume the async generator
-                        response_chunks = []
-                        async for chunk in result:
-                            response_chunks.append(chunk)
-                        # The last chunk should be the final response
-                        response = response_chunks[-1] if response_chunks else None
-                    else:
-                        # If not an async generator, await it directly
-                        response = await result
-                elif callable(self.agent):
-                    # Standard callable agents
-                    response = await asyncio.get_event_loop().run_in_executor(
-                        None, self.agent, query
-                    )
-                else:
-                    # Try run_live as fallback for Google ADK
-                    if hasattr(self.agent, "run_live"):
-                        # run_live is synchronous, so use executor
-                        response = await asyncio.get_event_loop().run_in_executor(
-                            None, self.agent.run_live, query
-                        )
-                    else:
-                        raise TypeError(
-                            f"Agent of type {type(self.agent).__name__} is not "
-                            "callable and does not have run_async or run_live methods"
-                        )
+                response = await asyncio.get_event_loop().run_in_executor(
+                    None, self.agent, query
+                )
                 response_obj = response  # Store for token extraction
 
                 # Log response received from agent
@@ -1456,11 +1426,7 @@ class ChatLoop:
                     await thinking_task
 
                 # Format and display response
-                # Check for Google ADK response format first
-                if hasattr(response, "text"):
-                    # Google ADK returns a response with .text attribute
-                    response_text.append(response.text)
-                elif hasattr(response, "message"):
+                if hasattr(response, "message"):
                     message = response.message
                     if isinstance(message, dict) and "content" in message:
                         content = message["content"]

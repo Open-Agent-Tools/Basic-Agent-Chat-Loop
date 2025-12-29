@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/Open-Agent-Tools/Basic-Agent-Chat-Loop/branch/main/graph/badge.svg)](https://codecov.io/gh/Open-Agent-Tools/Basic-Agent-Chat-Loop)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A feature-rich, interactive CLI for AI agents with token tracking, prompt templates, agent aliases, and extensive configuration options.
+A feature-rich, interactive CLI for **AWS Strands** agents with token tracking, prompt templates, agent aliases, and extensive configuration options.
 
 ## Features
 
@@ -385,33 +385,13 @@ chat = ChatLoop(
 chat.run()
 ```
 
-## Supported Agent Frameworks
+## AWS Strands Agent Framework
 
-The chat loop is designed to work with multiple agent frameworks out of the box:
-
-### AWS Strands
-
-Full support for AWS Strands agents with automatic metadata extraction and tool discovery.
-
-### Google ADK (Agent Development Kit)
-
-Native support for [Google ADK](https://github.com/google/adk) agents. Google ADK provides:
-- Integration with Gemini models (gemini-2.0-flash, etc.)
-- Built-in tool and function calling support
-- Structured agent workflows
-- MCP (Model Context Protocol) integration
-
-**Example Google ADK agent:**
-```python
-from google.adk.agents import Agent
-
-root_agent = Agent(
-    model="gemini-2.0-flash",
-    name="MyAgent",
-    instruction="Your agent instructions here",
-    tools=[],  # Your tools
-)
-```
+This chat loop is specifically designed for **AWS Strands** agents with full support for:
+- Automatic metadata extraction
+- Tool discovery
+- Streaming responses
+- Token tracking and cost estimation
 
 ### OpenAI Harmony Format
 
