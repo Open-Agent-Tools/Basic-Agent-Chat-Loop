@@ -1412,7 +1412,20 @@ class ChatLoop:
                 # Fallback to non-streaming call if streaming not supported
                 # Check if agent has async run method (Google ADK agents)
                 if hasattr(self.agent, "run_async"):
-                    response = await self.agent.run_async(query)
+                    # Google ADK run_async returns an async generator
+                    # We need to consume it to get the final response
+                    result = self.agent.run_async(query)
+                    # Check if it's an async generator
+                    if hasattr(result, "__aiter__"):
+                        # Consume the async generator
+                        response_chunks = []
+                        async for chunk in result:
+                            response_chunks.append(chunk)
+                        # The last chunk should be the final response
+                        response = response_chunks[-1] if response_chunks else None
+                    else:
+                        # If not an async generator, await it directly
+                        response = await result
                 elif callable(self.agent):
                     # Standard callable agents
                     response = await asyncio.get_event_loop().run_in_executor(
