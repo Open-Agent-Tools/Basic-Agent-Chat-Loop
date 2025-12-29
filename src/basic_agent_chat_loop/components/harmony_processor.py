@@ -460,7 +460,8 @@ class HarmonyProcessor:
 
         # If detailed thinking is disabled, only show final response or main text
         if not self.show_detailed_thinking:
-            # Return final channel if available and non-empty, otherwise return main text
+            # Return final channel if available and non-empty,
+            # otherwise return main text
             final_text = channels.get("final", "").strip()
             if final_text:
                 return final_text
@@ -498,7 +499,8 @@ class HarmonyProcessor:
             lines.append(channels["tool_call"])
             lines.append("")
 
-        # Show final response - prefer final channel if non-empty, otherwise use main text
+        # Show final response - prefer final channel if non-empty,
+        # otherwise use main text
         final_response = channels.get("final", "").strip() or processed_response["text"]
         if final_response and final_response.strip():
             lines.append("💬 [RESPONSE]")

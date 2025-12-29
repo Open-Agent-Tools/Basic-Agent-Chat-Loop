@@ -1394,7 +1394,8 @@ class ChatLoop:
                                 else:
                                     text_to_add = str(content)
 
-                    # Fallback: Check for common streaming event patterns (AWS Strands, etc.)
+                    # Fallback: Check for common streaming event patterns
+                    # (AWS Strands, etc.)
                     elif hasattr(event, "delta"):
                         # AWS Strands/Anthropic delta events
                         delta = event.delta
@@ -1468,26 +1469,35 @@ class ChatLoop:
             # Process through Harmony if available
             display_text = full_response
             if self.harmony_processor:
-                # Debug: Log response object structure (safely handle mocks/test objects)
+                # Debug: Log response object structure
+                # (safely handle mocks/test objects)
                 try:
                     logger.debug(f"Response object type: {type(response_obj)}")
                     logger.debug(f"Response object attrs: {dir(response_obj)[:20]}")
                     if response_obj and hasattr(response_obj, "choices"):
                         try:
-                            logger.debug(f"Response has choices: {len(response_obj.choices)}")
+                            logger.debug(
+                                f"Response has choices: {len(response_obj.choices)}"
+                            )
                         except TypeError:
-                            logger.debug("Response has choices attribute (non-sequence)")
+                            logger.debug(
+                                "Response has choices attribute (non-sequence)"
+                            )
 
                         if response_obj.choices:
                             choice = response_obj.choices[0]
                             logger.debug(f"Choice type: {type(choice)}")
                             logger.debug(f"Choice attrs: {dir(choice)[:20]}")
                             if hasattr(choice, "logprobs"):
-                                logger.debug(f"Has logprobs: {choice.logprobs is not None}")
+                                logger.debug(
+                                    f"Has logprobs: {choice.logprobs is not None}"
+                                )
                             if hasattr(choice, "message"):
                                 logger.debug(f"Message type: {type(choice.message)}")
                 except Exception as e:
-                    logger.debug(f"Error logging response structure (safe to ignore): {e}")
+                    logger.debug(
+                        f"Error logging response structure (safe to ignore): {e}"
+                    )
 
                 processed = self.harmony_processor.process_response(
                     full_response, metadata=response_obj

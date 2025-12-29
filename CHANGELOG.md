@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2025-12-29
+
+### Fixed
+- **Empty Agent Responses in Saved Conversations** - Critical bugfix for conversation saving
+  - Fixed streaming event parser to handle AWS Strands `.delta` events (Claude Sonnet 4.5)
+  - Fixed conversation history tracking to work regardless of `auto_save` setting
+  - Fixed Harmony processor overwriting responses with empty channels
+  - Added comprehensive test suite (test_conversation_saving.py, 608 lines)
+  - 9/9 core functionality tests passing for streaming formats and history tracking
+
+### Technical Details
+Three critical bugs were causing saved conversation files (.md and .json) to show only user queries without agent responses:
+
+1. **Streaming Event Parser**: Only handled `.data` attribute events, missing AWS Strands `.delta` events. Added fallback handling for multiple event formats (.delta, .text, string events) in chat_loop.py:1369-1415.
+
+2. **Conversation History Tracking**: History was only tracked when `auto_save=True`, breaking manual saves and copy commands. Removed conditional tracking in chat_loop.py:1595-1606.
+
+3. **Harmony Processor**: Empty channels would overwrite actual response text. Fixed to preserve original text when channels are empty (harmony_processor.py:219-226, 463-467, 502).
+
+Impact: Universal support for all streaming formats, reliable conversation saving regardless of configuration, complete conversation history in saved files, all manual commands work as expected. Fixes user reports of "saved conversations only show my questions".
+
+## [1.5.0] - 2024-12-29
+
+### Changed
+- **Removed Google ADK Support** - Focused exclusively on AWS Strands agents
+  - Removed all Google ADK/Gemini-related code and dependencies
+  - Simplified codebase by removing unused agent framework
+  - Updated documentation to specify AWS Strands only
+  - Cleaned up imports and removed adk-specific utilities
+
+### Technical Details
+The project initially supported both Google ADK and AWS Strands agent frameworks. Since the focus is exclusively on AWS Strands (using Claude models via Anthropic/Bedrock), all Google ADK support has been removed to simplify the codebase and reduce maintenance overhead. All existing functionality for AWS Strands agents remains unchanged.
+
 ## [1.4.1] - 2024-12-24
 
 ### Fixed
