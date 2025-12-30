@@ -11,8 +11,6 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .error_messages import ErrorMessages
-
 logger = logging.getLogger(__name__)
 
 
@@ -109,7 +107,10 @@ class DependencyManager:
                     "  3. Verify package names in requirements.txt\n"
                     "  4. Update pip: pip install --upgrade pip"
                 )
-                return (False, f"Failed to install dependencies: {error_msg}{suggestions}")
+                return (
+                    False,
+                    f"Failed to install dependencies: {error_msg}{suggestions}",
+                )
 
         except subprocess.TimeoutExpired:
             suggestions = (

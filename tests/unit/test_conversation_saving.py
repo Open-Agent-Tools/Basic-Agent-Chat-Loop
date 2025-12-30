@@ -9,16 +9,13 @@ Tests for bugs fixed:
 
 import asyncio
 import json
-import time
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
-from basic_agent_chat_loop.chat_config import ChatConfig
 from basic_agent_chat_loop.chat_loop import ChatLoop
 from basic_agent_chat_loop.components.harmony_processor import HarmonyProcessor
-from basic_agent_chat_loop.components.session_manager import SessionManager
 
 
 @pytest.fixture
@@ -31,16 +28,12 @@ def mock_strands_agent():
     # Mock streaming events with delta attribute (AWS Strands style)
     async def mock_stream_async(query):
         """Simulate AWS Strands streaming events with delta attribute."""
-        response_chunks = [
-            "Hello! ",
-            "I'm Simple Sally. ",
-            "How can I help you today?"
-        ]
+        response_chunks = ["Hello! ", "I'm Simple Sally. ", "How can I help you today?"]
 
         for chunk in response_chunks:
             # Use spec to limit attributes
-            event = Mock(spec=['delta'])
-            delta_mock = Mock(spec=['text'])
+            event = Mock(spec=["delta"])
+            delta_mock = Mock(spec=["text"])
             delta_mock.text = chunk
             event.delta = delta_mock
             yield event
@@ -83,7 +76,7 @@ def mock_text_agent():
         response_chunks = ["Using ", "text ", "attribute."]
 
         for chunk in response_chunks:
-            event = Mock(spec=['text'])
+            event = Mock(spec=["text"])
             event.text = chunk
             yield event
             await asyncio.sleep(0.01)
@@ -132,7 +125,9 @@ class TestStreamingEventParsing:
     """Test that different streaming event formats are parsed correctly."""
 
     @pytest.mark.asyncio
-    async def test_aws_strands_delta_events(self, mock_strands_agent, temp_config, tmp_path):
+    async def test_aws_strands_delta_events(
+        self, mock_strands_agent, temp_config, tmp_path
+    ):
         """Test that AWS Strands events with .delta attribute are captured."""
         chat_loop = ChatLoop(
             mock_strands_agent,
@@ -205,7 +200,9 @@ class TestConversationHistoryTracking:
     """Test that conversation history is tracked regardless of auto_save setting."""
 
     @pytest.mark.asyncio
-    async def test_history_tracked_with_auto_save_false(self, mock_strands_agent, temp_config):
+    async def test_history_tracked_with_auto_save_false(
+        self, mock_strands_agent, temp_config
+    ):
         """Test conversation history is tracked even when auto_save is False."""
         # Ensure auto_save is False
         temp_config.config_data["features"]["auto_save"] = False
@@ -234,7 +231,9 @@ class TestConversationHistoryTracking:
         assert chat_loop.conversation_history[1]["query"] == "Second query"
 
     @pytest.mark.asyncio
-    async def test_history_tracked_with_auto_save_true(self, mock_strands_agent, temp_config):
+    async def test_history_tracked_with_auto_save_true(
+        self, mock_strands_agent, temp_config
+    ):
         """Test conversation history is tracked when auto_save is True."""
         # Enable auto_save
         temp_config.config_data["features"]["auto_save"] = True
@@ -384,22 +383,24 @@ class TestHarmonyProcessorNonInterference:
 
     def test_harmony_not_enabled_for_claude_agents(self):
         """Test that Harmony is not enabled for Claude Sonnet agents."""
-        # Create mock Claude agent with limited spec to avoid Mock returning True for all attributes
-        agent = Mock(spec=['name', 'model'])
+        # Create mock Claude agent with limited spec to avoid Mock
+        # returning True for all attributes
+        agent = Mock(spec=["name", "model"])
         agent.name = "Claude Agent"
-        agent.model = Mock(spec=['model_id'])
+        agent.model = Mock(spec=["model_id"])
         agent.model.model_id = "claude-sonnet-4-20250514"
 
         # Harmony should not detect this as a Harmony agent
         is_harmony = HarmonyProcessor.detect_harmony_agent(
-            agent,
-            model_id="claude-sonnet-4-20250514"
+            agent, model_id="claude-sonnet-4-20250514"
         )
 
         assert is_harmony is False
 
     def test_harmony_empty_channel_fallback(self):
-        """Test that Harmony processor falls back to original text when channels are empty."""
+        """
+        Test Harmony processor falls back to original text when channels empty.
+        """
         processor = HarmonyProcessor(show_detailed_thinking=False)
 
         # Simulate response with empty final channel
@@ -408,7 +409,7 @@ class TestHarmonyProcessorNonInterference:
             "text": response_text,
             "channels": {
                 "final": "",  # Empty channel
-                "reasoning": "Some reasoning"
+                "reasoning": "Some reasoning",
             },
             "has_reasoning": True,
             "has_tools": False,
@@ -506,7 +507,7 @@ class TestMultipleQueryConversation:
             "How do I install it?",
             "Can you give me an example?",
             "What about error handling?",
-            "Thank you!"
+            "Thank you!",
         ]
 
         for query in queries:
@@ -586,19 +587,19 @@ class TestEdgeCases:
         async def mixed_stream(query):
             """Yield different event types."""
             # First event with .data
-            event1 = Mock(spec=['data'])
+            event1 = Mock(spec=["data"])
             event1.data = "Part 1 "
             yield event1
 
             # Second event with .delta
-            event2 = Mock(spec=['delta'])
-            delta_mock = Mock(spec=['text'])
+            event2 = Mock(spec=["delta"])
+            delta_mock = Mock(spec=["text"])
             delta_mock.text = "Part 2 "
             event2.delta = delta_mock
             yield event2
 
             # Third event with .text
-            event3 = Mock(spec=['text'])
+            event3 = Mock(spec=["text"])
             event3.text = "Part 3"
             yield event3
 
