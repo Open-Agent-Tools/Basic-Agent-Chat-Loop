@@ -2418,18 +2418,20 @@ class ChatLoop:
                                 print(Colors.error(f"Failed to copy: {e}"))
                                 logger.error(f"Copy command failed: {e}")
                             continue
-                        elif cmd_lower.startswith("resume "):
+                        elif cmd_lower == "resume" or cmd_lower.startswith("resume "):
                             # Resume a previous session
                             parts = cmd_input.split(maxsplit=1)
+
+                            # If no session specified, show list of sessions
                             if len(parts) < 2:
-                                print(
-                                    Colors.error(
-                                        "Usage: #resume <session_id or number>"
-                                    )
+                                sessions = self.session_manager.list_sessions(
+                                    agent_name=self.agent_name, limit=20
                                 )
-                                print(
-                                    "Use '#sessions' command to see available sessions"
+                                self.display_manager.display_sessions(
+                                    sessions, agent_name=self.agent_name
                                 )
+                                usage_msg = "Usage: #resume <number or session_id>"
+                                print(f"\n{Colors.system(usage_msg)}")
                                 continue
 
                             session_ref = parts[1].strip()
