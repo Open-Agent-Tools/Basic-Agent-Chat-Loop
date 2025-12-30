@@ -1044,9 +1044,118 @@ class ChatLoop:
             print(Colors.error(f"\n⚠️  Failed to restore session: {e}"))
             return False
 
-    def save_conversation(self, session_id: Optional[str] = None) -> bool:
+    async def _generate_session_summary(
+        self, previous_summary: Optional[str] = None
+    ) -> Optional[str]:
         """
-        Save conversation as markdown file.
+        Generate a structured summary of the current session.
+
+        Args:
+            previous_summary: Optional summary from parent session for progressive
+summarization
+
+        Returns:
+            Summary text with HTML markers, or None if generation failed
+        """
+        try:
+            # Build the summarization prompt
+            prompt_parts = ["Generate a progressive session summary:\n\n"]
+
+            # Add background context if there's a previous summary
+            if previous_summary:
+                prompt_parts.append(
+                    "**Background Context:** Condense this previous summary to 1-2 "
+                    "sentences:\n"
+                )
+                prompt_parts.append(previous_summary)
+                prompt_parts.append("\n\n")
+
+            # Add current session conversation
+            prompt_parts.append("**Current Session:**\n")
+            prompt_parts.extend(self.conversation_markdown)
+            prompt_parts.append("\n\n")
+
+            # Add instructions
+            prompt_parts.append(
+                "Create a structured summary:\n\n"
+                "**Background Context:** "
+            )
+            if previous_summary:
+                prompt_parts.append(
+                    "[Condense the previous summary to 1-2 sentences]\n\n"
+                )
+            else:
+                prompt_parts.append("Initial session.\n\n")
+
+            prompt_parts.append(
+                "**Current Session Summary:**\n"
+                "**Topics Discussed:**\n"
+                "- [bullet points about THIS session]\n\n"
+                "**Decisions Made:**\n"
+                "- [bullet points about THIS session]\n\n"
+                "**Pending:**\n"
+                "- [what's still open]\n\n"
+                "Aim for less than 500 words, be complete but terse, no fluff.\n"
+                "Use the exact format with HTML comment markers:\n\n"
+                "<!-- SESSION_SUMMARY_START -->\n"
+                "[your summary here]\n"
+                "<!-- SESSION_SUMMARY_END -->"
+            )
+
+            summary_prompt = "".join(prompt_parts)
+
+            # Call agent to generate summary
+            print(
+                Colors.system("📝 Generating session summary... "), end="", flush=True
+            )
+
+            summary_response = ""
+
+            # Check if agent supports streaming
+            if hasattr(self.agent, "stream_async"):
+                # Use streaming
+                async for event in self.agent.stream_async(summary_prompt):
+                    # Handle different event formats
+                    if isinstance(event, dict):
+                        # AWS Strands format
+                        if "delta" in event and "text" in event["delta"]:
+                            summary_response += event["delta"]["text"]
+                        elif "data" in event and "text" in event["data"]:
+                            summary_response += event["data"]["text"]
+                        elif "text" in event:
+                            summary_response += event["text"]
+                    elif isinstance(event, str):
+                        summary_response += event
+            else:
+                # Non-streaming agent
+                summary_response = await asyncio.get_event_loop().run_in_executor(
+                    None, self.agent, summary_prompt
+                )
+
+            print("✓")
+
+            # Validate that summary has the required markers
+            if (
+                "<!-- SESSION_SUMMARY_START -->" not in summary_response
+                or "<!-- SESSION_SUMMARY_END -->" not in summary_response
+            ):
+                logger.warning("Summary missing required HTML markers")
+                return None
+
+            return summary_response.strip()
+
+        except asyncio.TimeoutError:
+            logger.warning("Summary generation timed out")
+            print("⏱️ timeout")
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to generate summary: {e}", exc_info=True)
+            print(f"⚠️ failed ({e})")
+            return None
+
+    async def save_conversation(self, session_id: Optional[str] = None) -> bool:
+        """
+        Save conversation as markdown file with auto-generated summary.
 
         Args:
             session_id: Optional custom session ID.
@@ -1064,6 +1173,11 @@ class ChatLoop:
         save_session_id = session_id or self.session_id
 
         try:
+            # Generate summary (auto_save enabled means we generate it)
+            summary = await self._generate_session_summary(
+                previous_summary=getattr(self, "_previous_summary", None)
+            )
+
             # Ensure sessions directory exists
             sessions_dir = self.session_manager.sessions_dir
             sessions_dir.mkdir(parents=True, exist_ok=True)
@@ -1077,11 +1191,31 @@ class ChatLoop:
                 f"**Session ID:** {save_session_id}\n\n",
                 f"**Date:** {datetime.now().isoformat()}\n\n",
                 f"**Agent:** {self.agent_name}\n\n",
-                f"**Description:** {self.agent_description}\n\n",
+                f"**Agent Path:** {self.agent_path}\n\n",
                 f"**Total Queries:** {self.query_count}\n\n",
-                "---\n",
             ]
+
+            # Add "Resumed from" info if this session was resumed
+            if hasattr(self, "_resumed_from") and self._resumed_from:
+                markdown_content.append(f"**Resumed From:** {self._resumed_from}\n\n")
+
+            markdown_content.append("---\n")
+
+            # Add conversation content
             markdown_content.extend(self.conversation_markdown)
+
+            # Add summary if generated successfully
+            if summary:
+                markdown_content.append("\n")
+                markdown_content.append(summary)
+                markdown_content.append("\n")
+            else:
+                logger.warning("Session saved without summary - resume will not work")
+                print(
+                    Colors.system(
+                        "  ⚠️  Summary generation failed - session cannot be resumed"
+                    )
+                )
 
             # Write markdown file
             with open(md_path, "w", encoding="utf-8") as f:
@@ -1117,7 +1251,7 @@ class ChatLoop:
             print(Colors.error(f"\n⚠️  Could not save conversation: {e}"))
             return False
 
-    def _handle_save_command(self, custom_name: Optional[str] = None):
+    async def _handle_save_command(self, custom_name: Optional[str] = None):
         """Handle manual save command during conversation."""
         # Check if there's anything to save
         if not self.conversation_markdown:
@@ -1156,13 +1290,13 @@ class ChatLoop:
                 new_session_id = f"{self.agent_name}_{timestamp}"
 
             # Save with new ID
-            success = self.save_conversation(session_id=new_session_id)
+            success = await self.save_conversation(session_id=new_session_id)
             if success:
                 self.session_id = new_session_id  # Update for future saves
                 self._show_save_confirmation(new_session_id)
         else:
             # Update current session (default)
-            success = self.save_conversation()
+            success = await self.save_conversation()
             if success:
                 self._show_save_confirmation(self.session_id)
 
@@ -1867,7 +2001,7 @@ class ChatLoop:
                         # Save conversation command
                         parts = user_input.strip().split(maxsplit=1)
                         custom_name = parts[1] if len(parts) > 1 else None
-                        self._handle_save_command(custom_name)
+                        await self._handle_save_command(custom_name)
                         continue
                     elif user_input.lower().startswith("copy"):
                         # Copy command with variants
@@ -2068,7 +2202,7 @@ class ChatLoop:
 
             # Save conversation if auto-save is enabled
             if self.auto_save:
-                success = self.save_conversation()
+                success = await self.save_conversation()
                 if success:
                     self._show_save_confirmation(self.session_id)
 
