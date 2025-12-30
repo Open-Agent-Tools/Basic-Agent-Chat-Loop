@@ -2219,7 +2219,7 @@ Examples:
                 if Path(agent_path).exists():
                     print(f"  {Colors.success(alias_name):<20} → {agent_path}")
                 else:
-                    status = f"{Colors.YELLOW}(missing){Colors.RESET}"
+                    status = f"{Colors.SYSTEM}(missing){Colors.RESET}"
                     print(f"  {Colors.error(alias_name):<20} → {agent_path} {status}")
             print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
             print(f"\nUsage: {Colors.system('chat_loop <alias>')}")
