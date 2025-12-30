@@ -202,6 +202,48 @@ agents:
       show_detailed_thinking: false  # Hide internal reasoning
 ```
 
+### Context
+
+Context usage monitoring and warning thresholds:
+
+```yaml
+context:
+  warning_thresholds: [80, 90, 95]  # Warning percentages
+```
+
+**Warning thresholds:**
+- List of percentages (0-100) at which to show context usage warnings
+- Thresholds are checked from highest to lowest
+- Highest threshold shows error message with suggestion to use `#compact`
+- Second-highest shows warning message
+- Lower thresholds show informational messages
+- Default: `[80, 90, 95]` (warn at 80%, 90%, and 95%)
+
+**Examples:**
+
+More aggressive warnings:
+```yaml
+context:
+  warning_thresholds: [50, 75, 90, 95]  # Warn earlier
+```
+
+Minimal warnings:
+```yaml
+context:
+  warning_thresholds: [95]  # Only warn when critical
+```
+
+Custom per-agent:
+```yaml
+agents:
+  'Memory Heavy Agent':
+    context:
+      warning_thresholds: [60, 80, 90, 95]  # Warn earlier for this agent
+```
+
+**View context usage:**
+Use the `#context` command to see current token usage, session time, and warnings.
+
 ### Sessions
 
 Conversation session management settings:
@@ -521,6 +563,9 @@ harmony:
   enabled: string           # auto / yes / no - Harmony processing control
   show_detailed_thinking: boolean  # Show reasoning with labeled prefixes
 
+context:
+  warning_thresholds: list[int]  # List of percentages (0-100) for warnings
+
 agents:
   '<agent_name>':
     # Any of the above sections can be overridden
@@ -531,6 +576,7 @@ agents:
     ui: {...}
     audio: {...}
     harmony: {...}
+    context: {...}
 ```
 
 ## See Also

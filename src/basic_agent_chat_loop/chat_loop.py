@@ -498,6 +498,11 @@ class ChatLoop:
                 "features.rich_enabled", True, agent_name=agent_name
             )
             self.use_rich = RICH_AVAILABLE and rich_enabled
+
+            # Context warning thresholds
+            self.context_warning_thresholds = self.config.get(
+                "context.warning_thresholds", [80, 90, 95], agent_name=agent_name
+            )
         else:
             # Defaults when no config
             self.max_retries = 3
@@ -511,6 +516,7 @@ class ChatLoop:
             self.show_banner = True
             self.update_terminal_title = True
             self.use_rich = RICH_AVAILABLE
+            self.context_warning_thresholds = [80, 90, 95]
 
         # Setup rich console if available and enabled
         self.console: Optional[Console] = Console() if self.use_rich else None
@@ -582,8 +588,16 @@ class ChatLoop:
             if len(model_info) > 30:
                 model_info = model_info[:27] + "..."
 
+            # Get max_tokens for percentage display in status bar
+            max_tokens_for_bar = self.agent_metadata.get("max_tokens", None)
+            if max_tokens_for_bar == "Unknown":
+                max_tokens_for_bar = None
+
             self.status_bar = StatusBar(
-                agent_name, model_info, show_tokens=self.show_tokens
+                agent_name,
+                model_info,
+                show_tokens=self.show_tokens,
+                max_tokens=max_tokens_for_bar,
             )
 
             # Log for debugging
@@ -2424,6 +2438,113 @@ class ChatLoop:
                             if success:
                                 # Show banner after resume
                                 self.display_manager.display_banner()
+                            continue
+                        elif cmd_lower == "context":
+                            # Show context usage statistics
+                            total_tokens = self.token_tracker.get_total_tokens()
+                            input_tokens = self.token_tracker.total_input_tokens
+                            output_tokens = self.token_tracker.total_output_tokens
+
+                            # Get max tokens from agent metadata
+                            max_tokens = self.agent_metadata.get(
+                                "max_tokens", "Unknown"
+                            )
+
+                            # Calculate percentage if max_tokens is known
+                            percentage_str = ""
+                            if (
+                                max_tokens != "Unknown"
+                                and isinstance(max_tokens, (int, float))
+                                and max_tokens > 0
+                            ):
+                                percentage = (total_tokens / max_tokens) * 100
+                                percentage_str = f" ({percentage:.1f}%)"
+
+                            # Calculate session duration
+                            session_duration = time.time() - self.session_start_time
+                            if session_duration < 60:
+                                duration_str = f"{session_duration:.0f}s"
+                            elif session_duration < 3600:
+                                minutes = int(session_duration / 60)
+                                seconds = int(session_duration % 60)
+                                duration_str = f"{minutes}m {seconds}s"
+                            else:
+                                hours = int(session_duration / 3600)
+                                minutes = int((session_duration % 3600) / 60)
+                                duration_str = f"{hours}h {minutes}m"
+
+                            # Display context information
+                            print(f"\n{Colors.system('Context Usage')}")
+                            print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+
+                            # Format max tokens display
+                            if max_tokens == "Unknown":
+                                max_str = "Unknown"
+                            else:
+                                max_str = self.token_tracker.format_tokens(max_tokens)
+
+                            print(
+                                f"  Total Tokens:   "
+                                f"{self.token_tracker.format_tokens(total_tokens)} / "
+                                f"{max_str}{percentage_str}"
+                            )
+                            print(
+                                f"  Input Tokens:   "
+                                f"{self.token_tracker.format_tokens(input_tokens)}"
+                            )
+                            print(
+                                f"  Output Tokens:  "
+                                f"{self.token_tracker.format_tokens(output_tokens)}"
+                            )
+                            print(f"  Queries:        {self.query_count}")
+                            print(f"  Session Time:   {duration_str}")
+
+                            # Show warning if approaching limits
+                            if (
+                                max_tokens != "Unknown"
+                                and isinstance(max_tokens, (int, float))
+                                and max_tokens > 0
+                            ):
+                                percentage = (total_tokens / max_tokens) * 100
+
+                                # Sort thresholds in descending order
+                                sorted_thresholds = sorted(
+                                    self.context_warning_thresholds, reverse=True
+                                )
+
+                                # Check thresholds from highest to lowest
+                                for threshold in sorted_thresholds:
+                                    if percentage >= threshold:
+                                        # Highest threshold gets special treatment
+                                        if threshold == sorted_thresholds[0]:
+                                            msg = (
+                                                f"⚠️  Warning: {threshold}% "
+                                                f"of context used!"
+                                            )
+                                            print(f"\n  {Colors.error(msg)}")
+                                            msg2 = (
+                                                "Consider using #compact "
+                                                "to free up context."
+                                            )
+                                            print(f"  {Colors.system(msg2)}")
+                                        # Second highest threshold
+                                        elif (
+                                            threshold == sorted_thresholds[1]
+                                            if len(sorted_thresholds) > 1
+                                            else False
+                                        ):
+                                            msg = (
+                                                f"⚠️  Warning: {threshold}% "
+                                                f"of context used"
+                                            )
+                                            print(f"\n  {Colors.error(msg)}")
+                                        # Other thresholds
+                                        else:
+                                            msg = f"💡 Context usage: {threshold}%"
+                                            print(f"\n  {Colors.system(msg)}")
+                                        break  # Only show highest matched threshold
+
+                            print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
                             continue
                         elif cmd_lower == "clear":
                             # Clear screen (cross-platform)

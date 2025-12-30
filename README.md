@@ -244,6 +244,7 @@ See [CONFIG.md](CONFIG.md) for full configuration options.
 |---------|-------------|
 | `#help` | Show help message |
 | `#info` | Show agent details (model, tools) |
+| `#context` | Show token usage and context statistics |
 | `#templates` | List available prompt templates |
 | `#sessions` | List all saved conversation sessions |
 | `/name` | Use prompt template from `~/.prompts/name.md` |

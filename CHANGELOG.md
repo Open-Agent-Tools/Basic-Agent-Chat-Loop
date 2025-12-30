@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Context Monitoring Features** - Enhanced token usage tracking and warnings
+  - Added `#context` command to display detailed token usage statistics
+  - Status bar now shows context percentage when max_tokens is known
+  - Configurable warning thresholds via `context.warning_thresholds` in config
+  - Default thresholds at 80%, 90%, and 95% with appropriate messaging
+  - Special treatment for highest threshold (includes suggestion to use `#compact`)
+  - Supports custom threshold configurations per agent
+
+### Fixed
+- **AWS Strands Token Accumulation Bug** - Corrected cumulative token counting
+  - AWS Strands `accumulated_usage` is cumulative across entire session
+  - Implemented delta calculation to track only per-query token usage
+  - Added `last_accumulated_input/output` tracking variables
+  - Modified `_extract_token_usage()` to return `(usage_dict, is_accumulated)` tuple
+  - Prevents token counts from growing beyond actual context limits
+  - Related: User-reported issue of "70.6M tokens" appearing in status bar
+
 ## [1.6.0-beta.6] - 2025-12-30
 
 ### Changed

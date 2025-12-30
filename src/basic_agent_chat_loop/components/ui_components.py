@@ -5,6 +5,7 @@ Contains terminal color codes and status bar rendering.
 """
 
 import time
+from typing import Optional
 
 # Named color palette - maps color names to ANSI escape codes
 COLOR_PALETTE = {
@@ -135,7 +136,13 @@ class StatusBar:
     TOKEN_THOUSANDS_THRESHOLD = 1_000
     TOKEN_MILLIONS_THRESHOLD = 1_000_000
 
-    def __init__(self, agent_name: str, model_info: str, show_tokens: bool = False):
+    def __init__(
+        self,
+        agent_name: str,
+        model_info: str,
+        show_tokens: bool = False,
+        max_tokens: Optional[int] = None,
+    ):
         """
         Initialize status bar.
 
@@ -143,6 +150,7 @@ class StatusBar:
             agent_name: Name of the agent
             model_info: Model identifier string
             show_tokens: Whether to show token count
+            max_tokens: Maximum context tokens (for percentage display)
         """
         self.agent_name = agent_name
         self.model_info = model_info
@@ -150,6 +158,7 @@ class StatusBar:
         self.start_time = time.time()
         self.show_tokens = show_tokens
         self.total_tokens = 0
+        self.max_tokens = max_tokens
 
     def get_session_time(self) -> str:
         """Get formatted session time."""
@@ -196,6 +205,17 @@ class StatusBar:
                 )
             else:
                 token_str = f"{self.total_tokens} tokens"
+
+            # Add percentage if max_tokens is known
+            if (
+                self.max_tokens
+                and self.max_tokens != "Unknown"
+                and isinstance(self.max_tokens, (int, float))
+                and self.max_tokens > 0
+            ):
+                percentage = (self.total_tokens / self.max_tokens) * 100
+                token_str += f" ({percentage:.0f}%)"
+
             parts.append(token_str)
 
         parts.extend([f"{self.query_count} {queries_text}", session_time])

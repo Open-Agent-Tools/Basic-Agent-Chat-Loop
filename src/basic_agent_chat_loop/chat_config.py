@@ -70,6 +70,11 @@ class ChatConfig:
             # Show reasoning/analysis/commentary channels
             "show_detailed_thinking": True,
         },
+        "context": {
+            # Warning thresholds for context usage (as percentages)
+            # Show warnings when token usage exceeds these thresholds
+            "warning_thresholds": [80, 90, 95],
+        },
         # Per-agent overrides (example structure)
         "agents": {
             # 'Complex Coding Clara': {
