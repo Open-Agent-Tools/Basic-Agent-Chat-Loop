@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Command Prefix Update** - All in-chat commands now require `#` prefix to avoid collisions with regular conversation
+  - Commands updated: `#help`, `#info`, `#compact`, `#sessions`, `#save`, `#copy`, `#resume`, `#clear`, `#quit`, `#exit`
+  - Template commands still use `/` prefix (intentional)
+  - Multi-line input still uses `\\` (intentional)
+  - Added helpful error message for unknown `#` commands
+  - Updated all help text and README documentation
+
 ## [1.6.0] - 2025-12-30
 
 ### Added

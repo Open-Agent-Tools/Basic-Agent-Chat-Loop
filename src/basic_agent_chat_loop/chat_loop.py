@@ -927,8 +927,8 @@ class ChatLoop:
 
             # Get query count and tokens from metadata or session index
             query_count = metadata.get("query_count", 0)
-            session_info = self.session_manager.get_session_metadata(session_id)
-            total_tokens = session_info.total_tokens if session_info else 0
+            session_info_data = self.session_manager.get_session_metadata(session_id)
+            total_tokens = session_info_data.total_tokens if session_info_data else 0
 
             # Display session info
             print(
@@ -1078,7 +1078,7 @@ class ChatLoop:
             # Update status bar if enabled
             if self.status_bar:
                 self.status_bar.query_count = 0
-                self.status_bar.session_start_time = self.session_start_time
+                self.status_bar.start_time = self.session_start_time
 
             print(Colors.success("✓ Session restored! Ready to continue."))
             print()
@@ -1601,7 +1601,7 @@ class ChatLoop:
             # Update status bar if enabled
             if self.status_bar:
                 self.status_bar.query_count = 0
-                self.status_bar.session_start_time = self.session_start_time
+                self.status_bar.start_time = self.session_start_time
 
             print(Colors.success("✓ Session compacted and ready to continue!"))
             print()
@@ -2253,130 +2253,195 @@ class ChatLoop:
                     # Don't use executor as it breaks readline editing
                     user_input = input(f"\n{Colors.user('You')}: ").strip()
 
-                    # Handle commands
-                    if user_input.lower() in ["exit", "quit", "bye"]:
-                        print(
-                            Colors.system(
-                                f"\nGoodbye! Thanks for using {self.agent_name}!"
+                    # Handle commands (commands start with #)
+                    if user_input.startswith("#"):
+                        # Strip # and get command
+                        cmd_input = user_input[1:].strip()
+                        cmd_lower = cmd_input.lower()
+
+                        if cmd_lower in ["exit", "quit", "bye"]:
+                            print(
+                                Colors.system(
+                                    f"\nGoodbye! Thanks for using {self.agent_name}!"
+                                )
                             )
-                        )
-                        break
-                    elif user_input.lower() == "help":
-                        self.display_manager.display_help()
-                        continue
-                    elif user_input.lower() == "info":
-                        self.display_manager.display_info()
-                        continue
-                    elif user_input.lower() == "templates":
-                        # List available prompt templates
-                        templates = (
-                            self.template_manager.list_templates_with_descriptions()
-                        )
-                        self.display_manager.display_templates(
-                            templates, self.prompts_dir
-                        )
-                        continue
-                    elif user_input.lower() == "sessions":
-                        # List saved sessions
-                        sessions = self.session_manager.list_sessions(
-                            agent_name=self.agent_name, limit=20
-                        )
-                        self.display_manager.display_sessions(
-                            sessions, agent_name=self.agent_name
-                        )
-                        continue
-                    elif user_input.lower() == "save" or user_input.lower().startswith(
-                        "save "
-                    ):
-                        # Save conversation command
-                        parts = user_input.strip().split(maxsplit=1)
-                        custom_name = parts[1] if len(parts) > 1 else None
-                        await self._handle_save_command(custom_name)
-                        continue
-                    elif user_input.lower() == "compact":
-                        # Compact session command
-                        await self._handle_compact_command()
-                        continue
-                    elif user_input.lower().startswith("copy"):
-                        # Copy command with variants
-                        parts = user_input.lower().split(maxsplit=1)
-                        copy_mode = parts[1] if len(parts) > 1 else ""
+                            break
+                        elif cmd_lower == "help":
+                            self.display_manager.display_help()
+                            continue
+                        elif cmd_lower == "info":
+                            self.display_manager.display_info()
+                            continue
+                        elif cmd_lower == "templates":
+                            # List available prompt templates
+                            templates = (
+                                self.template_manager.list_templates_with_descriptions()
+                            )
+                            self.display_manager.display_templates(
+                                templates, self.prompts_dir
+                            )
+                            continue
+                        elif cmd_lower == "sessions":
+                            # List saved sessions
+                            sessions = self.session_manager.list_sessions(
+                                agent_name=self.agent_name, limit=20
+                            )
+                            self.display_manager.display_sessions(
+                                sessions, agent_name=self.agent_name
+                            )
+                            continue
+                        elif cmd_lower == "save" or cmd_lower.startswith("save "):
+                            # Save conversation command
+                            parts = cmd_input.strip().split(maxsplit=1)
+                            custom_name = parts[1] if len(parts) > 1 else None
+                            await self._handle_save_command(custom_name)
+                            continue
+                        elif cmd_lower == "compact":
+                            # Compact session command
+                            await self._handle_compact_command()
+                            continue
+                        elif cmd_lower.startswith("copy"):
+                            # Copy command with variants
+                            parts = cmd_lower.split(maxsplit=1)
+                            copy_mode = parts[1] if len(parts) > 1 else ""
 
-                        try:
-                            content = None
-                            description = ""
+                            try:
+                                content = None
+                                description = ""
 
-                            if copy_mode == "query":
-                                # Copy last user query
-                                if self.last_query:
-                                    content = self.last_query
-                                    description = "last query"
-                                else:
-                                    print(Colors.system("No query to copy yet"))
-                                    continue
-                            elif copy_mode == "all":
-                                # Copy entire conversation as markdown
-                                if self.conversation_markdown:
-                                    content = self._format_conversation_as_markdown()
-                                    description = "entire conversation"
-                                else:
-                                    print(Colors.system("No conversation to copy yet"))
-                                    continue
-                            elif copy_mode == "code":
-                                # Copy just code blocks from last response
-                                if self.last_response:
-                                    code_blocks = self._extract_code_blocks(
-                                        self.last_response
-                                    )
-                                    if code_blocks:
-                                        content = "\n\n".join(code_blocks)
-                                        description = "code blocks from last response"
+                                if copy_mode == "query":
+                                    # Copy last user query
+                                    if self.last_query:
+                                        content = self.last_query
+                                        description = "last query"
+                                    else:
+                                        print(Colors.system("No query to copy yet"))
+                                        continue
+                                elif copy_mode == "all":
+                                    # Copy entire conversation as markdown
+                                    if self.conversation_markdown:
+                                        content = (
+                                            self._format_conversation_as_markdown()
+                                        )
+                                        description = "entire conversation"
                                     else:
                                         print(
-                                            Colors.system(
-                                                "No code blocks found in last response"
-                                            )
+                                            Colors.system("No conversation to copy yet")
                                         )
                                         continue
+                                elif copy_mode == "code":
+                                    # Copy just code blocks from last response
+                                    if self.last_response:
+                                        code_blocks = self._extract_code_blocks(
+                                            self.last_response
+                                        )
+                                        if code_blocks:
+                                            content = "\n\n".join(code_blocks)
+                                            description = (
+                                                "code blocks from last response"
+                                            )
+                                        else:
+                                            msg = (
+                                                "No code blocks found in last response"
+                                            )
+                                            print(Colors.system(msg))
+                                            continue
+                                    else:
+                                        print(Colors.system("No response to copy yet"))
+                                        continue
                                 else:
-                                    print(Colors.system("No response to copy yet"))
-                                    continue
+                                    # Default: copy last response
+                                    if self.last_response:
+                                        content = self.last_response
+                                        description = "last response"
+                                    else:
+                                        print(Colors.system("No response to copy yet"))
+                                        continue
+
+                                # Copy to clipboard
+                                pyperclip.copy(content)
+                                print(
+                                    Colors.success(
+                                        f"✓ Copied {description} to clipboard"
+                                    )
+                                )
+
+                            except Exception as e:
+                                print(Colors.error(f"Failed to copy: {e}"))
+                                logger.error(f"Copy command failed: {e}")
+                            continue
+                        elif cmd_lower.startswith("resume "):
+                            # Resume a previous session
+                            parts = cmd_input.split(maxsplit=1)
+                            if len(parts) < 2:
+                                print(
+                                    Colors.error(
+                                        "Usage: #resume <session_id or number>"
+                                    )
+                                )
+                                print(
+                                    "Use '#sessions' command to see available sessions"
+                                )
+                                continue
+
+                            session_ref = parts[1].strip()
+                            success = await self.restore_session(session_ref)
+
+                            if success:
+                                # Show banner after resume
+                                self.display_manager.display_banner()
+                            continue
+                        elif cmd_lower == "clear":
+                            # Clear screen (cross-platform)
+                            os.system("clear" if os.name != "nt" else "cls")
+
+                            # Reset agent session if factory available
+                            if self.agent_factory:
+                                try:
+                                    # Cleanup old agent if possible
+                                    if hasattr(self.agent, "cleanup"):
+                                        try:
+                                            if asyncio.iscoroutinefunction(
+                                                self.agent.cleanup
+                                            ):
+                                                await self.agent.cleanup()
+                                            else:
+                                                self.agent.cleanup()
+                                        except Exception as e:
+                                            logger.debug(
+                                                f"Error during agent cleanup: {e}"
+                                            )
+
+                                    # Create fresh agent instance
+                                    self.agent = self.agent_factory()
+                                    print(
+                                        Colors.success(
+                                            "✓ Screen cleared and agent session reset"
+                                        )
+                                    )
+                                    logger.info("Agent session reset via clear command")
+                                except Exception as e:
+                                    print(
+                                        Colors.error(
+                                            f"⚠️  Could not reset agent session: {e}"
+                                        )
+                                    )
+                                    logger.error(f"Failed to reset agent session: {e}")
+                                    msg = "Screen cleared but agent session maintained"
+                                    print(Colors.system(msg))
                             else:
-                                # Default: copy last response
-                                if self.last_response:
-                                    content = self.last_response
-                                    description = "last response"
-                                else:
-                                    print(Colors.system("No response to copy yet"))
-                                    continue
+                                print(Colors.success("✓ Screen cleared"))
 
-                            # Copy to clipboard
-                            pyperclip.copy(content)
-                            print(
-                                Colors.success(f"✓ Copied {description} to clipboard")
-                            )
-
-                        except Exception as e:
-                            print(Colors.error(f"Failed to copy: {e}"))
-                            logger.error(f"Copy command failed: {e}")
-                        continue
-                    elif user_input.lower().startswith("resume "):
-                        # Resume a previous session
-                        parts = user_input.split(maxsplit=1)
-                        if len(parts) < 2:
-                            print(Colors.error("Usage: resume <session_id or number>"))
-                            print("Use 'sessions' command to see available sessions")
+                            self.display_manager.display_banner()
+                            continue
+                        else:
+                            # Unknown # command
+                            print(Colors.error(f"Unknown command: #{cmd_input}"))
+                            print("Type '#help' for available commands")
                             continue
 
-                        session_ref = parts[1].strip()
-                        success = await self.restore_session(session_ref)
-
-                        if success:
-                            # Show banner after resume
-                            self.display_manager.display_banner()
-                        continue
+                    # Template command: /template_name <optional input>
                     elif user_input.startswith("/") and len(user_input) > 1:
-                        # Template command: /template_name <optional input>
                         parts = user_input[1:].split(maxsplit=1)
                         template_name = parts[0]
                         input_text = parts[1] if len(parts) > 1 else ""
@@ -2396,50 +2461,8 @@ class ChatLoop:
                             print(f"Available templates: {tmpl_list}")
                             print(f"Create at: {self.prompts_dir}/{template_name}.md")
                             continue
-                    elif user_input.lower() == "clear":
-                        # Clear screen (cross-platform)
-                        os.system("clear" if os.name != "nt" else "cls")
 
-                        # Reset agent session if factory available
-                        if self.agent_factory:
-                            try:
-                                # Cleanup old agent if possible
-                                if hasattr(self.agent, "cleanup"):
-                                    try:
-                                        if asyncio.iscoroutinefunction(
-                                            self.agent.cleanup
-                                        ):
-                                            await self.agent.cleanup()
-                                        else:
-                                            self.agent.cleanup()
-                                    except Exception as e:
-                                        logger.debug(f"Error during agent cleanup: {e}")
-
-                                # Create fresh agent instance
-                                self.agent = self.agent_factory()
-                                print(
-                                    Colors.success(
-                                        "✓ Screen cleared and agent session reset"
-                                    )
-                                )
-                                logger.info("Agent session reset via clear command")
-                            except Exception as e:
-                                print(
-                                    Colors.error(
-                                        f"⚠️  Could not reset agent session: {e}"
-                                    )
-                                )
-                                logger.error(f"Failed to reset agent session: {e}")
-                                print(
-                                    Colors.system(
-                                        "Screen cleared but agent session maintained"
-                                    )
-                                )
-                        else:
-                            print(Colors.success("✓ Screen cleared"))
-
-                        self.display_manager.display_banner()
-                        continue
+                    # Multi-line input trigger
                     elif user_input == "\\\\":  # Multi-line input trigger
                         user_input = await self.get_multiline_input()
                         if not user_input.strip():

@@ -242,16 +242,16 @@ See [CONFIG.md](CONFIG.md) for full configuration options.
 
 | Command | Description |
 |---------|-------------|
-| `help` | Show help message |
-| `info` | Show agent details (model, tools) |
-| `templates` | List available prompt templates |
-| `sessions` | List all saved conversation sessions |
+| `#help` | Show help message |
+| `#info` | Show agent details (model, tools) |
+| `#templates` | List available prompt templates |
+| `#sessions` | List all saved conversation sessions |
 | `/name` | Use prompt template from `~/.prompts/name.md` |
-| `resume <#>` | Resume a previous session by number or ID |
-| `compact` | Save session and continue in new session with summary |
-| `copy` | Copy last response to clipboard (see variants below) |
-| `clear` | Clear screen and reset agent session |
-| `exit`, `quit` | Exit chat (shows session summary) |
+| `#resume <#>` | Resume a previous session by number or ID |
+| `#compact` | Save session and continue in new session with summary |
+| `#copy` | Copy last response to clipboard (see variants below) |
+| `#clear` | Clear screen and reset agent session |
+| `#exit`, `#quit` | Exit chat (shows session summary) |
 
 ### Session Management
 
@@ -267,7 +267,7 @@ features:
 
 ```bash
 # In chat - list sessions
-You: sessions
+You: #sessions
 
 Available Sessions (3):
   1. MyAgent - Jan 26, 14:30 - 15 queries
@@ -277,7 +277,7 @@ Available Sessions (3):
      "Explain async/await in Python..."
 
 # Resume by number or session ID
-You: resume 1
+You: #resume 1
 
 📋 Loading session...
 ✓ Found: MyAgent - Jan 26, 14:30 (15 queries, 12.5K tokens)
@@ -292,10 +292,10 @@ You: Let's add authentication now
 
 **Compact current session:**
 
-When your conversation gets long, use `compact` to save it and start fresh while preserving context:
+When your conversation gets long, use `#compact` to save it and start fresh while preserving context:
 
 ```bash
-You: compact
+You: #compact
 
 📝 Generating session summary...
 💾 Saved session: myagent_20251230_143022 (15 queries, 12.5K tokens)
@@ -337,16 +337,16 @@ Quickly copy content to clipboard:
 
 ```bash
 # Copy last agent response (default)
-You: copy
+You: #copy
 
 # Copy your last query
-You: copy query
+You: #copy query
 
 # Copy entire conversation as markdown
-You: copy all
+You: #copy all
 
 # Copy only code blocks from last response
-You: copy code
+You: #copy code
 ```
 
 **Example workflow:**
@@ -359,7 +359,7 @@ Agent: Here's a function to reverse a string:
     def reverse_string(s):
         return s[::-1]
 
-You: copy code
+You: #copy code
 ✓ Copied code blocks from last response to clipboard
 
 # Now paste into your editor with Cmd+V (Mac) or Ctrl+V (Windows/Linux)
