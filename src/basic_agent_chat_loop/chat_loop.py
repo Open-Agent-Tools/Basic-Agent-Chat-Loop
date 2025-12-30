@@ -1030,7 +1030,7 @@ class ChatLoop:
             restoration_duration = time.time() - restoration_start
 
             # Display agent acknowledgment
-            print(Colors.agent_response(f"{self.agent_name}:"), end=" ")
+            print(Colors.agent(f"{self.agent_name}:"), end=" ")
             if self.use_rich and self.console:
                 md = Markdown(restoration_response.strip())
                 self.console.print(md)
@@ -1555,7 +1555,7 @@ class ChatLoop:
             restoration_duration = time.time() - restoration_start
 
             # Display agent acknowledgment
-            print(Colors.agent_response(f"{self.agent_name}:"), end=" ")
+            print(Colors.agent(f"{self.agent_name}:"), end=" ")
             if self.use_rich and self.console:
                 md = Markdown(restoration_response.strip())
                 self.console.print(md)
