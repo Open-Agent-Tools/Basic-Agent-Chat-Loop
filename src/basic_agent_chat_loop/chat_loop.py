@@ -550,6 +550,11 @@ class ChatLoop:
         # (not just when show_tokens is true)
         self.token_tracker = TokenTracker(model_for_pricing)
 
+        # Track previous accumulated usage for delta calculation
+        # (AWS Strands agents report cumulative usage, we need the delta)
+        self.last_accumulated_input = 0
+        self.last_accumulated_output = 0
+
         # Track session start time for summary
         self.session_start_time = time.time()
         self.query_count = 0
@@ -741,7 +746,9 @@ class ChatLoop:
         )
         return None
 
-    def _extract_token_usage(self, response_obj) -> Optional[dict[str, int]]:
+    def _extract_token_usage(
+        self, response_obj
+    ) -> Optional[tuple[dict[str, int], bool]]:
         """
         Extract token usage from response object.
 
@@ -749,21 +756,27 @@ class ChatLoop:
             response_obj: Response object from agent
 
         Returns:
-            Dict with 'input_tokens' and 'output_tokens', or None if not available
+            Tuple of (usage_dict, is_accumulated) where:
+            - usage_dict: Dict with 'input_tokens' and 'output_tokens'
+            - is_accumulated: True if usage is cumulative across session
+            Returns None if no usage info available
         """
         if not response_obj:
             return None
 
         # Try common attribute patterns
         usage = None
+        is_accumulated = False
 
         # Pattern 1: response['result'].metrics.accumulated_usage (AWS Bedrock style)
+        # IMPORTANT: This is cumulative across the entire agent session!
         if isinstance(response_obj, dict) and "result" in response_obj:
             result = response_obj["result"]
             if hasattr(result, "metrics") and hasattr(
                 result.metrics, "accumulated_usage"
             ):
                 usage = result.metrics.accumulated_usage
+                is_accumulated = True  # AWS Strands accumulates tokens
 
         # Pattern 2: response.usage (Anthropic/Claude style)
         elif hasattr(response_obj, "usage"):
@@ -834,7 +847,8 @@ class ChatLoop:
             return None
 
         if input_tokens > 0 or output_tokens > 0:
-            return {"input_tokens": input_tokens, "output_tokens": output_tokens}
+            usage_dict = {"input_tokens": input_tokens, "output_tokens": output_tokens}
+            return (usage_dict, is_accumulated)
 
         return None
 
@@ -1985,7 +1999,7 @@ class ChatLoop:
             duration = time.time() - start_time
 
             # Extract token usage if available
-            usage_info = self._extract_token_usage(response_obj)
+            usage_result = self._extract_token_usage(response_obj)
 
             # Extract additional metrics (framework-specific)
             cycle_count = None
@@ -2021,10 +2035,30 @@ class ChatLoop:
                             tool_count = None
 
             # Track tokens (always, for session summary)
-            if usage_info:
-                self.token_tracker.add_usage(
-                    usage_info["input_tokens"], usage_info["output_tokens"]
-                )
+            if usage_result:
+                usage_info, is_accumulated = usage_result
+
+                if is_accumulated:
+                    # AWS Strands accumulated_usage is cumulative across session
+                    # Calculate delta from last query
+                    current_input = usage_info["input_tokens"]
+                    current_output = usage_info["output_tokens"]
+
+                    delta_input = current_input - self.last_accumulated_input
+                    delta_output = current_output - self.last_accumulated_output
+
+                    # Update tracking
+                    self.last_accumulated_input = current_input
+                    self.last_accumulated_output = current_output
+
+                    # Add only the delta
+                    if delta_input > 0 or delta_output > 0:
+                        self.token_tracker.add_usage(delta_input, delta_output)
+                else:
+                    # Non-accumulated usage - add directly
+                    self.token_tracker.add_usage(
+                        usage_info["input_tokens"], usage_info["output_tokens"]
+                    )
 
                 # Update status bar
                 if self.status_bar:

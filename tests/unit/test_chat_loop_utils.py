@@ -206,8 +206,10 @@ class TestExtractTokenUsage:
             result = chat_loop._extract_token_usage(response)
 
             assert result is not None
-            assert result["input_tokens"] == 100
-            assert result["output_tokens"] == 50
+            usage_dict, is_accumulated = result
+            assert usage_dict["input_tokens"] == 100
+            assert usage_dict["output_tokens"] == 50
+            assert is_accumulated is True  # Bedrock accumulated_usage is cumulative
 
     def test_extract_usage_from_object_anthropic(self):
         """Test extraction from Anthropic style response."""
@@ -224,8 +226,10 @@ class TestExtractTokenUsage:
             result = chat_loop._extract_token_usage(response)
 
             assert result is not None
-            assert result["input_tokens"] == 200
-            assert result["output_tokens"] == 150
+            usage_dict, is_accumulated = result
+            assert usage_dict["input_tokens"] == 200
+            assert usage_dict["output_tokens"] == 150
+            assert is_accumulated is False  # Anthropic usage is per-request
 
     def test_extract_usage_from_dict_usage(self):
         """Test extraction from dict with usage key."""
@@ -241,8 +245,10 @@ class TestExtractTokenUsage:
             result = chat_loop._extract_token_usage(response)
 
             assert result is not None
-            assert result["input_tokens"] == 300
-            assert result["output_tokens"] == 250
+            usage_dict, is_accumulated = result
+            assert usage_dict["input_tokens"] == 300
+            assert usage_dict["output_tokens"] == 250
+            assert is_accumulated is False  # Dict usage is per-request
 
     def test_extract_usage_prompt_completion_tokens(self):
         """Test extraction with prompt_tokens/completion_tokens names."""
@@ -258,8 +264,10 @@ class TestExtractTokenUsage:
             result = chat_loop._extract_token_usage(response)
 
             assert result is not None
-            assert result["input_tokens"] == 400
-            assert result["output_tokens"] == 350
+            usage_dict, is_accumulated = result
+            assert usage_dict["input_tokens"] == 400
+            assert usage_dict["output_tokens"] == 350
+            assert is_accumulated is False  # Dict usage is per-request
 
     # Note: Additional tests for metadata.usage and data.usage patterns
     # have been omitted due to Mock object complexity in nested attribute access
@@ -294,8 +302,10 @@ class TestExtractTokenUsage:
             result = chat_loop._extract_token_usage(response)
 
             assert result is not None
-            assert result["input_tokens"] == 100
-            assert result["output_tokens"] == 0
+            usage_dict, is_accumulated = result
+            assert usage_dict["input_tokens"] == 100
+            assert usage_dict["output_tokens"] == 0
+            assert is_accumulated is False  # Dict usage is per-request
 
 
 class TestReadlineHistory:
