@@ -137,8 +137,7 @@ class TestSaveSession:
         assert "No conversation to save" in message
 
     @pytest.mark.skipif(
-        sys.platform == "win32",
-        reason="File permissions work differently on Windows"
+        sys.platform == "win32", reason="File permissions work differently on Windows"
     )
     def test_save_session_sets_secure_permissions(
         self, session_manager, sample_conversation

@@ -1,6 +1,5 @@
 """Tests for ChatConfig component."""
 
-import os
 import sys
 from pathlib import Path
 
@@ -294,7 +293,9 @@ class TestExpandPath:
         else:
             expanded = config.expand_path("$TEST_VAR/path")
 
-        assert "/test/value/path" in str(expanded) or "\\test\\value\\path" in str(expanded)
+        assert "/test/value/path" in str(expanded) or "\\test\\value\\path" in str(
+            expanded
+        )
 
 
 class TestInvalidConfig:

@@ -636,8 +636,7 @@ class TestWriteConfig:
         assert existing_config.read_text() != "existing content"
 
     @pytest.mark.skipif(
-        sys.platform == "win32",
-        reason="File permissions work differently on Windows"
+        sys.platform == "win32", reason="File permissions work differently on Windows"
     )
     def test_write_config_secure_permissions(self, wizard, tmp_path, monkeypatch):
         """Test that config file has secure permissions."""
@@ -882,8 +881,7 @@ class TestResetConfigToDefaults:
 
     @patch("builtins.input")
     @pytest.mark.skipif(
-        sys.platform == "win32",
-        reason="File permissions work differently on Windows"
+        sys.platform == "win32", reason="File permissions work differently on Windows"
     )
     def test_reset_config_sets_secure_permissions(
         self, mock_input, tmp_path, monkeypatch
