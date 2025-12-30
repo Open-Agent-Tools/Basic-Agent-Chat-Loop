@@ -44,7 +44,6 @@ class ChatConfig:
             "readline_enabled": True,
         },
         "paths": {
-            "save_location": "~/agent-conversations",
             "log_location": "~/.chat_loop_logs",
         },
         "behavior": {
@@ -363,8 +362,8 @@ features:
 # ============================================================================
 # PATHS - File system locations
 # ============================================================================
+# Note: Conversations saved to ./.chat-sessions (project-local, not configurable)
 paths:
-  save_location: ~/agent-conversations    # Where to save conversations
   log_location: ~/.chat_loop_logs          # Where to write logs (in home directory)
 
 # ============================================================================
@@ -417,8 +416,6 @@ harmony:
 #     features:
 #       auto_save: true
 #       show_tokens: true
-#     paths:
-#       save_location: ~/my-agent-conversations
 
 agents: {}
 """

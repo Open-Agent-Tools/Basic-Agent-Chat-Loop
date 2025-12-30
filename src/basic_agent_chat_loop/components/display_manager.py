@@ -128,12 +128,7 @@ class DisplayManager:
             print()
             print(Colors.DIM + "Configuration loaded" + Colors.RESET)
             if self.auto_save:
-                save_loc = self.config.get(
-                    "paths.save_location",
-                    "~/agent-conversations",
-                    agent_name=self.agent_name,
-                )
-                print(f"  Auto-save: enabled → {save_loc}")
+                print("  Auto-save: enabled → ./.chat-sessions")
 
         print("=" * 60)
 

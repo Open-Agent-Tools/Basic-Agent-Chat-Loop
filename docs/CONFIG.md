@@ -81,9 +81,10 @@ File system locations:
 
 ```yaml
 paths:
-  save_location: ~/agent-conversations    # Conversation exports
   log_location: .logs                      # Log files
 ```
+
+**Note:** Conversation sessions are now saved to `./.chat-sessions/` in the current working directory (project-local, not configurable). This provides context separation - sessions from different projects are kept separate.
 
 ### Behavior
 
@@ -271,7 +272,7 @@ sessions:
 
 **Saved session structure:**
 ```
-~/agent-conversations/         # Default location (configurable)
+./.chat-sessions/              # Project-local (in current directory)
 ├── myagent_20250126_143022.json    # Machine-readable
 ├── myagent_20250126_143022.md      # Human-readable
 └── .index.json                      # Fast lookup index
@@ -281,10 +282,9 @@ sessions:
 ```yaml
 features:
   auto_save: true              # Required for session persistence
-
-paths:
-  save_location: ~/agent-conversations  # Where sessions are stored
 ```
+
+Sessions are saved to `./.chat-sessions/` in your current working directory, providing context separation between different projects.
 
 **Usage:**
 ```bash
@@ -312,8 +312,6 @@ agents:
     features:
       auto_save: true
       show_tokens: true
-    paths:
-      save_location: ~/code-conversations/clara
     behavior:
       timeout: 300.0
     ui:
@@ -540,8 +538,7 @@ features:
   readline_enabled: boolean
 
 paths:
-  save_location: string  # Path with ~ and $VAR expansion
-  log_location: string
+  log_location: string  # Path with ~ and $VAR expansion
 
 behavior:
   max_retries: integer   # 0-10 recommended

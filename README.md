@@ -16,7 +16,7 @@ A feature-rich, interactive CLI for **AWS Strands** agents with token tracking, 
 - 🎵 **Harmony Support** - Specialized processing for OpenAI Harmony format (gpt-oss models)
 - 📜 **Command History** - Navigate previous queries with ↑↓ arrows (persisted to `~/.chat_history`)
 - ✍️ **Multi-line Input** - Type `\\` to enter multi-line mode with Ctrl+D to cancel and ↑ to edit previous lines
-- 💾 **Session Management** - Save conversations as clean markdown files in `~/agent-conversations/`
+- 💾 **Session Management** - Save conversations as clean markdown files in `./.chat-sessions/` (project-local)
 - 📋 **Copy Commands** - Copy responses, queries, code blocks, or entire conversations to clipboard
 - 💰 **Token Tracking** - Track tokens and costs per query and session
 - 📝 **Prompt Templates** - Reusable prompts from `~/.prompts/`
@@ -311,13 +311,13 @@ You: Now let's add authentication
 
 **View saved conversations:**
 
-Conversations are saved as clean markdown files in `~/agent-conversations/`:
+Conversations are saved as clean markdown files in `./.chat-sessions/` (in current directory):
 ```bash
-ls -lh ~/agent-conversations/
+ls -lh ./.chat-sessions/
 # Shows files like: simple_sally_20251230_110627.md
 
 # View a conversation
-cat ~/agent-conversations/simple_sally_20251230_110627.md
+cat ./.chat-sessions/simple_sally_20251230_110627.md
 ```
 
 Each saved session includes an auto-generated summary that enables fast, context-aware resumption without replaying all queries.
@@ -328,7 +328,7 @@ Each saved session includes an auto-generated summary that enables fast, context
 chat_loop --list-sessions
 ```
 
-Sessions are saved to `~/agent-conversations/` by default (configurable).
+Sessions are saved to `./.chat-sessions/` in your current working directory, providing context separation between different projects.
 
 ### Copy Commands
 

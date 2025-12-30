@@ -635,14 +635,8 @@ class ChatLoop:
         )
 
         # Setup session manager for conversation persistence
-        sessions_dir = (
-            self.config.expand_path(
-                self.config.get("paths.save_location", "~/agent-conversations")
-            )
-            if self.config
-            else Path.home() / "agent-conversations"
-        )
-        self.session_manager = SessionManager(sessions_dir=sessions_dir)
+        # Sessions are saved to ./.chat-sessions in current directory
+        self.session_manager = SessionManager()
 
         # Setup Harmony processor if agent uses Harmony format
         self.harmony_processor = None
@@ -2895,17 +2889,8 @@ Examples:
 
     # Handle session management commands
     if args.list_sessions:
-        # List sessions and exit
-        config = get_config(config_path=args.config) if args.config else get_config()
-        sessions_dir = (
-            config.expand_path(
-                config.get("paths.save_location", "~/agent-conversations")
-            )
-            if config
-            else Path.home() / "agent-conversations"
-        )
-
-        session_manager = SessionManager(sessions_dir=sessions_dir)
+        # List sessions and exit (from ./.chat-sessions in current directory)
+        session_manager = SessionManager()
         sessions = session_manager.list_sessions(limit=50)
 
         if sessions:
@@ -2924,7 +2909,7 @@ Examples:
             print(f"        {Colors.system('chat_loop <agent> --resume <session_id>')}")
         else:
             print(f"\n{Colors.system('No saved sessions found')}")
-            print(f"Sessions will be saved to: {sessions_dir}")
+            print("Sessions will be saved to: ./.chat-sessions")
 
         sys.exit(0)
 

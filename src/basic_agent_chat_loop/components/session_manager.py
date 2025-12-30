@@ -65,9 +65,9 @@ class SessionManager:
 
         Args:
             sessions_dir: Directory for session files
-                         (defaults to ~/agent-conversations)
+                         (defaults to ./.chat-sessions in current directory)
         """
-        self.sessions_dir = sessions_dir or Path.home() / "agent-conversations"
+        self.sessions_dir = sessions_dir or Path.cwd() / ".chat-sessions"
         self.index_file = self.sessions_dir / ".index.json"
 
     def _ensure_sessions_dir(self) -> bool:

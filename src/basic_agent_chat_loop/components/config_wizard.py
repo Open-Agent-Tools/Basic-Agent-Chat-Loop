@@ -90,7 +90,6 @@ def reset_config_to_defaults() -> Optional[Path]:
                 "spinner_style": "dots",
             },
             "paths": {
-                "save_location": "~/agent-conversations",
                 "log_location": "~/.chat_loop_logs",
             },
         }
@@ -650,15 +649,8 @@ class ConfigWizard:
 
         self.config["paths"] = {}
 
-        # save_location
-        current_save_location = (
-            self.current_config.get("paths.save_location", "~/agent-conversations")
-            if self.current_config
-            else "~/agent-conversations"
-        )
-        print("Where to save conversations (supports ~ for home directory)")
-        save_loc = input(f"Save location [{current_save_location}]: ").strip()
-        self.config["paths"]["save_location"] = save_loc or current_save_location
+        # Conversations are now saved to ./.chat-sessions (project-local)
+        # No configuration needed
 
         # log_location
         current_log_location = (

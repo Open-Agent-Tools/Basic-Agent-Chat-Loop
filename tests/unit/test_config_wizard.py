@@ -465,21 +465,23 @@ class TestConfigurePaths:
     @patch("builtins.input")
     def test_configure_paths_defaults(self, mock_input, wizard):
         """Test configuring paths with defaults."""
-        mock_input.side_effect = ["", ""]
+        mock_input.side_effect = [""]
 
         wizard._configure_paths()
 
-        assert wizard.config["paths"]["save_location"] == "~/agent-conversations"
+        # save_location no longer configurable (uses ./.chat-sessions)
+        assert "save_location" not in wizard.config["paths"]
         assert wizard.config["paths"]["log_location"] == "~/.chat_loop_logs"
 
     @patch("builtins.input")
     def test_configure_paths_custom_values(self, mock_input, wizard):
         """Test configuring paths with custom values."""
-        mock_input.side_effect = ["~/custom/conversations", "~/custom/logs"]
+        mock_input.side_effect = ["~/custom/logs"]
 
         wizard._configure_paths()
 
-        assert wizard.config["paths"]["save_location"] == "~/custom/conversations"
+        # save_location no longer configurable (uses ./.chat-sessions)
+        assert "save_location" not in wizard.config["paths"]
         assert wizard.config["paths"]["log_location"] == "~/custom/logs"
 
 
