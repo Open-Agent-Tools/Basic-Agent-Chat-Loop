@@ -247,7 +247,8 @@ See [CONFIG.md](CONFIG.md) for full configuration options.
 | `templates` | List available prompt templates |
 | `sessions` | List all saved conversation sessions |
 | `/name` | Use prompt template from `~/.prompts/name.md` |
-| `resume <#>` | ⚠️ Temporarily disabled (pending rewrite for markdown format) |
+| `resume <#>` | Resume a previous session by number or ID |
+| `compact` | Save session and continue in new session with summary |
 | `copy` | Copy last response to clipboard (see variants below) |
 | `clear` | Clear screen and reset agent session |
 | `exit`, `quit` | Exit chat (shows session summary) |
@@ -269,12 +270,42 @@ features:
 You: sessions
 
 Available Sessions (3):
-  1. MyAgent - Jan 26, 14:30 - 15 queries - $0.48
+  1. MyAgent - Jan 26, 14:30 - 15 queries
      "Can you help me build a REST API..."
 
-  2. MyAgent - Jan 25, 09:15 - 7 queries - $0.23
+  2. MyAgent - Jan 25, 09:15 - 7 queries
      "Explain async/await in Python..."
 
+# Resume by number or session ID
+You: resume 1
+
+📋 Loading session...
+✓ Found: MyAgent - Jan 26, 14:30 (15 queries, 12.5K tokens)
+🔄 Restoring context...
+
+MyAgent: I've reviewed our previous conversation about building a REST API.
+We discussed Flask routing and database models. Ready to continue!
+
+# Continue conversation with restored context
+You: Let's add authentication now
+```
+
+**Compact current session:**
+
+When your conversation gets long, use `compact` to save it and start fresh while preserving context:
+
+```bash
+You: compact
+
+📝 Generating session summary...
+💾 Saved session: myagent_20251230_143022 (15 queries, 12.5K tokens)
+🔄 Starting new session with summary...
+
+MyAgent: I've reviewed our conversation about the REST API.
+We built Flask routes and database models. Ready to continue!
+
+# Continue in new session - old queries compressed into summary
+You: Now let's add authentication
 ```
 
 **View saved conversations:**
@@ -288,7 +319,7 @@ ls -lh ~/agent-conversations/
 cat ~/agent-conversations/simple_sally_20251230_110627.md
 ```
 
-**Note:** The `resume` command for restoring agent context is temporarily disabled while we rewrite it for the new markdown-only format. Saved conversations can still be viewed and copied from manually.
+Each saved session includes an auto-generated summary that enables fast, context-aware resumption without replaying all queries.
 
 **List all saved sessions:**
 

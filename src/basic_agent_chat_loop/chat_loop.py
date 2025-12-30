@@ -37,6 +37,7 @@ import json
 import logging
 import logging.handlers
 import os
+import re
 import stat
 import sys
 import time
@@ -872,31 +873,17 @@ class ChatLoop:
 
     async def restore_session(self, session_id: str) -> bool:
         """
-        Session restoration is currently disabled.
-
-        Previously this replayed conversations to restore agent context.
-        With the simplified markdown-only saving, this feature needs to be
-        reimplemented to parse markdown files.
+        Restore a previous session by loading its summary and creating a new session.
 
         Args:
             session_id: Session ID or number from sessions list
 
         Returns:
-            False (feature disabled)
+            True if successful, False otherwise
         """
-        print(Colors.system("\nSession restoration is temporarily disabled."))
-        print(
-            Colors.system("Previous conversations are saved in ~/agent-conversations/")
-        )
-        print(
-            Colors.system(
-                "You can view them manually or copy/paste into a new session."
-            )
-        )
-        return False
-
-        # TODO: Reimplement by parsing markdown files if needed
         try:
+            print(Colors.system("\n📋 Loading session..."))
+
             # If session_id is a number, resolve it from the list
             if session_id.isdigit():
                 session_num = int(session_id)
@@ -912,59 +899,57 @@ class ChatLoop:
                 # Get actual session_id from the list (1-indexed)
                 session_info = sessions[session_num - 1]
                 session_id = session_info.session_id
-            else:
-                # Get session metadata for display
-                maybe_session_info = self.session_manager.get_session_metadata(
-                    session_id
-                )
-                if not maybe_session_info:
-                    print(Colors.error(f"Session not found: {session_id}"))
-                    return False
-                session_info = maybe_session_info
 
-            # Load the session data
-            session_data = self.session_manager.load_session(session_id)
-            if not session_data:
-                print(Colors.error(f"Could not load session: {session_id}"))
+            # Load markdown file
+            sessions_dir = self.session_manager.sessions_dir
+            session_file = sessions_dir / f"{session_id}.md"
+
+            if not session_file.exists():
+                print(Colors.error(f"⚠️  Session file not found: {session_id}"))
                 return False
 
-            conversation = session_data.get("conversation", [])
-            if not conversation:
-                print(Colors.error("Session has no conversation history"))
+            # Extract metadata from markdown
+            metadata = self._extract_metadata_from_markdown(session_file)
+            if not metadata:
+                print(Colors.error("Failed to parse session metadata"))
                 return False
 
-            # Check if agent matches
-            if session_data["agent_name"] != self.agent_name:
+            # Extract summary
+            summary = self._extract_summary_from_markdown(session_file)
+            if not summary:
                 print(
-                    Colors.system(
-                        f"⚠️  Warning: Session was created with "
-                        f"'{session_data['agent_name']}' "
-                        f"but you're using '{self.agent_name}'"
+                    Colors.error(
+                        "⚠️  Session can't be resumed (no summary). "
+                        "Starting fresh session..."
                     )
                 )
-                confirm = input(Colors.system("Continue anyway? (y/n): "))
-                if confirm.lower() != "y":
-                    print(Colors.system("Resume cancelled"))
-                    return False
+                return False
 
-            # Display what we're loading
-            print(f"\n🔄 Loading session: {session_id}")
-            print(f"   Agent: {session_data['agent_name']}")
-            print(f"   Queries: {len(conversation)}")
-            print(f"   Created: {session_info.created.strftime('%b %d, %Y at %H:%M')}")
-            print()
+            # Get query count and tokens from metadata or session index
+            query_count = metadata.get("query_count", 0)
+            session_info = self.session_manager.get_session_metadata(session_id)
+            total_tokens = session_info.total_tokens if session_info else 0
 
-            # Ask for confirmation (if enabled in config)
-            resume_confirmation = (
-                self.config.get("sessions.resume_confirmation", True)
-                if self.config
-                else True
+            # Display session info
+            print(
+                Colors.success(
+                    f"✓ Found: {metadata.get('agent_name', 'Unknown')} - {session_id}"
+                )
+            )
+            print(
+                Colors.system(
+                    f"  ({query_count} queries, "
+                    f"{self.token_tracker.format_tokens(total_tokens)})"
+                )
             )
 
-            if resume_confirmation:
+            # Check if agent path matches (graceful warning)
+            if "agent_path" in metadata and metadata["agent_path"] != self.agent_path:
                 print(
                     Colors.system(
-                        "⚠️  This will restore conversation context to the agent."
+                        f"\n⚠️  Different agent detected:\n"
+                        f"  Session created with: {metadata['agent_path']}\n"
+                        f"  Current agent:        {self.agent_path}"
                     )
                 )
                 confirm = input(Colors.system("Continue? (y/n): "))
@@ -972,69 +957,131 @@ class ChatLoop:
                     print(Colors.system("Resume cancelled"))
                     return False
 
-            # Replay strategy: Silent replay of all queries
-            print(Colors.system(f"\nReplaying {len(conversation)} previous queries..."))
-            print(Colors.system("(This restores the agent's context)"))
+            # Build restoration prompt
+            print(Colors.system("🔄 Restoring context..."))
+            print()
 
-            replay_start = time.time()
+            restoration_prompt_parts = [
+                "CONTEXT RESTORATION: You are continuing a previous conversation "
+                f"from {session_id}.\n\n",
+                f"Previous session summary (Session ID: {session_id}, ",
+                f"{query_count} queries, ",
+                f"{self.token_tracker.format_tokens(total_tokens)}):\n\n",
+            ]
 
-            for i, entry in enumerate(conversation, 1):
-                query = entry["query"]
-                # Display progress every 5 queries
-                if i % 5 == 0 or i == len(conversation):
-                    print(
-                        Colors.system(f"  Progress: {i}/{len(conversation)} queries"),
-                        end="\r",
-                    )
-
-                try:
-                    # Replay query silently (don't display response)
-                    # Check if agent supports streaming
-                    if hasattr(self.agent, "stream_async"):
-                        # Consume the stream but don't display
-                        async for _ in self.agent.stream_async(query):
-                            pass
-                    else:
-                        # Non-streaming agent
-                        await asyncio.get_event_loop().run_in_executor(
-                            None, self.agent, query
-                        )
-
-                except Exception as e:
-                    logger.warning(f"Error replaying query {i}: {e}")
-                    # Continue with next query
-
-            replay_duration = time.time() - replay_start
-            print()  # Clear progress line
-            print(
-                Colors.success(
-                    f"✓ Replayed {len(conversation)} queries in {replay_duration:.1f}s"
+            # Add resumed_from info if present
+            if "resumed_from" in metadata:
+                restoration_prompt_parts.append(
+                    f"This session was resumed from: {metadata['resumed_from']}\n\n"
                 )
+
+            restoration_prompt_parts.append(
+                f"Previous session file: {session_file}\n\n"
+            )
+            restoration_prompt_parts.append(summary)
+            restoration_prompt_parts.append(
+                "\n\nTask: Review the above and provide a brief acknowledgment "
+                "(2-6 sentences or bullets) that includes:\n"
+                "1. Main topics discussed\n"
+                "2. Key decisions made\n"
+                "3. Confirmation you're ready to continue\n\n"
+                "Keep your response concise."
             )
 
-            # Restore conversation history
-            self.conversation_history = conversation.copy()
+            restoration_prompt = "".join(restoration_prompt_parts)
 
-            # Update session ID to continue this session
-            self.session_id = session_id
+            # Send restoration prompt to agent
+            restoration_start = time.time()
+            restoration_response = ""
 
-            # Restore token tracker state
-            if session_info.total_tokens > 0:
-                # Approximate token restoration (not exact, but close)
-                # We can't perfectly restore because we don't have per-query tokens
-                # But we can set the total
-                self.token_tracker.total_input_tokens = int(
-                    session_info.total_tokens * 0.6
+            # Check if agent supports streaming
+            if hasattr(self.agent, "stream_async"):
+                # Display with spinner
+                if self.use_rich and self.console:
+                    spinner = Spinner("dots", text="Restoring context...")
+                    with Live(spinner, console=self.console, refresh_per_second=10):
+                        async for event in self.agent.stream_async(restoration_prompt):
+                            if isinstance(event, dict):
+                                if "delta" in event and "text" in event["delta"]:
+                                    restoration_response += event["delta"]["text"]
+                                elif "data" in event and "text" in event["data"]:
+                                    restoration_response += event["data"]["text"]
+                                elif "text" in event:
+                                    restoration_response += event["text"]
+                            elif isinstance(event, str):
+                                restoration_response += event
+                else:
+                    async for event in self.agent.stream_async(restoration_prompt):
+                        if isinstance(event, dict):
+                            if "delta" in event and "text" in event["delta"]:
+                                restoration_response += event["delta"]["text"]
+                            elif "data" in event and "text" in event["data"]:
+                                restoration_response += event["data"]["text"]
+                            elif "text" in event:
+                                restoration_response += event["text"]
+                        elif isinstance(event, str):
+                            restoration_response += event
+            else:
+                # Non-streaming agent
+                restoration_response = await asyncio.get_event_loop().run_in_executor(
+                    None, self.agent, restoration_prompt
                 )
-                self.token_tracker.total_output_tokens = int(
-                    session_info.total_tokens * 0.4
-                )
 
-            # Update query count
-            self.query_count = len(conversation)
+            restoration_duration = time.time() - restoration_start
 
-            # Display confirmation
-            self.display_manager.display_session_loaded(session_info, len(conversation))
+            # Display agent acknowledgment
+            print(Colors.agent_response(f"{self.agent_name}:"), end=" ")
+            if self.use_rich and self.console:
+                md = Markdown(restoration_response.strip())
+                self.console.print(md)
+            else:
+                print(restoration_response.strip())
+            print()
+
+            # Track restoration tokens
+            restoration_input_tokens = len(restoration_prompt.split()) * 1.3
+            restoration_output_tokens = len(restoration_response.split()) * 1.3
+
+            # Create new session ID for resumed session
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_agent_name = (
+                self.agent_name.lower().replace(" ", "_").replace("/", "_")
+            )
+            new_session_id = f"{safe_agent_name}_{timestamp}"
+
+            # Initialize new session
+            self.session_id = new_session_id
+            self._resumed_from = session_id  # Track parent session
+            self._previous_summary = summary  # Store for next compaction
+
+            # Reset conversation but add restoration exchange
+            self.conversation_markdown = [
+                f"\n## Session Restored ({datetime.now().strftime('%H:%M:%S')})\n",
+                f"**Context:** Resumed from {session_id} "
+                f"({query_count} queries, "
+                f"{self.token_tracker.format_tokens(total_tokens)})\n",
+                f"**Previous Session:** {session_file}\n\n",
+                f"**{self.agent_name}:** {restoration_response.strip()}\n\n",
+                f"*Time: {restoration_duration:.1f}s | ",
+                f"Tokens: {int(restoration_input_tokens + restoration_output_tokens)} ",
+                f"(in: {int(restoration_input_tokens)}, "
+                f"out: {int(restoration_output_tokens)})*\n\n",
+                "---\n",
+            ]
+
+            # Reset counters (restoration tokens tracked separately)
+            self.query_count = 0
+            self.total_input_tokens = 0
+            self.total_output_tokens = 0
+            self.session_start_time = time.time()
+
+            # Update status bar if enabled
+            if self.status_bar:
+                self.status_bar.query_count = 0
+                self.status_bar.session_start_time = self.session_start_time
+
+            print(Colors.success("✓ Session restored! Ready to continue."))
+            print()
 
             logger.info(f"Successfully restored session: {session_id}")
             return True
@@ -1070,6 +1117,46 @@ class ChatLoop:
             logger.warning(f"Failed to extract summary: {e}")
             return None
 
+    def _extract_metadata_from_markdown(self, file_path: Path) -> Optional[dict]:
+        """
+        Extract session metadata from markdown file headers.
+
+        Args:
+            file_path: Path to markdown file
+
+        Returns:
+            Dictionary with metadata, or None if parsing failed
+        """
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            metadata = {}
+
+            # Extract session ID
+            if match := re.search(r"\*\*Session ID:\*\* (.+)", content):
+                metadata["session_id"] = match.group(1).strip()
+
+            # Extract agent name
+            if match := re.search(r"\*\*Agent:\*\* (.+)", content):
+                metadata["agent_name"] = match.group(1).strip()
+
+            # Extract agent path
+            if match := re.search(r"\*\*Agent Path:\*\* (.+)", content):
+                metadata["agent_path"] = match.group(1).strip()
+
+            # Extract total queries
+            if match := re.search(r"\*\*Total Queries:\*\* (\d+)", content):
+                metadata["query_count"] = int(match.group(1))
+
+            # Extract resumed from (if present)
+            if match := re.search(r"\*\*Resumed From:\*\* (.+)", content):
+                metadata["resumed_from"] = match.group(1).strip()
+
+            return metadata if metadata else None
+
+        except Exception as e:
+            logger.warning(f"Failed to extract metadata: {e}")
+            return None
+
     async def _generate_session_summary(
         self, previous_summary: Optional[str] = None
     ) -> Optional[str]:
@@ -1077,8 +1164,8 @@ class ChatLoop:
         Generate a structured summary of the current session.
 
         Args:
-            previous_summary: Optional summary from parent session for progressive
-summarization
+            previous_summary: Optional summary from parent session for
+                progressive summarization
 
         Returns:
             Summary text with HTML markers, or None if generation failed
@@ -1103,8 +1190,7 @@ summarization
 
             # Add instructions
             prompt_parts.append(
-                "Create a structured summary:\n\n"
-                "**Background Context:** "
+                "Create a structured summary:\n\n**Background Context:** "
             )
             if previous_summary:
                 prompt_parts.append(
@@ -1493,8 +1579,7 @@ summarization
 
             # Reset conversation but add restoration exchange
             self.conversation_markdown = [
-                "\n## Session Restored ("
-                f"{datetime.now().strftime('%H:%M:%S')})\n",
+                f"\n## Session Restored ({datetime.now().strftime('%H:%M:%S')})\n",
                 f"**Context:** Resumed from {old_session_id} "
                 f"({old_query_count} queries, "
                 f"{self.token_tracker.format_tokens(old_total_tokens)})\n",
