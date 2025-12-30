@@ -7,6 +7,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2025-12-30
+
+### Added
+- **Session Compaction and Summary-Based Resume** - Complete redesign of conversation management
+  - Auto-generate structured summaries when saving conversations (Phase 1)
+  - New `compact` command to save current session and continue with context preserved (Phase 2)
+  - Rewritten `resume` command using summary-based restoration instead of query replay (Phase 3)
+  - Progressive summarization with n-1 chain model (each session references only parent)
+  - HTML comment markers for easy summary extraction (`<!-- SESSION_SUMMARY_START/END -->`)
+  - Fast, token-efficient session restoration without replaying all queries
+  - Graceful error handling for missing summaries, agent mismatches, and edge cases
+  - Session metadata tracking (agent_path, resumed_from, query_count, tokens)
+  - Restoration exchange tracked but not counted as user query
+  - Related: Issue #48 (Conversation compaction to manage context limits)
+
+### Changed
+- **Conversation Saving Made Async** - `save_conversation()` now async to support summary generation
+- **Session Files Include Agent Path** - Markdown files now store agent file path instead of description
+- **Resume Command Re-enabled** - Was temporarily disabled, now working with new summary-based approach
+- **README Documentation Updated** - Added comprehensive examples for `resume` and `compact` commands
+
+### Technical Details
+The session resume system was completely redesigned to use summaries instead of query replay:
+
+**Phase 1 - Auto-Summary Generation:**
+- `_generate_session_summary()` method generates structured summaries on exit (lines 1160-1232)
+- Summaries use hybrid instruction format with progressive compression
+- Background context condenses previous summary to 1-2 sentences
+- Current session details: topics discussed, decisions made, pending items
+- Summary appended to markdown files with HTML comment markers
+- Graceful handling if summary generation fails (saves without summary, warns user)
+
+**Phase 2 - Compact Command:**
+- `_handle_compact_command()` method (lines 1391-1566)
+- Saves current session with summary
+- Extracts summary and creates new session
+- Agent reads summary and acknowledges context
+- User continues in new session with compressed history
+- Session chain tracked via `_resumed_from` and `_previous_summary` attributes
+
+**Phase 3 - Summary-Based Resume:**
+- `_extract_metadata_from_markdown()` utility (lines 1113-1151) parses session headers with regex
+- Complete rewrite of `restore_session()` method (lines 874-1090)
+- Loads markdown file, extracts summary using `_extract_summary_from_markdown()`
+- Sends restoration prompt with summary to agent
+- Agent provides brief acknowledgment (2-6 sentences)
+- Creates new session with restoration exchange tracked
+- Supports both session number (`resume 1`) and full ID
+
+**Benefits:**
+- Fast: No query replay, just summary injection
+- Token-efficient: Summaries are compact vs full transcripts
+- Traceable: File paths create clear session lineage
+- Progressive: Old context compresses naturally over time
+- Graceful: Errors don't block saving or resuming
+
+**Markdown Format Changes:**
+```markdown
+**Session ID:** session_3
+**Agent Path:** /path/to/agent.py
+**Resumed From:** session_2
+
+<!-- SESSION_SUMMARY_START -->
+**Background Context:** [condensed previous context]
+
+**Current Session Summary:**
+**Topics Discussed:**
+- [bullet points]
+
+**Decisions Made:**
+- [bullet points]
+
+**Pending:**
+- [bullet points]
+<!-- SESSION_SUMMARY_END -->
+```
+
 ## [1.5.1] - 2025-12-29
 
 ### Fixed
