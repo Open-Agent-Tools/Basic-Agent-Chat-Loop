@@ -14,6 +14,7 @@ from .audio_notifier import AudioNotifier
 from .config_wizard import ConfigWizard
 from .dependency_manager import DependencyManager
 from .display_manager import DisplayManager
+from .error_messages import ErrorMessages
 from .harmony_processor import HarmonyProcessor
 from .session_manager import SessionInfo, SessionManager
 from .template_manager import TemplateManager
@@ -24,15 +25,16 @@ __all__ = [
     "AudioNotifier",
     "Colors",
     "ConfigWizard",
-    "StatusBar",
-    "TokenTracker",
-    "TemplateManager",
-    "DisplayManager",
-    "AliasManager",
     "DependencyManager",
+    "DisplayManager",
+    "ErrorMessages",
+    "AliasManager",
     "HarmonyProcessor",
     "SessionInfo",
     "SessionManager",
-    "load_agent_module",
+    "StatusBar",
+    "TemplateManager",
+    "TokenTracker",
     "extract_agent_metadata",
+    "load_agent_module",
 ]

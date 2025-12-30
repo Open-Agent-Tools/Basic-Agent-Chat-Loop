@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from ..chat_config import ChatConfig
+from .error_messages import ErrorMessages
 from .ui_components import COLOR_PALETTE
 
 
@@ -211,7 +212,7 @@ def reset_config_to_defaults() -> Optional[Path]:
             return config_path
 
         except Exception as e:
-            print(f"\nError writing configuration file: {e}")
+            print(ErrorMessages.config_file_error(str(config_path), e, "write"))
             return None
 
     except KeyboardInterrupt:
@@ -780,7 +781,7 @@ class ConfigWizard:
             return config_path
 
         except Exception as e:
-            print(f"\nError writing configuration file: {e}")
+            print(ErrorMessages.config_file_error(str(config_path), e, "write"))
             return None
 
     def _generate_yaml_with_comments(self) -> str:

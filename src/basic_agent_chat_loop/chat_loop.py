@@ -76,6 +76,7 @@ from .components import (
     ConfigWizard,
     DependencyManager,
     DisplayManager,
+    ErrorMessages,
     HarmonyProcessor,
     SessionManager,
     StatusBar,
@@ -1672,30 +1673,24 @@ class ChatLoop:
 
             except asyncio.TimeoutError:
                 print(
-                    Colors.error(f"\n⚠️  Timeout (attempt {attempt}/{self.max_retries})")
+                    ErrorMessages.query_timeout(
+                        attempt, self.max_retries, self.query_timeout
+                    )
                 )
                 if attempt < self.max_retries:
-                    print(Colors.system(f"Retrying in {self.retry_delay}s..."))
                     await asyncio.sleep(self.retry_delay)
                     logger.warning(f"Timeout on attempt {attempt}, retrying...")
                 else:
-                    print(Colors.error("Max retries reached. Please try again later."))
                     logger.error("Max retries reached after timeout")
 
             except ConnectionError as e:
-                print(Colors.error(f"\n⚠️  Connection error: {e}"))
+                print(ErrorMessages.connection_error(e, attempt, self.max_retries))
                 if attempt < self.max_retries:
-                    print(Colors.system(f"Retrying in {self.retry_delay}s..."))
                     await asyncio.sleep(self.retry_delay)
                     logger.warning(
                         f"Connection error on attempt {attempt}, retrying..."
                     )
                 else:
-                    print(
-                        Colors.error(
-                            "Max retries reached. Check your network connection."
-                        )
-                    )
                     logger.error(f"Max retries reached after connection error: {e}")
 
             except Exception as e:
@@ -1704,14 +1699,11 @@ class ChatLoop:
 
                 # Check for rate limit errors
                 if "rate" in error_msg.lower() or "429" in error_msg:
-                    print(Colors.error("\n⚠️  Rate limit reached"))
                     if attempt < self.max_retries:
                         wait_time = self.retry_delay * (
                             2 ** (attempt - 1)
                         )  # Exponential backoff
-                        print(
-                            Colors.system(f"Waiting {wait_time:.0f}s before retry...")
-                        )
+                        print(ErrorMessages.rate_limit_error(int(wait_time), attempt))
                         await asyncio.sleep(wait_time)
                         logger.warning(
                             f"Rate limit on attempt {attempt}, backing off..."
@@ -1719,7 +1711,7 @@ class ChatLoop:
                     else:
                         print(
                             Colors.error(
-                                "Rate limit persists. Please wait and try again."
+                                "⚠️  Rate limit persists. Please wait and try again."
                             )
                         )
                         logger.error("Max retries reached due to rate limiting")

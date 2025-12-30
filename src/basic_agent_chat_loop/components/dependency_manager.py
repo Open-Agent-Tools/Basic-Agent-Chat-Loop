@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from .error_messages import ErrorMessages
+
 logger = logging.getLogger(__name__)
 
 
@@ -100,12 +102,31 @@ class DependencyManager:
             else:
                 error_msg = result.stderr.strip() if result.stderr else "Unknown error"
                 logger.error(f"pip install failed: {error_msg}")
-                return (False, f"Failed to install dependencies: {error_msg}")
+                suggestions = (
+                    "\n\nTroubleshooting:\n"
+                    "  1. Check your internet connection\n"
+                    f"  2. Try manually: pip install -r {requirements_file}\n"
+                    "  3. Verify package names in requirements.txt\n"
+                    "  4. Update pip: pip install --upgrade pip"
+                )
+                return (False, f"Failed to install dependencies: {error_msg}{suggestions}")
 
         except subprocess.TimeoutExpired:
-            return (False, "Installation timed out after 5 minutes")
+            suggestions = (
+                "\n\nTo fix:\n"
+                "  1. Check your internet connection\n"
+                "  2. Try installing individual packages\n"
+                "  3. Use a faster mirror or VPN if available"
+            )
+            return (False, f"Installation timed out after 5 minutes{suggestions}")
         except Exception as e:
-            return (False, f"Installation error: {e}")
+            suggestions = (
+                "\n\nTo fix:\n"
+                "  1. Check file permissions\n"
+                f"  2. Try manually: pip install -r {requirements_file}\n"
+                "  3. Ensure pip is installed: python -m pip --version"
+            )
+            return (False, f"Installation error: {e}{suggestions}")
 
     def _install_from_pyproject(self, pyproject_file: Path) -> tuple[bool, str]:
         """Install dependencies from pyproject.toml."""
@@ -125,12 +146,31 @@ class DependencyManager:
             else:
                 error_msg = result.stderr.strip() if result.stderr else "Unknown error"
                 logger.error(f"pip install failed: {error_msg}")
-                return (False, f"Failed to install project: {error_msg}")
+                suggestions = (
+                    "\n\nTroubleshooting:\n"
+                    "  1. Check your internet connection\n"
+                    f"  2. Try manually: pip install -e {project_dir}\n"
+                    "  3. Verify pyproject.toml format is correct\n"
+                    "  4. Ensure build dependencies are installed"
+                )
+                return (False, f"Failed to install project: {error_msg}{suggestions}")
 
         except subprocess.TimeoutExpired:
-            return (False, "Installation timed out after 5 minutes")
+            suggestions = (
+                "\n\nTo fix:\n"
+                "  1. Check your internet connection\n"
+                "  2. Try installing with --no-deps first\n"
+                "  3. Use a faster mirror or VPN if available"
+            )
+            return (False, f"Installation timed out after 5 minutes{suggestions}")
         except Exception as e:
-            return (False, f"Installation error: {e}")
+            suggestions = (
+                "\n\nTo fix:\n"
+                "  1. Check file permissions\n"
+                f"  2. Try manually: pip install -e {project_dir}\n"
+                "  3. Ensure pip is updated: pip install --upgrade pip"
+            )
+            return (False, f"Installation error: {e}{suggestions}")
 
     def _install_from_setup(self, setup_file: Path) -> tuple[bool, str]:
         """Install dependencies from setup.py."""
@@ -150,12 +190,31 @@ class DependencyManager:
             else:
                 error_msg = result.stderr.strip() if result.stderr else "Unknown error"
                 logger.error(f"pip install failed: {error_msg}")
-                return (False, f"Failed to install project: {error_msg}")
+                suggestions = (
+                    "\n\nTroubleshooting:\n"
+                    "  1. Check your internet connection\n"
+                    f"  2. Try manually: pip install -e {project_dir}\n"
+                    "  3. Verify setup.py is valid Python\n"
+                    "  4. Install setuptools: pip install setuptools"
+                )
+                return (False, f"Failed to install project: {error_msg}{suggestions}")
 
         except subprocess.TimeoutExpired:
-            return (False, "Installation timed out after 5 minutes")
+            suggestions = (
+                "\n\nTo fix:\n"
+                "  1. Check your internet connection\n"
+                "  2. Try installing with --no-deps first\n"
+                "  3. Use a faster mirror or VPN if available"
+            )
+            return (False, f"Installation timed out after 5 minutes{suggestions}")
         except Exception as e:
-            return (False, f"Installation error: {e}")
+            suggestions = (
+                "\n\nTo fix:\n"
+                "  1. Check file permissions\n"
+                f"  2. Try manually: pip install -e {project_dir}\n"
+                "  3. Ensure setuptools is installed: pip install setuptools"
+            )
+            return (False, f"Installation error: {e}{suggestions}")
 
     def suggest_auto_setup(self) -> Optional[str]:
         """

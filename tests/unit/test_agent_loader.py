@@ -88,7 +88,7 @@ class TestLoadAgentModule:
         agent_file.write_text("# No root_agent here")
 
         with pytest.raises(
-            AttributeError, match="must expose a 'root_agent' attribute"
+            AttributeError, match="Agent module missing root_agent"
         ):
             load_agent_module(str(agent_file))
 
@@ -462,7 +462,7 @@ root_agent = Agent()
 """
         )
 
-        with pytest.raises(ImportError, match="Failed to execute module"):
+        with pytest.raises(ImportError, match="Failed to load agent module"):
             load_agent_module(str(agent_file))
 
     def test_metadata_with_unknown_model_id(self, tmp_path):

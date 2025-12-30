@@ -12,6 +12,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .error_messages import ErrorMessages
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,9 +124,7 @@ def load_agent_module(agent_path: str) -> tuple[Any, str, str]:
         AttributeError: If module doesn't have root_agent
     """
     if not os.path.exists(agent_path):
-        # Only show filename, not full path (to avoid exposing system info)
-        filename = os.path.basename(agent_path)
-        raise FileNotFoundError(f"Agent file not found: {filename}")
+        raise FileNotFoundError(ErrorMessages.agent_file_not_found(agent_path))
 
     agent_path_obj = Path(agent_path).resolve()
 
@@ -144,9 +144,12 @@ def load_agent_module(agent_path: str) -> tuple[Any, str, str]:
     # Load the module with proper package context
     spec = importlib.util.spec_from_file_location(module_name, agent_path_obj)
     if spec is None or spec.loader is None:
-        # Only show filename, not full path
         filename = os.path.basename(agent_path)
-        raise ImportError(f"Could not load module from {filename}")
+        raise ImportError(
+            ErrorMessages.agent_import_error(
+                filename, Exception("Could not create module spec")
+            )
+        )
 
     module = importlib.util.module_from_spec(spec)
 
@@ -168,18 +171,15 @@ def load_agent_module(agent_path: str) -> tuple[Any, str, str]:
         # Clean up sys.modules on failure
         sys.modules.pop(module_name, None)
         raise ImportError(
-            f"Failed to execute module {os.path.basename(agent_path)}: {e}"
+            ErrorMessages.agent_import_error(os.path.basename(agent_path), e)
         )
     finally:
         sys.stderr = original_stderr
 
     # Extract root_agent
     if not hasattr(module, "root_agent"):
-        # Only show filename, not full path
         filename = os.path.basename(agent_path)
-        raise AttributeError(
-            f"Agent module {filename} must expose a 'root_agent' attribute"
-        )
+        raise AttributeError(ErrorMessages.agent_missing_root_agent(filename))
 
     agent = module.root_agent
 
