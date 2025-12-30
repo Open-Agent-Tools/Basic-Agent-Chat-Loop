@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0-beta.6] - 2025-12-30
+
 ### Changed
 - **Command Prefix Update** - All in-chat commands now require `#` prefix to avoid collisions with regular conversation
   - Commands updated: `#help`, `#info`, `#compact`, `#sessions`, `#save`, `#copy`, `#resume`, `#clear`, `#quit`, `#exit`
@@ -14,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Multi-line input still uses `\\` (intentional)
   - Added helpful error message for unknown `#` commands
   - Updated all help text and README documentation
+
+### Fixed
+- **Exit Command Hanging** - Added explicit `sys.exit(0)` to ensure clean terminal return
+  - Fixed issue where `#exit` would show "[Process Completed]" but not return to prompt
+  - Process now terminates cleanly and returns control immediately
 
 ## [1.6.0] - 2025-12-30
 
