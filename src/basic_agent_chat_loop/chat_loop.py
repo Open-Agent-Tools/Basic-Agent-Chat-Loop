@@ -1044,6 +1044,32 @@ class ChatLoop:
             print(Colors.error(f"\n⚠️  Failed to restore session: {e}"))
             return False
 
+    def _extract_summary_from_markdown(self, file_path: Path) -> Optional[str]:
+        """
+        Extract summary block from a markdown file.
+
+        Args:
+            file_path: Path to markdown file
+
+        Returns:
+            Summary text, or None if not found
+        """
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            start_marker = "<!-- SESSION_SUMMARY_START -->"
+            end_marker = "<!-- SESSION_SUMMARY_END -->"
+
+            if start_marker not in content or end_marker not in content:
+                return None
+
+            start_idx = content.index(start_marker) + len(start_marker)
+            end_idx = content.index(end_marker)
+            return content[start_idx:end_idx].strip()
+
+        except Exception as e:
+            logger.warning(f"Failed to extract summary: {e}")
+            return None
+
     async def _generate_session_summary(
         self, previous_summary: Optional[str] = None
     ) -> Optional[str]:
@@ -1321,6 +1347,185 @@ summarization
                 )
             )
         print()
+
+    async def _handle_compact_command(self):
+        """
+        Compact current session and continue in new session.
+
+        This command:
+        1. Saves current session with summary
+        2. Extracts the summary
+        3. Starts a new session with the summary as context
+        4. Agent acknowledges the restored context
+        """
+        # Check if there's anything to compact
+        if not self.conversation_markdown:
+            print(
+                Colors.system("No conversation to compact yet. Start chatting first!")
+            )
+            return
+
+        try:
+            # Save current session with summary
+            print(Colors.system("\n📋 Compacting current session..."))
+            old_session_id = self.session_id
+            success = await self.save_conversation()
+
+            if not success:
+                print(Colors.error("Failed to save session for compaction"))
+                return
+
+            # Extract summary from saved file
+            sessions_dir = self.session_manager.sessions_dir
+            saved_file = sessions_dir / f"{old_session_id}.md"
+
+            summary = self._extract_summary_from_markdown(saved_file)
+
+            if not summary:
+                print(
+                    Colors.error(
+                        "Failed to extract summary - session saved but cannot compact"
+                    )
+                )
+                return
+
+            # Show save confirmation
+            total_tokens = self.total_input_tokens + self.total_output_tokens
+            print(Colors.success(f"✓ Saved session: {old_session_id}"))
+            print(
+                Colors.system(
+                    f"  ({self.query_count} queries, "
+                    f"{self.token_tracker.format_tokens(total_tokens)})"
+                )
+            )
+
+            # Create new session ID
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_agent_name = (
+                self.agent_name.lower().replace(" ", "_").replace("/", "_")
+            )
+            new_session_id = f"{safe_agent_name}_{timestamp}"
+
+            # Build restoration prompt
+            print(Colors.system("🔄 Starting new session with summary..."))
+            print()
+
+            restoration_prompt_parts = [
+                "CONTEXT RESTORATION: You are continuing a previous conversation.\n\n",
+                f"Previous session summary (Session ID: {old_session_id}, ",
+                f"{self.query_count} queries, ",
+                f"{self.token_tracker.format_tokens(total_tokens)}):\n\n",
+                f"Previous session file: {saved_file}\n\n",
+                summary,
+                "\n\nTask: Review the above and provide a brief acknowledgment "
+                "(2-6 sentences or bullets) that includes:\n",
+                "1. Main topics discussed\n",
+                "2. Key decisions made\n",
+                "3. Confirmation you're ready to continue\n\n",
+                "Keep your response concise.",
+            ]
+
+            restoration_prompt = "".join(restoration_prompt_parts)
+
+            # Send restoration prompt to agent
+            restoration_start = time.time()
+            restoration_response = ""
+
+            # Check if agent supports streaming
+            if hasattr(self.agent, "stream_async"):
+                # Display with spinner
+                if self.use_rich and self.console:
+                    spinner = Spinner("dots", text="Restoring context...")
+                    with Live(spinner, console=self.console, refresh_per_second=10):
+                        async for event in self.agent.stream_async(restoration_prompt):
+                            # Handle different event formats
+                            if isinstance(event, dict):
+                                if "delta" in event and "text" in event["delta"]:
+                                    restoration_response += event["delta"]["text"]
+                                elif "data" in event and "text" in event["data"]:
+                                    restoration_response += event["data"]["text"]
+                                elif "text" in event:
+                                    restoration_response += event["text"]
+                            elif isinstance(event, str):
+                                restoration_response += event
+                else:
+                    # No rich - use simple spinner
+                    async for event in self.agent.stream_async(restoration_prompt):
+                        if isinstance(event, dict):
+                            if "delta" in event and "text" in event["delta"]:
+                                restoration_response += event["delta"]["text"]
+                            elif "data" in event and "text" in event["data"]:
+                                restoration_response += event["data"]["text"]
+                            elif "text" in event:
+                                restoration_response += event["text"]
+                        elif isinstance(event, str):
+                            restoration_response += event
+            else:
+                # Non-streaming agent
+                restoration_response = await asyncio.get_event_loop().run_in_executor(
+                    None, self.agent, restoration_prompt
+                )
+
+            restoration_duration = time.time() - restoration_start
+
+            # Display agent acknowledgment
+            print(Colors.agent_response(f"{self.agent_name}:"), end=" ")
+            if self.use_rich and self.console:
+                md = Markdown(restoration_response.strip())
+                self.console.print(md)
+            else:
+                print(restoration_response.strip())
+            print()
+
+            # Track restoration tokens (not counted as a query)
+            # Approximate token counting based on response length
+            restoration_input_tokens = len(restoration_prompt.split()) * 1.3
+            restoration_output_tokens = len(restoration_response.split()) * 1.3
+
+            # Reset for new session
+            old_query_count = self.query_count
+            old_total_tokens = total_tokens
+
+            # Initialize new session
+            self.session_id = new_session_id
+            self._resumed_from = old_session_id  # Track parent session
+            self._previous_summary = summary  # Store for next compaction
+
+            # Reset conversation but add restoration exchange
+            self.conversation_markdown = [
+                "\n## Session Restored ("
+                f"{datetime.now().strftime('%H:%M:%S')})\n",
+                f"**Context:** Resumed from {old_session_id} "
+                f"({old_query_count} queries, "
+                f"{self.token_tracker.format_tokens(old_total_tokens)})\n",
+                f"**Previous Session:** {saved_file}\n\n",
+                f"**{self.agent_name}:** {restoration_response.strip()}\n\n",
+                f"*Time: {restoration_duration:.1f}s | ",
+                f"Tokens: {int(restoration_input_tokens + restoration_output_tokens)} ",
+                f"(in: {int(restoration_input_tokens)}, "
+                f"out: {int(restoration_output_tokens)})*\n\n",
+                "---\n",
+            ]
+
+            # Reset counters (restoration tokens tracked separately)
+            self.query_count = 0
+            self.total_input_tokens = 0
+            self.total_output_tokens = 0
+            self.session_start_time = time.time()
+
+            # Update status bar if enabled
+            if self.status_bar:
+                self.status_bar.query_count = 0
+                self.status_bar.session_start_time = self.session_start_time
+
+            print(Colors.success("✓ Session compacted and ready to continue!"))
+            print()
+
+        except Exception as e:
+            logger.error(f"Failed to compact session: {e}", exc_info=True)
+            print(Colors.error(f"\n⚠️  Compaction failed: {e}"))
+            print(Colors.system("Your previous session was saved successfully."))
+            print(Colors.system("Continuing in current session..."))
 
     async def get_multiline_input(self) -> str:
         """
@@ -2002,6 +2207,10 @@ summarization
                         parts = user_input.strip().split(maxsplit=1)
                         custom_name = parts[1] if len(parts) > 1 else None
                         await self._handle_save_command(custom_name)
+                        continue
+                    elif user_input.lower() == "compact":
+                        # Compact session command
+                        await self._handle_compact_command()
                         continue
                     elif user_input.lower().startswith("copy"):
                         # Copy command with variants
