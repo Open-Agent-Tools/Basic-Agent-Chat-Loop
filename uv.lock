@@ -55,7 +55,7 @@ wheels = [
 
 [[package]]
 name = "basic-agent-chat-loop"
-version = "1.6.0b1"
+version = "1.6.0b2"
 source = { editable = "." }
 dependencies = [
     { name = "openai-harmony" },

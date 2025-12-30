@@ -119,15 +119,14 @@ class TestFormatConversationAsMarkdown:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test Agent", "Desc")
 
-            # Add conversation history
-            chat_loop.conversation_history = [
-                {
-                    "timestamp": 1234567890.0,
-                    "query": "What is 2+2?",
-                    "response": "The answer is 4.",
-                    "duration": 1.5,
-                    "usage": {"input_tokens": 10, "output_tokens": 5},
-                }
+            # Add conversation markdown
+            chat_loop.query_count = 1
+            chat_loop.conversation_markdown = [
+                "\n## Query 1 (00:00:00)\n",
+                "**You:** What is 2+2?\n\n",
+                "**Test Agent:** The answer is 4.\n\n",
+                "*Time: 1.5s | Tokens: 15 (in: 10, out: 5)*\n\n",
+                "---\n",
             ]
 
             markdown = chat_loop._format_conversation_as_markdown()
@@ -137,7 +136,7 @@ class TestFormatConversationAsMarkdown:
             assert "**You:** What is 2+2?" in markdown
             assert "**Test Agent:**" in markdown
             assert "The answer is 4." in markdown
-            assert "Response time: 1.5s" in markdown
+            assert "Time: 1.5s" in markdown
             assert "Tokens: 15" in markdown
 
     def test_format_conversation_without_usage(self):
@@ -149,21 +148,20 @@ class TestFormatConversationAsMarkdown:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test", "Desc")
 
-            chat_loop.conversation_history = [
-                {
-                    "timestamp": 1234567890.0,
-                    "query": "Hello",
-                    "response": "Hi there!",
-                    "duration": 0.5,
-                    "usage": None,
-                }
+            chat_loop.query_count = 1
+            chat_loop.conversation_markdown = [
+                "\n## Query 1 (00:00:00)\n",
+                "**You:** Hello\n\n",
+                "**Test:** Hi there!\n\n",
+                "*Time: 0.5s*\n\n",
+                "---\n",
             ]
 
             markdown = chat_loop._format_conversation_as_markdown()
 
             assert "Hello" in markdown
             assert "Hi there!" in markdown
-            assert "Response time: 0.5s" in markdown
+            assert "Time: 0.5s" in markdown
             # Should not have token info
             assert "Tokens:" not in markdown
 

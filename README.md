@@ -16,7 +16,7 @@ A feature-rich, interactive CLI for **AWS Strands** agents with token tracking, 
 - 🎵 **Harmony Support** - Specialized processing for OpenAI Harmony format (gpt-oss models)
 - 📜 **Command History** - Navigate previous queries with ↑↓ arrows (persisted to `~/.chat_history`)
 - ✍️ **Multi-line Input** - Type `\\` to enter multi-line mode with Ctrl+D to cancel and ↑ to edit previous lines
-- 💾 **Session Management** - Save, resume, and search previous conversations with full context restoration
+- 💾 **Session Management** - Save conversations as clean markdown files in `~/agent-conversations/`
 - 📋 **Copy Commands** - Copy responses, queries, code blocks, or entire conversations to clipboard
 - 💰 **Token Tracking** - Track tokens and costs per query and session
 - 📝 **Prompt Templates** - Reusable prompts from `~/.prompts/`
@@ -247,7 +247,7 @@ See [CONFIG.md](CONFIG.md) for full configuration options.
 | `templates` | List available prompt templates |
 | `sessions` | List all saved conversation sessions |
 | `/name` | Use prompt template from `~/.prompts/name.md` |
-| `resume <#>` | Resume a previous session by number or ID |
+| `resume <#>` | ⚠️ Temporarily disabled (pending rewrite for markdown format) |
 | `copy` | Copy last response to clipboard (see variants below) |
 | `clear` | Clear screen and reset agent session |
 | `exit`, `quit` | Exit chat (shows session summary) |
@@ -275,14 +275,20 @@ Available Sessions (3):
   2. MyAgent - Jan 25, 09:15 - 7 queries - $0.23
      "Explain async/await in Python..."
 
-# Resume by number
-You: resume 1
-
-# Or resume on startup
-chat_loop myagent --resume
-chat_loop myagent --resume 1
-chat_loop myagent --resume myagent_20250126_143022
 ```
+
+**View saved conversations:**
+
+Conversations are saved as clean markdown files in `~/agent-conversations/`:
+```bash
+ls -lh ~/agent-conversations/
+# Shows files like: simple_sally_20251230_110627.md
+
+# View a conversation
+cat ~/agent-conversations/simple_sally_20251230_110627.md
+```
+
+**Note:** The `resume` command for restoring agent context is temporarily disabled while we rewrite it for the new markdown-only format. Saved conversations can still be viewed and copied from manually.
 
 **List all saved sessions:**
 

@@ -885,8 +885,14 @@ class ChatLoop:
             False (feature disabled)
         """
         print(Colors.system("\nSession restoration is temporarily disabled."))
-        print(Colors.system("Previous conversations are saved in ~/agent-conversations/"))
-        print(Colors.system("You can view them manually or copy/paste into a new session."))
+        print(
+            Colors.system("Previous conversations are saved in ~/agent-conversations/")
+        )
+        print(
+            Colors.system(
+                "You can view them manually or copy/paste into a new session."
+            )
+        )
         return False
 
         # TODO: Reimplement by parsing markdown files if needed
@@ -1085,8 +1091,11 @@ class ChatLoop:
             md_path.chmod(0o600)
 
             # Update session index
-            session_duration = time.time() - self.session_start_time
-            first_query = self.conversation_markdown[1].replace("**You:** ", "").strip() if len(self.conversation_markdown) > 1 else ""
+            first_query = (
+                self.conversation_markdown[1].replace("**You:** ", "").strip()
+                if len(self.conversation_markdown) > 1
+                else ""
+            )
             preview = first_query[:100]
             if len(first_query) > 100:
                 preview += "..."
@@ -1388,7 +1397,10 @@ class ChatLoop:
                             nested_event = event["event"]
                             if "contentBlockDelta" in nested_event:
                                 delta_block = nested_event["contentBlockDelta"]
-                                if isinstance(delta_block, dict) and "delta" in delta_block:
+                                if (
+                                    isinstance(delta_block, dict)
+                                    and "delta" in delta_block
+                                ):
                                     delta = delta_block["delta"]
                                     if isinstance(delta, dict) and "text" in delta:
                                         text_to_add = delta["text"]
@@ -1658,7 +1670,10 @@ class ChatLoop:
                 self.total_input_tokens += input_tok
                 self.total_output_tokens += output_tok
                 if total_tok > 0:
-                    tok_str = f"Tokens: {total_tok:,} (in: {input_tok:,}, out: {output_tok:,})"
+                    tok_str = (
+                        f"Tokens: {total_tok:,} "
+                        f"(in: {input_tok:,}, out: {output_tok:,})"
+                    )
                     metadata_parts.append(tok_str)
 
             md_entry.append(f"*{' | '.join(metadata_parts)}*\n\n")
@@ -1706,7 +1721,7 @@ class ChatLoop:
             except asyncio.TimeoutError:
                 print(
                     ErrorMessages.query_timeout(
-                        attempt, self.max_retries, self.query_timeout
+                        attempt, self.max_retries, int(self.timeout)
                     )
                 )
                 if attempt < self.max_retries:
