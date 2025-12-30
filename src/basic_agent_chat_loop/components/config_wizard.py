@@ -352,7 +352,7 @@ class ConfigWizard:
         self.config["features"]["auto_save"] = self._prompt_bool(
             "Automatically save conversations on exit?",
             default=current_auto_save,
-            help_text="Saves each conversation to ~/agent-conversations as markdown",
+            help_text="Saves each conversation to ./.chat-sessions as markdown",
         )
 
         # show_tokens
