@@ -441,8 +441,11 @@ class ChatLoop:
         self.last_response = ""  # Track last response for copy command
         self.last_query = ""  # Track last user query for copy command
 
-        # Conversation tracking for auto-save
-        self.conversation_history: list[dict[str, Any]] = []
+        # Conversation tracking - simple markdown buffer
+        self.conversation_markdown: list[str] = []
+        self.query_count = 0
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
 
         # Generate session ID for this chat session
         from datetime import datetime
@@ -858,52 +861,35 @@ class ChatLoop:
         Returns:
             Markdown-formatted conversation
         """
-        from datetime import datetime
-
-        lines = []
-        lines.append(f"# {self.agent_name} - Conversation")
-        lines.append(f"\nSession ID: {self.session_id}")
-        lines.append(f"Agent: {self.agent_name}")
-
-        if self.conversation_history:
-            first_ts = self.conversation_history[0]["timestamp"]
-            lines.append(f"Started: {datetime.fromtimestamp(first_ts)}")
-
-        lines.append("\n---\n")
-
-        for i, entry in enumerate(self.conversation_history, 1):
-            timestamp = datetime.fromtimestamp(entry["timestamp"]).strftime("%H:%M:%S")
-            lines.append(f"\n## Query {i} ({timestamp})\n")
-            lines.append(f"**You:** {entry['query']}\n")
-            lines.append(f"**{self.agent_name}:**\n\n{entry['response']}\n")
-
-            if entry.get("duration"):
-                duration = entry["duration"]
-                lines.append(f"\n*Response time: {duration:.1f}s*")
-
-            if entry.get("usage"):
-                usage = entry["usage"]
-                input_tok = usage.get("input_tokens", 0)
-                output_tok = usage.get("output_tokens", 0)
-                total = input_tok + output_tok
-                lines.append(
-                    f" | *Tokens: {total:,} (in: {input_tok:,}, out: {output_tok:,})*"
-                )
-
-            lines.append("\n---\n")
-
-        return "\n".join(lines)
+        header = [
+            f"# {self.agent_name} - Conversation\n\n",
+            f"Session ID: {self.session_id}\n",
+            f"Agent: {self.agent_name}\n",
+            f"Queries: {self.query_count}\n\n",
+            "---\n",
+        ]
+        return "".join(header + self.conversation_markdown)
 
     async def restore_session(self, session_id: str) -> bool:
         """
-        Restore a previous session by replaying conversation to agent.
+        Session restoration is currently disabled.
+
+        Previously this replayed conversations to restore agent context.
+        With the simplified markdown-only saving, this feature needs to be
+        reimplemented to parse markdown files.
 
         Args:
             session_id: Session ID or number from sessions list
 
         Returns:
-            True if session was successfully restored, False otherwise
+            False (feature disabled)
         """
+        print(Colors.system("\nSession restoration is temporarily disabled."))
+        print(Colors.system("Previous conversations are saved in ~/agent-conversations/"))
+        print(Colors.system("You can view them manually or copy/paste into a new session."))
+        return False
+
+        # TODO: Reimplement by parsing markdown files if needed
         try:
             # If session_id is a number, resolve it from the list
             if session_id.isdigit():
@@ -1054,9 +1040,7 @@ class ChatLoop:
 
     def save_conversation(self, session_id: Optional[str] = None) -> bool:
         """
-        Save conversation history using SessionManager.
-
-        Saves both JSON (for resume) and markdown (for humans) formats.
+        Save conversation as markdown file.
 
         Args:
             session_id: Optional custom session ID.
@@ -1065,38 +1049,59 @@ class ChatLoop:
         Returns:
             True if save was successful, False otherwise
         """
-        # Only save if there's conversation history
-        if not self.conversation_history:
-            logger.debug("No conversation history to save")
+        # Only save if there's conversation content
+        if not self.conversation_markdown:
+            logger.debug("No conversation to save")
             return False
 
         # Use provided session_id or fall back to self.session_id
         save_session_id = session_id or self.session_id
 
         try:
+            # Ensure sessions directory exists
+            sessions_dir = self.session_manager.sessions_dir
+            sessions_dir.mkdir(parents=True, exist_ok=True)
+
+            # Build full markdown with header
+            md_path = sessions_dir / f"{save_session_id}.md"
+            total_tokens = self.total_input_tokens + self.total_output_tokens
+
+            markdown_content = [
+                f"# {self.agent_name} Conversation\n\n",
+                f"**Session ID:** {save_session_id}\n\n",
+                f"**Date:** {datetime.now().isoformat()}\n\n",
+                f"**Agent:** {self.agent_name}\n\n",
+                f"**Description:** {self.agent_description}\n\n",
+                f"**Total Queries:** {self.query_count}\n\n",
+                "---\n",
+            ]
+            markdown_content.extend(self.conversation_markdown)
+
+            # Write markdown file
+            with open(md_path, "w", encoding="utf-8") as f:
+                f.writelines(markdown_content)
+
+            # Set secure permissions (owner read/write only)
+            md_path.chmod(0o600)
+
+            # Update session index
             session_duration = time.time() - self.session_start_time
+            first_query = self.conversation_markdown[1].replace("**You:** ", "").strip() if len(self.conversation_markdown) > 1 else ""
+            preview = first_query[:100]
+            if len(first_query) > 100:
+                preview += "..."
 
-            metadata = {
-                "duration": session_duration,
-            }
-
-            # Use SessionManager to save
-            success, message = self.session_manager.save_session(
+            self.session_manager._update_index_simple(
                 session_id=save_session_id,
                 agent_name=self.agent_name,
                 agent_path=self.agent_path,
-                agent_description=self.agent_description,
-                conversation=self.conversation_history,
-                metadata=metadata,
+                query_count=self.query_count,
+                total_tokens=total_tokens,
+                preview=preview,
             )
 
-            if success:
-                logger.info(f"Conversation saved: {save_session_id}")
-                return True
-            else:
-                logger.warning(f"Failed to save conversation: {message}")
-                print(Colors.error(f"\n⚠️  {message}"))
-                return False
+            logger.info(f"Conversation saved: {save_session_id}")
+            return True
 
         except Exception as e:
             logger.warning(f"Failed to save conversation: {e}", exc_info=True)
@@ -1106,7 +1111,7 @@ class ChatLoop:
     def _handle_save_command(self, custom_name: Optional[str] = None):
         """Handle manual save command during conversation."""
         # Check if there's anything to save
-        if not self.conversation_history:
+        if not self.conversation_markdown:
             print(Colors.system("No conversation to save yet. Start chatting first!"))
             return
 
@@ -1155,19 +1160,17 @@ class ChatLoop:
     def _show_save_confirmation(self, session_id: str):
         """Show user-friendly save confirmation with file paths."""
         save_dir = self.session_manager.sessions_dir
-        json_path = save_dir / f"{session_id}.json"
         md_path = save_dir / f"{session_id}.md"
 
         print()
         print(Colors.success("✓ Conversation saved successfully!"))
         print()
         print(Colors.system(f"  Session ID: {session_id}"))
-        print(Colors.system(f"  JSON:       {json_path}"))
-        print(Colors.system(f"  Markdown:   {md_path}"))
-        print(Colors.system(f"  Queries:    {len(self.conversation_history)}"))
+        print(Colors.system(f"  File:       {md_path}"))
+        print(Colors.system(f"  Queries:    {self.query_count}"))
 
         # Show token count if available
-        total_tokens = self.token_tracker.get_total_tokens()
+        total_tokens = self.total_input_tokens + self.total_output_tokens
         if total_tokens > 0:
             print(
                 Colors.system(
@@ -1377,7 +1380,23 @@ class ChatLoop:
                     # Handle different event types
                     text_to_add = None  # Track text to add to response
 
-                    if hasattr(event, "data"):
+                    # First check if event is a dict (AWS Strands format)
+                    if isinstance(event, dict):
+                        # AWS Strands dict format:
+                        # {'event': {'contentBlockDelta': {'delta': {'text': '...'}}}}
+                        if "event" in event and isinstance(event["event"], dict):
+                            nested_event = event["event"]
+                            if "contentBlockDelta" in nested_event:
+                                delta_block = nested_event["contentBlockDelta"]
+                                if isinstance(delta_block, dict) and "delta" in delta_block:
+                                    delta = delta_block["delta"]
+                                    if isinstance(delta, dict) and "text" in delta:
+                                        text_to_add = delta["text"]
+                        # Fallback: check for direct text field
+                        elif "text" in event:
+                            text_to_add = event["text"]
+
+                    elif hasattr(event, "data"):
                         data = event.data
                         if isinstance(data, str):
                             text_to_add = data
@@ -1396,9 +1415,9 @@ class ChatLoop:
                                     text_to_add = str(content)
 
                     # Fallback: Check for common streaming event patterns
-                    # (AWS Strands, etc.)
+                    # (AWS Strands object events, etc.)
                     elif hasattr(event, "delta"):
-                        # AWS Strands/Anthropic delta events
+                        # AWS Strands/Anthropic delta events (object format)
                         delta = event.delta
                         if isinstance(delta, str):
                             text_to_add = delta
@@ -1464,8 +1483,8 @@ class ChatLoop:
                 logger.debug("=" * 60)
 
             # Render collected response
-            # Use newline separator to prevent sentences from running together
-            full_response = "\n".join(response_text)
+            # Concatenate streaming chunks directly (they may break mid-word)
+            full_response = "".join(response_text)
 
             # Process through Harmony if available
             display_text = full_response
@@ -1575,9 +1594,6 @@ class ChatLoop:
                 if self.status_bar:
                     self.status_bar.update_tokens(self.token_tracker.get_total_tokens())
 
-            # Increment query count for session summary
-            self.query_count += 1
-
             # Display duration and token info
             # Determine what to show
             show_info_line = (
@@ -1622,17 +1638,33 @@ class ChatLoop:
 
             logger.info(f"Query completed successfully in {duration:.1f}s")
 
-            # Track conversation for manual save, copy, and auto-save features
-            self.conversation_history.append(
-                {
-                    "timestamp": time.time(),
-                    "query": query,
-                    # Save what user sees (includes harmony formatting)
-                    "response": display_text,
-                    "duration": duration,
-                    "usage": usage_info,
-                }
-            )
+            # Track conversation as markdown for saving
+            self.query_count += 1
+            entry_timestamp = datetime.now().strftime("%H:%M:%S")
+
+            # Build markdown entry
+            md_entry = [
+                f"\n## Query {self.query_count} ({entry_timestamp})\n",
+                f"**You:** {query}\n\n",
+                f"**{self.agent_name}:** {display_text}\n\n",
+            ]
+
+            # Add metadata
+            metadata_parts = [f"Time: {duration:.1f}s"]
+            if usage_info:
+                input_tok = usage_info.get("input_tokens", 0)
+                output_tok = usage_info.get("output_tokens", 0)
+                total_tok = input_tok + output_tok
+                self.total_input_tokens += input_tok
+                self.total_output_tokens += output_tok
+                if total_tok > 0:
+                    tok_str = f"Tokens: {total_tok:,} (in: {input_tok:,}, out: {output_tok:,})"
+                    metadata_parts.append(tok_str)
+
+            md_entry.append(f"*{' | '.join(metadata_parts)}*\n\n")
+            md_entry.append("---\n")
+
+            self.conversation_markdown.extend(md_entry)
 
             # Play audio notification on agent turn completion
             self.audio_notifier.play()
@@ -1841,7 +1873,7 @@ class ChatLoop:
                                     continue
                             elif copy_mode == "all":
                                 # Copy entire conversation as markdown
-                                if self.conversation_history:
+                                if self.conversation_markdown:
                                     content = self._format_conversation_as_markdown()
                                     description = "entire conversation"
                                 else:

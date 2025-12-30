@@ -160,6 +160,42 @@ class SessionManager:
 
         return self._save_index(index)
 
+    def _update_index_simple(
+        self,
+        session_id: str,
+        agent_name: str,
+        agent_path: str,
+        query_count: int,
+        total_tokens: int,
+        preview: str,
+    ) -> bool:
+        """
+        Update index with session information (simplified for markdown-only saves).
+
+        Args:
+            session_id: Session identifier
+            agent_name: Name of the agent
+            agent_path: Path to agent file
+            query_count: Number of queries in session
+            total_tokens: Total token count
+            preview: Preview text (first query)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        now = datetime.now()
+        session_info = SessionInfo(
+            session_id=session_id,
+            agent_name=agent_name,
+            agent_path=agent_path,
+            created=now,
+            last_updated=now,
+            query_count=query_count,
+            total_tokens=total_tokens,
+            preview=preview,
+        )
+        return self._update_index(session_info)
+
     def _remove_from_index(self, session_id: str) -> bool:
         """
         Remove session from index.
