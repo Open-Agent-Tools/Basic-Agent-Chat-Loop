@@ -2896,6 +2896,9 @@ Examples:
 
         chat_loop.run()
 
+        # Explicitly exit with success code
+        sys.exit(0)
+
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
