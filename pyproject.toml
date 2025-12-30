@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "basic-agent-chat-loop"
-version = "1.6.0-beta.8"
+version = "1.6.0"
 description = "Feature-rich interactive CLI for AWS Strands agents with token tracking, prompt templates, aliases, and configuration"
 readme = "README.md"
 requires-python = ">=3.9"
