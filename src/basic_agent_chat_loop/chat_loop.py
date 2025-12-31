@@ -1494,13 +1494,18 @@ class ChatLoop:
             print(f"⚠️ failed ({e})")
             return None
 
-    async def save_conversation(self, session_id: Optional[str] = None) -> bool:
+    async def save_conversation(
+        self, session_id: Optional[str] = None, generate_summary: bool = False
+    ) -> bool:
         """
-        Save conversation as markdown file with auto-generated summary.
+        Save conversation as markdown file with optional auto-generated summary.
 
         Args:
             session_id: Optional custom session ID.
                 Uses self.session_id if not provided.
+            generate_summary: Whether to generate an AI summary of the session.
+                Defaults to False to avoid generating summaries after every turn.
+                Should be True when explicitly compacting or ending a session.
 
         Returns:
             True if save was successful, False otherwise
@@ -1514,10 +1519,12 @@ class ChatLoop:
         save_session_id = session_id or self.session_id
 
         try:
-            # Generate summary for the session
-            summary = await self._generate_session_summary(
-                previous_summary=getattr(self, "_previous_summary", None)
-            )
+            # Generate summary for the session (only if requested)
+            summary = None
+            if generate_summary:
+                summary = await self._generate_session_summary(
+                    previous_summary=getattr(self, "_previous_summary", None)
+                )
 
             # Ensure sessions directory exists
             sessions_dir = self.session_manager.sessions_dir
@@ -1638,7 +1645,8 @@ class ChatLoop:
             old_query_count = self.query_count
             old_total_tokens = self.total_input_tokens + self.total_output_tokens
 
-            success = await self.save_conversation()
+            # Generate summary for compaction
+            success = await self.save_conversation(generate_summary=True)
             if not success:
                 print(Colors.error("Failed to save session for compaction"))
                 return
@@ -2758,8 +2766,9 @@ class ChatLoop:
             # Save command history
             save_readline_history(self.history_file)
 
-            # Final save on exit (incremental saves happen after each query)
-            success = await self.save_conversation()
+            # Final save on exit with summary
+            # (incremental saves happen after each query without summaries)
+            success = await self.save_conversation(generate_summary=True)
             if success:
                 self._show_save_confirmation(self.session_id)
 
