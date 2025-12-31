@@ -1557,7 +1557,8 @@ class ChatLoop:
                 markdown_content.append("\n")
                 markdown_content.append(summary)
                 markdown_content.append("\n")
-            else:
+            elif generate_summary:
+                # Only warn if we tried to generate a summary but it failed
                 logger.warning("Session saved without summary - resume will not work")
                 print(
                     Colors.system(
