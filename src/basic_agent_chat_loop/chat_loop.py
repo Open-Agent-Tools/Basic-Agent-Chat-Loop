@@ -2347,10 +2347,13 @@ class ChatLoop:
         if self.update_terminal_title:
             set_terminal_title(f"{self.agent_name} - Idle")
 
-        self.display_manager.display_banner()
+        # Only show banner now if NOT resuming (will show after resume succeeds)
+        will_resume = hasattr(self, "resume_session_ref") and self.resume_session_ref
+        if not will_resume:
+            self.display_manager.display_banner()
 
         # Handle --resume flag if specified
-        if hasattr(self, "resume_session_ref") and self.resume_session_ref:
+        if will_resume:
             session_ref = self.resume_session_ref
 
             # If "pick" mode, show session picker
@@ -2362,6 +2365,7 @@ class ChatLoop:
                 if not sessions:
                     print(Colors.system("\nNo saved sessions found to resume."))
                     print("Continue with fresh session...\n")
+                    self.display_manager.display_banner()
                 else:
                     self.display_manager.display_sessions(
                         sessions, agent_name=self.agent_name
@@ -2376,22 +2380,32 @@ class ChatLoop:
                         if choice:
                             success = await self.restore_session(choice)
                             if success:
-                                # Clear and redisplay banner after resume
+                                # Display banner after successful resume
                                 self.display_manager.display_banner()
+                            else:
+                                # Resume failed, show banner for fresh session
+                                self.display_manager.display_banner()
+                        else:
+                            # User pressed Enter to skip - show banner for fresh session
+                            self.display_manager.display_banner()
                     except (KeyboardInterrupt, EOFError):
                         print()
                         print(
                             Colors.system("Skipping resume, starting fresh session...")
                         )
                         print()
+                        # User cancelled - show banner for fresh session
+                        self.display_manager.display_banner()
             else:
                 # Direct resume with specific session ID/number
                 success = await self.restore_session(session_ref)
                 if success:
-                    # Clear and redisplay banner after resume
+                    # Display banner after successful resume
                     self.display_manager.display_banner()
                 else:
                     print(Colors.system("\nContinuing with fresh session...\n"))
+                    # Resume failed, show banner for fresh session
+                    self.display_manager.display_banner()
 
         try:
             while True:
