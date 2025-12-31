@@ -787,7 +787,13 @@ class ConfigWizard:
         ]
 
         for key, value in self.config["colors"].items():
-            lines.append(f"  {key}: {value}")
+            # Escape ANSI codes for YAML (e.g., \033 -> \\033)
+            if isinstance(value, str) and "\033" in value:
+                # Escape backslashes for YAML: \033 becomes \\033
+                escaped_value = value.replace("\\", "\\\\")
+                lines.append(f"  {key}: '{escaped_value}'")
+            else:
+                lines.append(f"  {key}: {value}")
 
         lines.extend(
             [
