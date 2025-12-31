@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2025-12-31
+
+### Added
+- **Incremental Autosave** - Conversations now save automatically after each message
+  - Removed `auto_save` configuration option (feature is always enabled)
+  - Save happens immediately after each query-response cycle
+  - Prevents data loss from crashes or force quits
+  - All conversations saved to `./.chat-sessions` (project-local)
+  - Removed manual `#save` command (no longer needed)
+
+### Changed
+- **Breaking Change**: Removed `features.auto_save` from configuration
+  - Auto-save is now always enabled and cannot be disabled
+  - Updated help text to reflect always-on autosave
+  - Updated configuration examples and documentation
+
+### Fixed
+- Test suite updated to match removed auto_save configuration
+  - All 318 tests passing with new autosave behavior
+
 ## [1.6.0-beta.7] - 2025-12-30
 
 ### Added
