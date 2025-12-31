@@ -2411,9 +2411,10 @@ class ChatLoop:
                         )
                         break
 
-                    # Handle commands (commands start with # or /)
-                    if user_input.startswith("#") or user_input.startswith("/"):
-                        # Strip # or / and get command
+                    # Handle commands (commands start with #)
+                    # Note: / prefix is reserved for templates (see below)
+                    if user_input.startswith("#"):
+                        # Strip # and get command
                         cmd_input = user_input[1:].strip()
                         cmd_lower = cmd_input.lower()
 
