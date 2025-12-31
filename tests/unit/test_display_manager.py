@@ -48,7 +48,6 @@ def display_with_config():
     return DisplayManager(
         agent_name="Test Agent",
         agent_description="Test description",
-        auto_save=True,
         config=config,
     )
 
@@ -68,7 +67,6 @@ class TestDisplayManagerInitialization:
         assert display.show_banner is True
         assert display.show_metadata is False
         assert display.use_rich is False
-        assert display.auto_save is False
         assert display.config is None
         assert display.status_bar is None
 
@@ -85,7 +83,6 @@ class TestDisplayManagerInitialization:
             show_banner=False,
             show_metadata=True,
             use_rich=True,
-            auto_save=True,
             config=config,
             status_bar=status_bar,
         )
@@ -93,7 +90,6 @@ class TestDisplayManagerInitialization:
         assert display.show_banner is False
         assert display.show_metadata is True
         assert display.use_rich is True
-        assert display.auto_save is True
         assert display.config is config
         assert display.status_bar is status_bar
 
@@ -156,7 +152,7 @@ class TestDisplayBanner:
         captured = capsys.readouterr()
 
         assert "Configuration loaded" in captured.out
-        assert "Auto-save: enabled" in captured.out
+        assert "Auto-save: always enabled" in captured.out
 
 
 class TestDisplayHelp:
@@ -269,11 +265,12 @@ class TestDisplayInfo:
         assert "Configuration file support" in captured.out
 
     def test_display_info_with_auto_save(self, display_with_config, capsys):
-        """Test info display with auto-save enabled."""
+        """Test info display shows auto-save always enabled."""
         display_with_config.display_info()
         captured = capsys.readouterr()
 
-        assert "Auto-save conversations" in captured.out
+        # Auto-save is now always enabled, so should always appear
+        assert "Auto-save conversations after each message" in captured.out
 
 
 class TestDisplaySessionSummary:

@@ -42,7 +42,6 @@ agents:
   'Test Agent':
     features:
       show_tokens: true
-      auto_save: true
   'Another Agent':
     behavior:
       max_retries: 10
@@ -59,7 +58,6 @@ class TestChatConfigInitialization:
         config = ChatConfig()
 
         assert config.get("features.show_tokens") is True
-        assert config.get("features.auto_save") is True
         assert config.get("features.rich_enabled") is True
         assert config.get("behavior.max_retries") == 3
         assert config.get("ui.show_banner") is True
@@ -117,7 +115,6 @@ class TestConfigGet:
 
         # Agent-specific override
         assert config.get("features.show_tokens", agent_name="Test Agent") is True
-        assert config.get("features.auto_save", agent_name="Test Agent") is True
 
         # Different agent
         assert config.get("behavior.max_retries", agent_name="Another Agent") == 10
@@ -160,7 +157,6 @@ class TestConfigGetSection:
         # Agent-specific section
         agent_features = config.get_section("features", agent_name="Test Agent")
         assert agent_features["show_tokens"] is True
-        assert agent_features["auto_save"] is True
 
     def test_get_colors_section_decodes_escapes(self, tmp_path, monkeypatch):
         """Test that colors section contains valid color values."""
@@ -202,13 +198,13 @@ class TestConfigSet:
         """Test setting agent-specific configuration."""
         config = ChatConfig()
 
-        config.set("features.auto_save", False, agent_name="My Agent")
+        config.set("features.show_tokens", False, agent_name="My Agent")
 
         # Global should remain unchanged (default is True now)
-        assert config.get("features.auto_save") is True
+        assert config.get("features.show_tokens") is True
 
         # Agent-specific should be set
-        assert config.get("features.auto_save", agent_name="My Agent") is False
+        assert config.get("features.show_tokens", agent_name="My Agent") is False
 
 
 class TestConfigMerging:

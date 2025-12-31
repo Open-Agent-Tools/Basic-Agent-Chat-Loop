@@ -34,7 +34,6 @@ colors:
   reset: '\\033[0m'
 
 features:
-  auto_save: false
   show_tokens: true
   show_metadata: true
   rich_enabled: true
@@ -351,7 +350,6 @@ class TestConfigureFeatures:
         wizard._configure_features()
 
         assert "features" in wizard.config
-        assert "auto_save" in wizard.config["features"]
         assert "show_tokens" in wizard.config["features"]
         assert "show_metadata" in wizard.config["features"]
         assert "rich_enabled" in wizard.config["features"]
@@ -360,11 +358,11 @@ class TestConfigureFeatures:
     @patch("builtins.input")
     def test_configure_features_custom_values(self, mock_input, wizard):
         """Test configuring features with custom values."""
-        mock_input.side_effect = ["y", "y", "n", "n", "y"]
+        # Removed auto_save, so now only 4 prompts instead of 5
+        mock_input.side_effect = ["y", "n", "n", "y"]
 
         wizard._configure_features()
 
-        assert wizard.config["features"]["auto_save"] is True
         assert wizard.config["features"]["show_tokens"] is True
         assert wizard.config["features"]["show_metadata"] is False
         assert wizard.config["features"]["rich_enabled"] is False
@@ -562,7 +560,7 @@ class TestWriteConfig:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         wizard.config = {
             "colors": {"user": "bright_white"},
-            "features": {"auto_save": False},
+            "features": {"show_tokens": False},
             "ui": {},
             "audio": {"enabled": True, "notification_sound": None},
             "behavior": {},
@@ -666,7 +664,7 @@ class TestGenerateYamlWithComments:
         """Test that generated YAML includes all config sections."""
         wizard.config = {
             "colors": {"user": "bright_white"},
-            "features": {"auto_save": False},
+            "features": {"show_tokens": False},
             "ui": {"show_banner": True},
             "audio": {"enabled": True, "notification_sound": None},
             "behavior": {"max_retries": 3},
@@ -820,7 +818,6 @@ class TestResetConfigToDefaults:
         content = result.read_text()
         assert "bright_white" in content
         assert "bright_blue" in content
-        assert "auto_save: false" in content
         assert "show_tokens: false" in content
 
     @patch("builtins.input")

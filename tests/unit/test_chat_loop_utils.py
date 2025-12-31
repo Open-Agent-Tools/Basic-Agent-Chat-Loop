@@ -93,7 +93,6 @@ class TestChatLoopInitialization:
             assert chat_loop.retry_delay == 2.0
             assert chat_loop.timeout == 120.0
             assert chat_loop.spinner_style == "dots"
-            assert chat_loop.auto_save is False
             assert chat_loop.show_metadata is True
             assert chat_loop.show_thinking is True
             assert chat_loop.show_duration is True
@@ -107,7 +106,6 @@ class TestChatLoopInitialization:
             "behavior.retry_delay": 3.0,
             "behavior.timeout": 180.0,
             "behavior.spinner_style": "bouncingBall",
-            "features.auto_save": True,
             "features.show_metadata": False,
             "features.show_tokens": True,
             "features.rich_enabled": False,
@@ -130,7 +128,6 @@ class TestChatLoopInitialization:
         assert chat_loop.retry_delay == 3.0
         assert chat_loop.timeout == 180.0
         assert chat_loop.spinner_style == "bouncingBall"
-        assert chat_loop.auto_save is True
         assert chat_loop.show_metadata is False
         assert chat_loop.show_tokens is True
         assert chat_loop.use_rich is False  # Rich disabled by config
