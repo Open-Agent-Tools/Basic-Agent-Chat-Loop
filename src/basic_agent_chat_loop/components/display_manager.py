@@ -31,7 +31,6 @@ class DisplayManager:
         show_banner: bool = True,
         show_metadata: bool = False,
         use_rich: bool = False,
-        auto_save: bool = False,
         config: Any = None,
         status_bar: Any = None,
     ):
@@ -45,7 +44,6 @@ class DisplayManager:
             show_banner: Whether to show banner
             show_metadata: Whether to show metadata in banner
             use_rich: Whether rich formatting is enabled
-            auto_save: Whether auto-save is enabled
             config: Configuration object
             status_bar: StatusBar instance
         """
@@ -55,7 +53,6 @@ class DisplayManager:
         self.show_banner = show_banner
         self.show_metadata = show_metadata
         self.use_rich = use_rich
-        self.auto_save = auto_save
         self.config = config
         self.status_bar = status_bar
 
@@ -127,8 +124,7 @@ class DisplayManager:
         if self.config:
             print()
             print(Colors.DIM + "Configuration loaded" + Colors.RESET)
-            if self.auto_save:
-                print("  Auto-save: enabled → ./.chat-sessions")
+            print("  Auto-save: always enabled → ./.chat-sessions")
 
         print("=" * 60)
 
@@ -145,7 +141,6 @@ class DisplayManager:
         print("  #context    - Show token usage and context statistics")
         print("  #templates  - List available prompt templates")
         print("  #sessions   - List saved conversation sessions")
-        print("  #save       - Save conversation (update or new snapshot)")
         print("  /name       - Use prompt template from ~/.prompts/name.md")
         print("  #resume <#> - Resume a previous session by number or ID")
         print("  #compact    - Save session and continue in new session with summary")
@@ -156,12 +151,10 @@ class DisplayManager:
         print()
         print("Session Management:")
         print("  #sessions  - See all saved conversations")
-        print("  #save      - Save conversation now (update or new snapshot)")
-        print("  #save <name> - Save with custom name")
         print("  #resume 1  - Resume session by number from list")
         print("  #resume ID - Resume session by full ID")
         print("  #compact   - Save current session and start new with summary")
-        print("  Auto-save  - Enabled with --auto-save or in config")
+        print("  Auto-save  - Always enabled (saves after each message)")
         print()
         print("Copy Commands:")
         print("  #copy       - Copy last response to clipboard")
@@ -234,8 +227,7 @@ class DisplayManager:
         print("  ✓ Session reset with 'clear' command")
         if self.config:
             print("  ✓ Configuration file support (~/.chatrc or .chatrc)")
-        if self.auto_save:
-            print("  ✓ Auto-save conversations on exit")
+        print("  ✓ Auto-save conversations after each message")
         print("=" * 60)
 
     def display_session_summary(

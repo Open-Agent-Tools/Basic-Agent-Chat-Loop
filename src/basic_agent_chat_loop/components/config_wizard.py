@@ -67,7 +67,6 @@ def reset_config_to_defaults() -> Optional[Path]:
                 "success": "bright_green",
             },
             "features": {
-                "auto_save": False,
                 "show_tokens": False,
                 "show_metadata": True,
                 "rich_enabled": True,
@@ -187,7 +186,7 @@ def reset_config_to_defaults() -> Optional[Path]:
                 "# agents:",
                 "#   'My Agent':",
                 "#     features:",
-                "#       auto_save: true",
+                "#       show_tokens: true",
                 "",
                 "agents: {}",
             ]
@@ -342,18 +341,6 @@ class ConfigWizard:
         print("=" * 70 + "\n")
 
         self.config["features"] = {}
-
-        # auto_save
-        current_auto_save = (
-            self.current_config.get("features.auto_save", False)
-            if self.current_config
-            else False
-        )
-        self.config["features"]["auto_save"] = self._prompt_bool(
-            "Automatically save conversations on exit?",
-            default=current_auto_save,
-            help_text="Saves each conversation to ./.chat-sessions as markdown",
-        )
 
         # show_tokens
         current_show_tokens = (
@@ -873,7 +860,7 @@ class ConfigWizard:
                 "# agents:",
                 "#   'My Agent':",
                 "#     features:",
-                "#       auto_save: true",
+                "#       show_tokens: true",
                 "",
                 "agents: {}",
             ]

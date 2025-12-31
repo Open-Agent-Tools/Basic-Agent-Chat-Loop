@@ -474,9 +474,6 @@ class ChatLoop:
             )
 
             # Feature flags
-            self.auto_save = self.config.get(
-                "features.auto_save", False, agent_name=agent_name
-            )
             self.show_metadata = self.config.get(
                 "features.show_metadata", True, agent_name=agent_name
             )
@@ -509,7 +506,6 @@ class ChatLoop:
             self.retry_delay = 2.0
             self.timeout = 120.0
             self.spinner_style = "dots"
-            self.auto_save = False
             self.show_metadata = True
             self.show_thinking = True
             self.show_duration = True
@@ -614,7 +610,6 @@ class ChatLoop:
             show_banner=self.show_banner,
             show_metadata=self.show_metadata,
             use_rich=self.use_rich,
-            auto_save=self.auto_save,
             config=self.config,
             status_bar=self.status_bar,
         )
@@ -1307,7 +1302,7 @@ class ChatLoop:
         save_session_id = session_id or self.session_id
 
         try:
-            # Generate summary (auto_save enabled means we generate it)
+            # Generate summary for the session
             summary = await self._generate_session_summary(
                 previous_summary=getattr(self, "_previous_summary", None)
             )
@@ -1384,55 +1379,6 @@ class ChatLoop:
             logger.warning(f"Failed to save conversation: {e}", exc_info=True)
             print(Colors.error(f"\n⚠️  Could not save conversation: {e}"))
             return False
-
-    async def _handle_save_command(self, custom_name: Optional[str] = None):
-        """Handle manual save command during conversation."""
-        # Check if there's anything to save
-        if not self.conversation_markdown:
-            print(Colors.system("No conversation to save yet. Start chatting first!"))
-            return
-
-        # Ask user what to do
-        print()
-        print(Colors.system("Save options:"))
-        print("  (u) Update current session")
-        print("  (n) Create new snapshot")
-        print("  (c) Cancel")
-        print()
-
-        try:
-            choice = input(Colors.user("Your choice [u/n/c]: ")).strip().lower() or "u"
-        except (EOFError, KeyboardInterrupt):
-            print()
-            print(Colors.system("Save cancelled."))
-            return
-
-        if choice == "c":
-            print(Colors.system("Save cancelled."))
-            return
-
-        if choice == "n":
-            # Create new session ID
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            if custom_name:
-                # Sanitize custom name for filesystem
-                safe_name = "".join(
-                    c if c.isalnum() or c in "-_" else "_" for c in custom_name
-                )
-                new_session_id = f"{self.agent_name}_{safe_name}_{timestamp}"
-            else:
-                new_session_id = f"{self.agent_name}_{timestamp}"
-
-            # Save with new ID
-            success = await self.save_conversation(session_id=new_session_id)
-            if success:
-                self.session_id = new_session_id  # Update for future saves
-                self._show_save_confirmation(new_session_id)
-        else:
-            # Update current session (default)
-            success = await self.save_conversation()
-            if success:
-                self._show_save_confirmation(self.session_id)
 
     def _show_save_confirmation(self, session_id: str):
         """Show user-friendly save confirmation with file paths."""
@@ -2147,6 +2093,9 @@ class ChatLoop:
 
             self.conversation_markdown.extend(md_entry)
 
+            # Save conversation incrementally after each query-response
+            await self.save_conversation()
+
             # Play audio notification on agent turn completion
             self.audio_notifier.play()
 
@@ -2331,12 +2280,6 @@ class ChatLoop:
                             self.display_manager.display_sessions(
                                 sessions, agent_name=self.agent_name
                             )
-                            continue
-                        elif cmd_lower == "save" or cmd_lower.startswith("save "):
-                            # Save conversation command
-                            parts = cmd_input.strip().split(maxsplit=1)
-                            custom_name = parts[1] if len(parts) > 1 else None
-                            await self._handle_save_command(custom_name)
                             continue
                         elif cmd_lower == "compact":
                             # Compact session command
@@ -2668,11 +2611,10 @@ class ChatLoop:
             # Save command history
             save_readline_history(self.history_file)
 
-            # Save conversation if auto-save is enabled
-            if self.auto_save:
-                success = await self.save_conversation()
-                if success:
-                    self._show_save_confirmation(self.session_id)
+            # Final save on exit (incremental saves happen after each query)
+            success = await self.save_conversation()
+            if success:
+                self._show_save_confirmation(self.session_id)
 
             # Cleanup agent if it has cleanup method
             if hasattr(self.agent, "cleanup"):

@@ -34,7 +34,6 @@ colors:
 # FEATURES - Toggle optional functionality
 # ============================================================================
 features:
-  auto_save: false              # Automatically save conversations on exit
   rich_enabled: true            # Use rich library for formatting (if available)
   show_tokens: false            # Display token counts and cost estimates
   show_metadata: true           # Show agent metadata on startup
@@ -81,15 +80,13 @@ sessions:
 # PER-AGENT OVERRIDES
 # ============================================================================
 # Override settings for specific agents by name
+# Note: Conversations are always auto-saved to ./.chat-sessions (project-local)
 agents:
-  # Example: Complex Coding Clara with auto-save enabled
+  # Example: Complex Coding Clara with custom settings
   'Complex Coding Clara':
     model_display_name: 'Claude Sonnet 4.5'  # Override if auto-detection fails
     features:
-      auto_save: true
       show_tokens: true
-    paths:
-      save_location: ~/code-conversations/clara
     ui:
       show_metadata: false    # Hide metadata on startup for cleaner look
 
@@ -97,17 +94,11 @@ agents:
   'Product Pete':
     colors:
       agent: '\033[95m'       # Magenta for Pete
-    features:
-      auto_save: true
-    paths:
-      save_location: ~/product-conversations
 
   # Example: Research agents with different settings
   'DeepResearch Dave':
     behavior:
       timeout: 300.0          # Longer timeout for research
-    features:
-      auto_save: true
 
 # ============================================================================
 # USAGE EXAMPLES

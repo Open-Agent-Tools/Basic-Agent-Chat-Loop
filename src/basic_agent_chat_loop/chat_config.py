@@ -37,7 +37,6 @@ class ChatConfig:
             "reset": "\033[0m",  # Reset (no named equivalent)
         },
         "features": {
-            "auto_save": True,
             "rich_enabled": True,
             "show_tokens": True,
             "show_metadata": True,
@@ -77,7 +76,7 @@ class ChatConfig:
         # Per-agent overrides (example structure)
         "agents": {
             # 'Complex Coding Clara': {
-            #     'features': {'auto_save': True}
+            #     'features': {'show_tokens': True}
             # }
         },
     }
@@ -191,7 +190,7 @@ class ChatConfig:
         Get configuration value with optional agent-specific override.
 
         Args:
-            key: Dot-notation config key (e.g., 'features.auto_save')
+            key: Dot-notation config key (e.g., 'features.show_tokens')
             default: Default value if key not found
             agent_name: Optional agent name for per-agent overrides
 
@@ -216,7 +215,7 @@ class ChatConfig:
 
         Args:
             d: Dictionary to search
-            key: Dot-notation key (e.g., 'features.auto_save')
+            key: Dot-notation key (e.g., 'features.show_tokens')
 
         Returns:
             Value or None if not found
@@ -353,7 +352,6 @@ colors:
 # FEATURES - Toggle optional functionality
 # ============================================================================
 features:
-  auto_save: true               # Automatically save conversations on exit
   rich_enabled: true            # Use rich library for formatting (if available)
   show_tokens: true             # Display token counts
   show_metadata: true           # Show agent metadata on startup
@@ -362,7 +360,7 @@ features:
 # ============================================================================
 # PATHS - File system locations
 # ============================================================================
-# Note: Conversations saved to ./.chat-sessions (project-local, not configurable)
+# Note: Conversations auto-saved to ./.chat-sessions (project-local, always enabled)
 paths:
   log_location: ~/.chat_loop_logs          # Where to write logs (in home directory)
 
@@ -414,8 +412,8 @@ harmony:
 # agents:
 #   'My Agent':
 #     features:
-#       auto_save: true
 #       show_tokens: true
+#       show_metadata: false
 
 agents: {}
 """
