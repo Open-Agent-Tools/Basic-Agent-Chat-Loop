@@ -2046,6 +2046,9 @@ class ChatLoop:
             # Concatenate streaming chunks directly (they may break mid-word)
             full_response = "".join(response_text)
 
+            # Track if we already printed during streaming (to prevent duplicates)
+            already_printed_streaming = first_token_received and not self.use_rich
+
             # Process through Harmony if available
             display_text = full_response
             if self.harmony_processor:
@@ -2093,16 +2096,15 @@ class ChatLoop:
             # Store last response for copy commands (what user sees)
             self.last_response = display_text
 
-            if self.use_rich and display_text.strip() and self.console:
-                # Use rich markdown rendering
-                print()  # New line after agent name
-                md = Markdown(display_text)
-                self.console.print(md)
-            elif not self.use_rich and response_text:
-                # Already printed during streaming, just add newline
-                if not first_token_received:
-                    # Non-streaming case where nothing was printed yet
-                    # Apply colorization for tool messages
+            #  Render final response (only if not already printed during streaming)
+            if not already_printed_streaming:
+                if self.use_rich and display_text.strip() and self.console:
+                    # Use rich markdown rendering
+                    print()  # New line after agent name
+                    md = Markdown(display_text)
+                    self.console.print(md)
+                elif display_text.strip():
+                    # Non-streaming or non-rich: print plain text
                     formatted_response = Colors.format_agent_response(display_text)
                     print(formatted_response)
 
