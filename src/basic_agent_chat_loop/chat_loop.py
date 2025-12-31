@@ -2399,9 +2399,20 @@ class ChatLoop:
                     # Don't use executor as it breaks readline editing
                     user_input = input(f"\n{Colors.user('You')}: ").strip()
 
-                    # Handle commands (commands start with #)
-                    if user_input.startswith("#"):
-                        # Strip # and get command
+                    # Handle exit commands (with or without # or /)
+                    # Support: exit, quit, bye, #exit, /exit, etc.
+                    normalized_input = user_input.lstrip("#/").lower()
+                    if normalized_input in ["exit", "quit", "bye"]:
+                        print(
+                            Colors.system(
+                                f"\nGoodbye! Thanks for using {self.agent_name}!"
+                            )
+                        )
+                        break
+
+                    # Handle commands (commands start with # or /)
+                    if user_input.startswith("#") or user_input.startswith("/"):
+                        # Strip # or / and get command
                         cmd_input = user_input[1:].strip()
                         cmd_lower = cmd_input.lower()
 
