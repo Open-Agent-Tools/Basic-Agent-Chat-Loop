@@ -343,13 +343,13 @@ def initialize_default_config() -> Path:
 # COLORS - ANSI escape codes for terminal output
 # ============================================================================
 colors:
-  user: '\\033[97m'      # Bright white - maximum contrast
-  agent: '\\033[94m'     # Bright blue
-  system: '\\033[33m'    # Yellow
-  error: '\\033[91m'     # Bright red
-  success: '\\033[92m'   # Bright green
-  dim: '\\033[2m'        # Dim
-  reset: '\\033[0m'      # Reset
+  user: '\\\\033[97m'      # Bright white - maximum contrast
+  agent: '\\\\033[94m'     # Bright blue
+  system: '\\\\033[33m'    # Yellow
+  error: '\\\\033[91m'     # Bright red
+  success: '\\\\033[92m'   # Bright green
+  dim: '\\\\033[2m'        # Dim
+  reset: '\\\\033[0m'      # Reset
 
 # ============================================================================
 # FEATURES - Toggle optional functionality
