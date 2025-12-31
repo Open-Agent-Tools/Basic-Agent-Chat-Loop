@@ -14,6 +14,10 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
+# File permission constants
+# Owner read/write only - ensures session data remains private
+SECURE_FILE_PERMISSIONS = 0o600
+
 
 @dataclass
 class SessionInfo:
@@ -284,7 +288,7 @@ class SessionManager:
                 json.dump(json_data, f, indent=2)
 
             # Set secure permissions (owner read/write only)
-            json_path.chmod(0o600)
+            json_path.chmod(SECURE_FILE_PERMISSIONS)
 
             # Save markdown (for human readability)
             self._save_markdown(md_path, session_id, json_data)
@@ -370,7 +374,7 @@ class SessionManager:
             f.writelines(content_lines)
 
         # Set secure permissions
-        md_path.chmod(0o600)
+        md_path.chmod(SECURE_FILE_PERMISSIONS)
 
     def load_session(self, session_id: str) -> Optional[dict[str, Any]]:
         """

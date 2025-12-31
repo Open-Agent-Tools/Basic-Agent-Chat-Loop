@@ -164,8 +164,9 @@ def load_agent_module(agent_path: str) -> tuple[Any, str, str]:
     # from parent packages (common with paths like /agents/local/agent.py where
     # agents/__init__.py may try to import unrelated sibling modules)
     original_stderr = sys.stderr
+    stderr_capture = io.StringIO()
     try:
-        sys.stderr = io.StringIO()
+        sys.stderr = stderr_capture
         spec.loader.exec_module(module)
     except Exception as e:
         # Clean up sys.modules on failure
@@ -175,6 +176,13 @@ def load_agent_module(agent_path: str) -> tuple[Any, str, str]:
         )
     finally:
         sys.stderr = original_stderr
+        # Log suppressed stderr output if any (helps with debugging)
+        suppressed_output = stderr_capture.getvalue()
+        if suppressed_output.strip():
+            logger.debug(
+                f"Suppressed stderr during agent load from {agent_path}: "
+                f"{suppressed_output[:500]}"
+            )
 
     # Extract root_agent
     if not hasattr(module, "root_agent"):

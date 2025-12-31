@@ -221,7 +221,7 @@ def reset_config_to_defaults() -> Optional[Path]:
 class ConfigWizard:
     """Interactive configuration wizard."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the wizard."""
         self.config: dict[str, Any] = {}
         self.current_config: Optional[ChatConfig] = None

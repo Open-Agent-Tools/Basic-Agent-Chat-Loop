@@ -109,6 +109,11 @@ log_dir = Path.home() / ".chat_loop_logs"
 # Command history configuration
 READLINE_HISTORY_LENGTH = 1000
 
+# Token estimation configuration
+# Approximate token-to-word ratio for English text
+# Based on empirical analysis of GPT tokenization (1 token ≈ 0.75 words)
+TOKEN_TO_WORD_RATIO = 1.3
+
 # Use a single consistent logger throughout the module
 logger = logging.getLogger("basic_agent_chat_loop")
 
@@ -749,6 +754,113 @@ class ChatLoop:
         )
         return None
 
+    def _try_bedrock_token_extraction(
+        self, response_obj: dict
+    ) -> Optional[tuple[Any, bool]]:
+        """
+        Try to extract AWS Bedrock style accumulated usage.
+
+        Args:
+            response_obj: Response dict potentially containing Bedrock metrics
+
+        Returns:
+            Tuple of (usage_object, is_accumulated) or None if not found
+        """
+        if "result" in response_obj:
+            result = response_obj["result"]
+            if hasattr(result, "metrics") and hasattr(
+                result.metrics, "accumulated_usage"
+            ):
+                return (result.metrics.accumulated_usage, True)
+        return None
+
+    def _try_standard_usage_extraction(self, response_obj) -> Optional[Any]:
+        """
+        Try to extract usage from common patterns.
+
+        Args:
+            response_obj: Response object to extract from
+
+        Returns:
+            Usage object or None if not found
+        """
+        # Pattern 1: response.usage (Anthropic/Claude style)
+        if hasattr(response_obj, "usage"):
+            return response_obj.usage
+
+        # Pattern 2: response['usage'] (dict style)
+        if isinstance(response_obj, dict) and "usage" in response_obj:
+            return response_obj["usage"]
+
+        # Pattern 3: response.metadata.usage
+        if hasattr(response_obj, "metadata") and hasattr(
+            response_obj.metadata, "usage"
+        ):
+            return response_obj.metadata.usage
+
+        # Pattern 4: response.data.usage (streaming event)
+        if hasattr(response_obj, "data") and hasattr(response_obj.data, "usage"):
+            return response_obj.data.usage
+
+        # Pattern 5: response.data['usage'] (streaming event dict)
+        if (
+            hasattr(response_obj, "data")
+            and isinstance(response_obj.data, dict)
+            and "usage" in response_obj.data
+        ):
+            return response_obj.data["usage"]
+
+        return None
+
+    def _extract_tokens_from_usage(self, usage) -> Optional[dict[str, int]]:
+        """
+        Extract input and output tokens from usage object.
+
+        Args:
+            usage: Usage object (dict or object with attributes)
+
+        Returns:
+            Dict with 'input_tokens' and 'output_tokens', or None if invalid
+        """
+        input_tokens: int = 0
+        output_tokens: int = 0
+
+        # Try different attribute names (check dict keys first, then attributes)
+        if isinstance(usage, dict):
+            # AWS Bedrock camelCase - explicit or chain with default
+            input_tokens = (
+                usage.get("inputTokens")
+                or usage.get("input_tokens")
+                or usage.get("prompt_tokens")
+                or 0
+            )
+            output_tokens = (
+                usage.get("outputTokens")
+                or usage.get("output_tokens")
+                or usage.get("completion_tokens")
+                or 0
+            )
+        else:
+            # Object attributes
+            input_tokens = getattr(
+                usage, "input_tokens", getattr(usage, "prompt_tokens", 0)
+            )
+            output_tokens = getattr(
+                usage, "output_tokens", getattr(usage, "completion_tokens", 0)
+            )
+
+        # Ensure tokens are integers (handle mocks/test objects)
+        try:
+            input_tokens = int(input_tokens) if input_tokens is not None else 0
+            output_tokens = int(output_tokens) if output_tokens is not None else 0
+        except (TypeError, ValueError):
+            return None
+
+        if input_tokens > 0 or output_tokens > 0:
+            return {"input_tokens": input_tokens, "output_tokens": output_tokens}
+
+        return None
+
     def _extract_token_usage(
         self, response_obj
     ) -> Optional[tuple[dict[str, int], bool]]:
@@ -767,91 +879,21 @@ class ChatLoop:
         if not response_obj:
             return None
 
-        # Try common attribute patterns
-        usage = None
-        is_accumulated = False
+        # Try AWS Bedrock accumulated usage first (cumulative)
+        if isinstance(response_obj, dict):
+            bedrock_result = self._try_bedrock_token_extraction(response_obj)
+            if bedrock_result:
+                usage, is_accumulated = bedrock_result
+                tokens = self._extract_tokens_from_usage(usage)
+                if tokens:
+                    return (tokens, is_accumulated)
 
-        # Pattern 1: response['result'].metrics.accumulated_usage (AWS Bedrock style)
-        # IMPORTANT: This is cumulative across the entire agent session!
-        if isinstance(response_obj, dict) and "result" in response_obj:
-            result = response_obj["result"]
-            if hasattr(result, "metrics") and hasattr(
-                result.metrics, "accumulated_usage"
-            ):
-                usage = result.metrics.accumulated_usage
-                is_accumulated = True  # AWS Strands accumulates tokens
-
-        # Pattern 2: response.usage (Anthropic/Claude style)
-        elif hasattr(response_obj, "usage"):
-            usage = response_obj.usage
-
-        # Pattern 3: response['usage'] (dict style)
-        elif isinstance(response_obj, dict) and "usage" in response_obj:
-            usage = response_obj["usage"]
-
-        # Pattern 4: response.metadata.usage
-        elif hasattr(response_obj, "metadata") and hasattr(
-            response_obj.metadata, "usage"
-        ):
-            usage = response_obj.metadata.usage
-
-        # Pattern 5: response.data.usage (streaming event)
-        elif hasattr(response_obj, "data") and hasattr(response_obj.data, "usage"):
-            usage = response_obj.data.usage
-
-        # Pattern 6: response.data['usage'] (streaming event dict)
-        elif (
-            hasattr(response_obj, "data")
-            and isinstance(response_obj.data, dict)
-            and "usage" in response_obj.data
-        ):
-            usage = response_obj.data["usage"]
-
-        if not usage:
-            return None
-
-        # Extract input and output tokens
-        input_tokens = 0
-        output_tokens = 0
-
-        # Try different attribute names (check dict keys first, then attributes)
-        if isinstance(usage, dict):
-            # AWS Bedrock camelCase
-            if "inputTokens" in usage:
-                input_tokens = usage["inputTokens"]
-            elif "input_tokens" in usage:
-                input_tokens = usage["input_tokens"]
-            elif "prompt_tokens" in usage:
-                input_tokens = usage["prompt_tokens"]
-
-            if "outputTokens" in usage:
-                output_tokens = usage["outputTokens"]
-            elif "output_tokens" in usage:
-                output_tokens = usage["output_tokens"]
-            elif "completion_tokens" in usage:
-                output_tokens = usage["completion_tokens"]
-        else:
-            # Object attributes
-            if hasattr(usage, "input_tokens"):
-                input_tokens = usage.input_tokens
-            elif hasattr(usage, "prompt_tokens"):
-                input_tokens = usage.prompt_tokens
-
-            if hasattr(usage, "output_tokens"):
-                output_tokens = usage.output_tokens
-            elif hasattr(usage, "completion_tokens"):
-                output_tokens = usage.completion_tokens
-
-        # Ensure tokens are integers (handle mocks/test objects)
-        try:
-            input_tokens = int(input_tokens) if input_tokens is not None else 0
-            output_tokens = int(output_tokens) if output_tokens is not None else 0
-        except (TypeError, ValueError):
-            return None
-
-        if input_tokens > 0 or output_tokens > 0:
-            usage_dict = {"input_tokens": input_tokens, "output_tokens": output_tokens}
-            return (usage_dict, is_accumulated)
+        # Try standard usage patterns (per-request)
+        usage = self._try_standard_usage_extraction(response_obj)
+        if usage:
+            tokens = self._extract_tokens_from_usage(usage)
+            if tokens:
+                return (tokens, False)
 
         return None
 
@@ -865,12 +907,331 @@ class ChatLoop:
         Returns:
             List of code block contents (without fence markers)
         """
-        import re
-
         # Match code blocks with triple backticks
         pattern = r"```(?:\w+)?\n(.*?)```"
         matches = re.findall(pattern, text, re.DOTALL)
         return [match.strip() for match in matches]
+
+    def _build_restoration_prompt(
+        self,
+        session_id: str,
+        query_count: int,
+        total_tokens: int,
+        summary: str,
+        session_file: Optional[Path] = None,
+        resumed_from: Optional[str] = None,
+    ) -> str:
+        """
+        Build restoration prompt for session resumption or compaction.
+
+        Args:
+            session_id: ID of the session being restored
+            query_count: Number of queries in the session
+            total_tokens: Total tokens used in the session
+            summary: Summary text to include
+            session_file: Optional path to the session file
+            resumed_from: Optional ID of parent session (for resumed sessions)
+
+        Returns:
+            Formatted restoration prompt string
+        """
+        restoration_prompt_parts = [
+            "CONTEXT RESTORATION: You are continuing a previous conversation "
+            f"from {session_id}.\n\n",
+            f"Previous session summary (Session ID: {session_id}, ",
+            f"{query_count} queries, ",
+            f"{self.token_tracker.format_tokens(total_tokens)}):\n\n",
+        ]
+
+        # Add resumed_from info if present
+        if resumed_from:
+            restoration_prompt_parts.append(
+                f"This session was resumed from: {resumed_from}\n\n"
+            )
+
+        # Add session file path if provided
+        if session_file:
+            restoration_prompt_parts.append(
+                f"Previous session file: {session_file}\n\n"
+            )
+
+        restoration_prompt_parts.append(summary)
+        restoration_prompt_parts.append(
+            "\n\nTask: Review the above and provide a brief acknowledgment "
+            "(2-6 sentences or bullets) that includes:\n"
+            "1. Main topics discussed\n"
+            "2. Key decisions made\n"
+            "3. Confirmation you're ready to continue\n\n"
+            "Keep your response concise."
+        )
+
+        return "".join(restoration_prompt_parts)
+
+    def _extract_text_from_event(self, event) -> str:
+        """
+        Extract text content from a streaming event.
+
+        Handles various event formats from different agent implementations:
+        - AWS Bedrock delta events: {"delta": {"text": "..."}}
+        - Data attribute events: {"data": {"text": "..."}}
+        - Simple text events: {"text": "..."}
+        - String events: "..."
+
+        Args:
+            event: Streaming event from agent
+
+        Returns:
+            Extracted text string (empty if no text found)
+        """
+        if isinstance(event, str):
+            return event
+        if isinstance(event, dict):
+            if "delta" in event and "text" in event["delta"]:
+                return event["delta"]["text"]
+            elif "data" in event and "text" in event["data"]:
+                return event["data"]["text"]
+            elif "text" in event:
+                return event["text"]
+        return ""
+
+    async def _stream_response(self, prompt: str) -> str:
+        """
+        Stream response from agent and accumulate text.
+
+        Args:
+            prompt: Prompt to send to agent
+
+        Returns:
+            Complete accumulated response text
+        """
+        response = ""
+        async for event in self.agent.stream_async(prompt):
+            response += self._extract_text_from_event(event)
+        return response
+
+    def _resolve_session_id(self, session_id: str) -> Optional[str]:
+        """
+        Resolve session ID from numeric index or direct ID.
+
+        Args:
+            session_id: Session ID or numeric index (1-based)
+
+        Returns:
+            Actual session ID string, or None if invalid
+        """
+        # If session_id is a number, resolve it from the list
+        if session_id.isdigit():
+            session_num = int(session_id)
+            sessions = self.session_manager.list_sessions(
+                agent_name=self.agent_name, limit=20
+            )
+
+            if session_num < 1 or session_num > len(sessions):
+                print(Colors.error(f"Invalid session number: {session_num}"))
+                print(f"Valid range: 1-{len(sessions)}")
+                return None
+
+            # Get actual session_id from the list (1-indexed)
+            session_info = sessions[session_num - 1]
+            return session_info.session_id
+
+        return session_id
+
+    def _load_and_validate_session(self, session_id: str) -> Optional[dict[str, Any]]:
+        """
+        Load session data and validate it's restorable.
+
+        Args:
+            session_id: Session ID to load
+
+        Returns:
+            Dict with session data (metadata, summary, query_count, total_tokens,
+            session_file), or None if validation fails
+        """
+        # Load markdown file
+        sessions_dir = self.session_manager.sessions_dir
+        session_file = sessions_dir / f"{session_id}.md"
+
+        if not session_file.exists():
+            print(Colors.error(f"⚠️  Session file not found: {session_id}"))
+            return None
+
+        # Extract metadata from markdown
+        metadata = self._extract_metadata_from_markdown(session_file)
+        if not metadata:
+            print(Colors.error("Failed to parse session metadata"))
+            return None
+
+        # Extract summary
+        summary = self._extract_summary_from_markdown(session_file)
+        if not summary:
+            print(
+                Colors.error(
+                    "⚠️  Session can't be resumed (no summary). "
+                    "Starting fresh session..."
+                )
+            )
+            return None
+
+        # Get query count and tokens from metadata or session index
+        query_count = metadata.get("query_count", 0)
+        session_info_data = self.session_manager.get_session_metadata(session_id)
+        total_tokens = session_info_data.total_tokens if session_info_data else 0
+
+        # Display session info
+        print(
+            Colors.success(
+                f"✓ Found: {metadata.get('agent_name', 'Unknown')} - {session_id}"
+            )
+        )
+        print(
+            Colors.system(
+                f"  ({query_count} queries, "
+                f"{self.token_tracker.format_tokens(total_tokens)})"
+            )
+        )
+
+        return {
+            "metadata": metadata,
+            "summary": summary,
+            "query_count": query_count,
+            "total_tokens": total_tokens,
+            "session_file": session_file,
+        }
+
+    def _validate_agent_compatibility(self, metadata: dict) -> bool:
+        """
+        Check if session agent matches current agent, prompt user if different.
+
+        Args:
+            metadata: Session metadata dict
+
+        Returns:
+            True if user confirms continuation, False otherwise
+        """
+        # Check if agent path matches (graceful warning)
+        if "agent_path" in metadata and metadata["agent_path"] != self.agent_path:
+            print(
+                Colors.system(
+                    f"\n⚠️  Different agent detected:\n"
+                    f"  Session created with: {metadata['agent_path']}\n"
+                    f"  Current agent:        {self.agent_path}"
+                )
+            )
+            confirm = input(Colors.system("Continue? (y/n): "))
+            if confirm.lower() != "y":
+                print(Colors.system("Resume cancelled"))
+                return False
+
+        return True
+
+    async def _send_restoration_prompt(
+        self, restoration_prompt: str
+    ) -> tuple[str, float]:
+        """
+        Send restoration prompt to agent and get response.
+
+        Args:
+            restoration_prompt: Prompt to send
+
+        Returns:
+            Tuple of (response_text, duration_seconds)
+        """
+        restoration_start = time.time()
+        restoration_response = ""
+
+        # Check if agent supports streaming
+        if hasattr(self.agent, "stream_async"):
+            # Display with spinner while streaming
+            if self.use_rich and self.console:
+                spinner = Spinner("dots", text="Restoring context...")
+                with Live(spinner, console=self.console, refresh_per_second=10):
+                    restoration_response = await self._stream_response(
+                        restoration_prompt
+                    )
+            else:
+                restoration_response = await self._stream_response(restoration_prompt)
+        else:
+            # Non-streaming agent
+            restoration_response = await asyncio.get_event_loop().run_in_executor(
+                None, self.agent, restoration_prompt
+            )
+
+        restoration_duration = time.time() - restoration_start
+        return restoration_response, restoration_duration
+
+    def _display_restoration_response(self, restoration_response: str) -> None:
+        """
+        Display agent's restoration acknowledgment.
+
+        Args:
+            restoration_response: Agent's response to display
+        """
+        print(Colors.agent(f"{self.agent_name}:"), end=" ")
+        if self.use_rich and self.console:
+            md = Markdown(restoration_response.strip())
+            self.console.print(md)
+        else:
+            print(restoration_response.strip())
+        print()
+
+    def _initialize_restored_session(
+        self,
+        old_session_id: str,
+        new_session_id: str,
+        restoration_response: str,
+        restoration_duration: float,
+        restoration_input_tokens: float,
+        restoration_output_tokens: float,
+        session_data: dict,
+    ) -> None:
+        """
+        Initialize new session with restored context.
+
+        Args:
+            old_session_id: Previous session ID
+            new_session_id: New session ID for resumed session
+            restoration_response: Agent's restoration response
+            restoration_duration: Time taken for restoration
+            restoration_input_tokens: Approximate input tokens
+            restoration_output_tokens: Approximate output tokens
+            session_data: Dict with query_count, total_tokens, summary, session_file
+        """
+        # Initialize new session
+        self.session_id = new_session_id
+        self._resumed_from = old_session_id  # Track parent session
+        self._previous_summary = session_data["summary"]  # Store for next compaction
+
+        # Reset conversation but add restoration exchange
+        self.conversation_markdown = [
+            f"\n## Session Restored ({datetime.now().strftime('%H:%M:%S')})\n",
+            f"**Context:** Resumed from {old_session_id} "
+            f"({session_data['query_count']} queries, "
+            f"{self.token_tracker.format_tokens(session_data['total_tokens'])})\n",
+            f"**Previous Session:** {session_data['session_file']}\n\n",
+            f"**{self.agent_name}:** {restoration_response.strip()}\n\n",
+            f"*Time: {restoration_duration:.1f}s | ",
+            f"Tokens: {int(restoration_input_tokens + restoration_output_tokens)} ",
+            f"(in: {int(restoration_input_tokens)}, "
+            f"out: {int(restoration_output_tokens)})*\n\n",
+            "---\n",
+        ]
+
+        # Reset counters (restoration tokens tracked separately)
+        self.query_count = 0
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+        self.session_start_time = time.time()
+
+        # Update status bar if enabled
+        if self.status_bar:
+            self.status_bar.query_count = 0
+            self.status_bar.start_time = self.session_start_time
+
+        print(Colors.success("✓ Session restored! Ready to continue."))
+        print()
+
+        logger.info(f"Successfully restored session: {old_session_id}")
 
     def _format_conversation_as_markdown(self) -> str:
         """
@@ -901,163 +1262,49 @@ class ChatLoop:
         try:
             print(Colors.system("\n📋 Loading session..."))
 
-            # If session_id is a number, resolve it from the list
-            if session_id.isdigit():
-                session_num = int(session_id)
-                sessions = self.session_manager.list_sessions(
-                    agent_name=self.agent_name, limit=20
-                )
+            # Resolve numeric session IDs to actual IDs
+            resolved_id = self._resolve_session_id(session_id)
+            if not resolved_id:
+                return False
+            session_id = resolved_id
 
-                if session_num < 1 or session_num > len(sessions):
-                    print(Colors.error(f"Invalid session number: {session_num}"))
-                    print(f"Valid range: 1-{len(sessions)}")
-                    return False
-
-                # Get actual session_id from the list (1-indexed)
-                session_info = sessions[session_num - 1]
-                session_id = session_info.session_id
-
-            # Load markdown file
-            sessions_dir = self.session_manager.sessions_dir
-            session_file = sessions_dir / f"{session_id}.md"
-
-            if not session_file.exists():
-                print(Colors.error(f"⚠️  Session file not found: {session_id}"))
+            # Load and validate session data
+            session_data = self._load_and_validate_session(session_id)
+            if not session_data:
                 return False
 
-            # Extract metadata from markdown
-            metadata = self._extract_metadata_from_markdown(session_file)
-            if not metadata:
-                print(Colors.error("Failed to parse session metadata"))
+            # Validate agent compatibility
+            if not self._validate_agent_compatibility(session_data["metadata"]):
                 return False
 
-            # Extract summary
-            summary = self._extract_summary_from_markdown(session_file)
-            if not summary:
-                print(
-                    Colors.error(
-                        "⚠️  Session can't be resumed (no summary). "
-                        "Starting fresh session..."
-                    )
-                )
-                return False
-
-            # Get query count and tokens from metadata or session index
-            query_count = metadata.get("query_count", 0)
-            session_info_data = self.session_manager.get_session_metadata(session_id)
-            total_tokens = session_info_data.total_tokens if session_info_data else 0
-
-            # Display session info
-            print(
-                Colors.success(
-                    f"✓ Found: {metadata.get('agent_name', 'Unknown')} - {session_id}"
-                )
-            )
-            print(
-                Colors.system(
-                    f"  ({query_count} queries, "
-                    f"{self.token_tracker.format_tokens(total_tokens)})"
-                )
-            )
-
-            # Check if agent path matches (graceful warning)
-            if "agent_path" in metadata and metadata["agent_path"] != self.agent_path:
-                print(
-                    Colors.system(
-                        f"\n⚠️  Different agent detected:\n"
-                        f"  Session created with: {metadata['agent_path']}\n"
-                        f"  Current agent:        {self.agent_path}"
-                    )
-                )
-                confirm = input(Colors.system("Continue? (y/n): "))
-                if confirm.lower() != "y":
-                    print(Colors.system("Resume cancelled"))
-                    return False
-
-            # Build restoration prompt
+            # Build and send restoration prompt
             print(Colors.system("🔄 Restoring context..."))
             print()
 
-            restoration_prompt_parts = [
-                "CONTEXT RESTORATION: You are continuing a previous conversation "
-                f"from {session_id}.\n\n",
-                f"Previous session summary (Session ID: {session_id}, ",
-                f"{query_count} queries, ",
-                f"{self.token_tracker.format_tokens(total_tokens)}):\n\n",
-            ]
-
-            # Add resumed_from info if present
-            if "resumed_from" in metadata:
-                restoration_prompt_parts.append(
-                    f"This session was resumed from: {metadata['resumed_from']}\n\n"
-                )
-
-            restoration_prompt_parts.append(
-                f"Previous session file: {session_file}\n\n"
-            )
-            restoration_prompt_parts.append(summary)
-            restoration_prompt_parts.append(
-                "\n\nTask: Review the above and provide a brief acknowledgment "
-                "(2-6 sentences or bullets) that includes:\n"
-                "1. Main topics discussed\n"
-                "2. Key decisions made\n"
-                "3. Confirmation you're ready to continue\n\n"
-                "Keep your response concise."
+            restoration_prompt = self._build_restoration_prompt(
+                session_id=session_id,
+                query_count=session_data["query_count"],
+                total_tokens=session_data["total_tokens"],
+                summary=session_data["summary"],
+                session_file=session_data["session_file"],
+                resumed_from=session_data["metadata"].get("resumed_from"),
             )
 
-            restoration_prompt = "".join(restoration_prompt_parts)
-
-            # Send restoration prompt to agent
-            restoration_start = time.time()
-            restoration_response = ""
-
-            # Check if agent supports streaming
-            if hasattr(self.agent, "stream_async"):
-                # Display with spinner
-                if self.use_rich and self.console:
-                    spinner = Spinner("dots", text="Restoring context...")
-                    with Live(spinner, console=self.console, refresh_per_second=10):
-                        async for event in self.agent.stream_async(restoration_prompt):
-                            if isinstance(event, dict):
-                                if "delta" in event and "text" in event["delta"]:
-                                    restoration_response += event["delta"]["text"]
-                                elif "data" in event and "text" in event["data"]:
-                                    restoration_response += event["data"]["text"]
-                                elif "text" in event:
-                                    restoration_response += event["text"]
-                            elif isinstance(event, str):
-                                restoration_response += event
-                else:
-                    async for event in self.agent.stream_async(restoration_prompt):
-                        if isinstance(event, dict):
-                            if "delta" in event and "text" in event["delta"]:
-                                restoration_response += event["delta"]["text"]
-                            elif "data" in event and "text" in event["data"]:
-                                restoration_response += event["data"]["text"]
-                            elif "text" in event:
-                                restoration_response += event["text"]
-                        elif isinstance(event, str):
-                            restoration_response += event
-            else:
-                # Non-streaming agent
-                restoration_response = await asyncio.get_event_loop().run_in_executor(
-                    None, self.agent, restoration_prompt
-                )
-
-            restoration_duration = time.time() - restoration_start
+            (
+                restoration_response,
+                restoration_duration,
+            ) = await self._send_restoration_prompt(restoration_prompt)
 
             # Display agent acknowledgment
-            print(Colors.agent(f"{self.agent_name}:"), end=" ")
-            if self.use_rich and self.console:
-                md = Markdown(restoration_response.strip())
-                self.console.print(md)
-            else:
-                print(restoration_response.strip())
-            print()
+            self._display_restoration_response(restoration_response)
 
-            # Track restoration tokens
-            restoration_input_tokens = len(restoration_prompt.split()) * 1.3
-            restoration_output_tokens = len(restoration_response.split()) * 1.3
+            # Track restoration tokens (approximate - word count * ratio)
+            restoration_input_tokens = (
+                len(restoration_prompt.split()) * TOKEN_TO_WORD_RATIO
+            )
+            restoration_output_tokens = (
+                len(restoration_response.split()) * TOKEN_TO_WORD_RATIO
+            )
 
             # Create new session ID for resumed session
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1066,41 +1313,17 @@ class ChatLoop:
             )
             new_session_id = f"{safe_agent_name}_{timestamp}"
 
-            # Initialize new session
-            self.session_id = new_session_id
-            self._resumed_from = session_id  # Track parent session
-            self._previous_summary = summary  # Store for next compaction
+            # Initialize new session with restored context
+            self._initialize_restored_session(
+                old_session_id=session_id,
+                new_session_id=new_session_id,
+                restoration_response=restoration_response,
+                restoration_duration=restoration_duration,
+                restoration_input_tokens=restoration_input_tokens,
+                restoration_output_tokens=restoration_output_tokens,
+                session_data=session_data,
+            )
 
-            # Reset conversation but add restoration exchange
-            self.conversation_markdown = [
-                f"\n## Session Restored ({datetime.now().strftime('%H:%M:%S')})\n",
-                f"**Context:** Resumed from {session_id} "
-                f"({query_count} queries, "
-                f"{self.token_tracker.format_tokens(total_tokens)})\n",
-                f"**Previous Session:** {session_file}\n\n",
-                f"**{self.agent_name}:** {restoration_response.strip()}\n\n",
-                f"*Time: {restoration_duration:.1f}s | ",
-                f"Tokens: {int(restoration_input_tokens + restoration_output_tokens)} ",
-                f"(in: {int(restoration_input_tokens)}, "
-                f"out: {int(restoration_output_tokens)})*\n\n",
-                "---\n",
-            ]
-
-            # Reset counters (restoration tokens tracked separately)
-            self.query_count = 0
-            self.total_input_tokens = 0
-            self.total_output_tokens = 0
-            self.session_start_time = time.time()
-
-            # Update status bar if enabled
-            if self.status_bar:
-                self.status_bar.query_count = 0
-                self.status_bar.start_time = self.session_start_time
-
-            print(Colors.success("✓ Session restored! Ready to continue."))
-            print()
-
-            logger.info(f"Successfully restored session: {session_id}")
             return True
 
         except Exception as e:
@@ -1243,18 +1466,7 @@ class ChatLoop:
             # Check if agent supports streaming
             if hasattr(self.agent, "stream_async"):
                 # Use streaming
-                async for event in self.agent.stream_async(summary_prompt):
-                    # Handle different event formats
-                    if isinstance(event, dict):
-                        # AWS Strands format
-                        if "delta" in event and "text" in event["delta"]:
-                            summary_response += event["delta"]["text"]
-                        elif "data" in event and "text" in event["data"]:
-                            summary_response += event["data"]["text"]
-                        elif "text" in event:
-                            summary_response += event["text"]
-                    elif isinstance(event, str):
-                        summary_response += event
+                summary_response = await self._stream_response(summary_prompt)
             else:
                 # Non-streaming agent
                 summary_response = await asyncio.get_event_loop().run_in_executor(
@@ -1423,8 +1635,10 @@ class ChatLoop:
             # Save current session with summary
             print(Colors.system("\n📋 Compacting current session..."))
             old_session_id = self.session_id
-            success = await self.save_conversation()
+            old_query_count = self.query_count
+            old_total_tokens = self.total_input_tokens + self.total_output_tokens
 
+            success = await self.save_conversation()
             if not success:
                 print(Colors.error("Failed to save session for compaction"))
                 return
@@ -1432,7 +1646,6 @@ class ChatLoop:
             # Extract summary from saved file
             sessions_dir = self.session_manager.sessions_dir
             saved_file = sessions_dir / f"{old_session_id}.md"
-
             summary = self._extract_summary_from_markdown(saved_file)
 
             if not summary:
@@ -1444,13 +1657,40 @@ class ChatLoop:
                 return
 
             # Show save confirmation
-            total_tokens = self.total_input_tokens + self.total_output_tokens
             print(Colors.success(f"✓ Saved session: {old_session_id}"))
             print(
                 Colors.system(
-                    f"  ({self.query_count} queries, "
-                    f"{self.token_tracker.format_tokens(total_tokens)})"
+                    f"  ({old_query_count} queries, "
+                    f"{self.token_tracker.format_tokens(old_total_tokens)})"
                 )
+            )
+
+            # Build and send restoration prompt
+            print(Colors.system("🔄 Starting new session with summary..."))
+            print()
+
+            restoration_prompt = self._build_restoration_prompt(
+                session_id=old_session_id,
+                query_count=old_query_count,
+                total_tokens=old_total_tokens,
+                summary=summary,
+                session_file=saved_file,
+            )
+
+            (
+                restoration_response,
+                restoration_duration,
+            ) = await self._send_restoration_prompt(restoration_prompt)
+
+            # Display agent acknowledgment
+            self._display_restoration_response(restoration_response)
+
+            # Track restoration tokens (approximate - word count * ratio)
+            restoration_input_tokens = (
+                len(restoration_prompt.split()) * TOKEN_TO_WORD_RATIO
+            )
+            restoration_output_tokens = (
+                len(restoration_response.split()) * TOKEN_TO_WORD_RATIO
             )
 
             # Create new session ID
@@ -1460,116 +1700,23 @@ class ChatLoop:
             )
             new_session_id = f"{safe_agent_name}_{timestamp}"
 
-            # Build restoration prompt
-            print(Colors.system("🔄 Starting new session with summary..."))
-            print()
+            # Initialize new session with compacted context
+            session_data = {
+                "query_count": old_query_count,
+                "total_tokens": old_total_tokens,
+                "summary": summary,
+                "session_file": saved_file,
+            }
 
-            restoration_prompt_parts = [
-                "CONTEXT RESTORATION: You are continuing a previous conversation.\n\n",
-                f"Previous session summary (Session ID: {old_session_id}, ",
-                f"{self.query_count} queries, ",
-                f"{self.token_tracker.format_tokens(total_tokens)}):\n\n",
-                f"Previous session file: {saved_file}\n\n",
-                summary,
-                "\n\nTask: Review the above and provide a brief acknowledgment "
-                "(2-6 sentences or bullets) that includes:\n",
-                "1. Main topics discussed\n",
-                "2. Key decisions made\n",
-                "3. Confirmation you're ready to continue\n\n",
-                "Keep your response concise.",
-            ]
-
-            restoration_prompt = "".join(restoration_prompt_parts)
-
-            # Send restoration prompt to agent
-            restoration_start = time.time()
-            restoration_response = ""
-
-            # Check if agent supports streaming
-            if hasattr(self.agent, "stream_async"):
-                # Display with spinner
-                if self.use_rich and self.console:
-                    spinner = Spinner("dots", text="Restoring context...")
-                    with Live(spinner, console=self.console, refresh_per_second=10):
-                        async for event in self.agent.stream_async(restoration_prompt):
-                            # Handle different event formats
-                            if isinstance(event, dict):
-                                if "delta" in event and "text" in event["delta"]:
-                                    restoration_response += event["delta"]["text"]
-                                elif "data" in event and "text" in event["data"]:
-                                    restoration_response += event["data"]["text"]
-                                elif "text" in event:
-                                    restoration_response += event["text"]
-                            elif isinstance(event, str):
-                                restoration_response += event
-                else:
-                    # No rich - use simple spinner
-                    async for event in self.agent.stream_async(restoration_prompt):
-                        if isinstance(event, dict):
-                            if "delta" in event and "text" in event["delta"]:
-                                restoration_response += event["delta"]["text"]
-                            elif "data" in event and "text" in event["data"]:
-                                restoration_response += event["data"]["text"]
-                            elif "text" in event:
-                                restoration_response += event["text"]
-                        elif isinstance(event, str):
-                            restoration_response += event
-            else:
-                # Non-streaming agent
-                restoration_response = await asyncio.get_event_loop().run_in_executor(
-                    None, self.agent, restoration_prompt
-                )
-
-            restoration_duration = time.time() - restoration_start
-
-            # Display agent acknowledgment
-            print(Colors.agent(f"{self.agent_name}:"), end=" ")
-            if self.use_rich and self.console:
-                md = Markdown(restoration_response.strip())
-                self.console.print(md)
-            else:
-                print(restoration_response.strip())
-            print()
-
-            # Track restoration tokens (not counted as a query)
-            # Approximate token counting based on response length
-            restoration_input_tokens = len(restoration_prompt.split()) * 1.3
-            restoration_output_tokens = len(restoration_response.split()) * 1.3
-
-            # Reset for new session
-            old_query_count = self.query_count
-            old_total_tokens = total_tokens
-
-            # Initialize new session
-            self.session_id = new_session_id
-            self._resumed_from = old_session_id  # Track parent session
-            self._previous_summary = summary  # Store for next compaction
-
-            # Reset conversation but add restoration exchange
-            self.conversation_markdown = [
-                f"\n## Session Restored ({datetime.now().strftime('%H:%M:%S')})\n",
-                f"**Context:** Resumed from {old_session_id} "
-                f"({old_query_count} queries, "
-                f"{self.token_tracker.format_tokens(old_total_tokens)})\n",
-                f"**Previous Session:** {saved_file}\n\n",
-                f"**{self.agent_name}:** {restoration_response.strip()}\n\n",
-                f"*Time: {restoration_duration:.1f}s | ",
-                f"Tokens: {int(restoration_input_tokens + restoration_output_tokens)} ",
-                f"(in: {int(restoration_input_tokens)}, "
-                f"out: {int(restoration_output_tokens)})*\n\n",
-                "---\n",
-            ]
-
-            # Reset counters (restoration tokens tracked separately)
-            self.query_count = 0
-            self.total_input_tokens = 0
-            self.total_output_tokens = 0
-            self.session_start_time = time.time()
-
-            # Update status bar if enabled
-            if self.status_bar:
-                self.status_bar.query_count = 0
-                self.status_bar.start_time = self.session_start_time
+            self._initialize_restored_session(
+                old_session_id=old_session_id,
+                new_session_id=new_session_id,
+                restoration_response=restoration_response,
+                restoration_duration=restoration_duration,
+                restoration_input_tokens=restoration_input_tokens,
+                restoration_output_tokens=restoration_output_tokens,
+                session_data=session_data,
+            )
 
             print(Colors.success("✓ Session compacted and ready to continue!"))
             print()

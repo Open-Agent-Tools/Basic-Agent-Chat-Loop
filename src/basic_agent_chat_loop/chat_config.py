@@ -10,6 +10,8 @@ Supports hierarchical configuration with the following precedence (highest to lo
 Configuration file format: YAML
 """
 
+import copy
+import logging
 import os
 from pathlib import Path
 from typing import Any, Optional
@@ -20,6 +22,8 @@ try:
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 
 class ChatConfig:
@@ -140,16 +144,15 @@ class ChatConfig:
                 with open(config_file) as f:
                     user_config = yaml.safe_load(f) or {}
                     config = self._merge_config(config, user_config)
-            except Exception:
-                # Silently skip invalid configs, use defaults
+            except Exception as e:
+                # Log error but continue with defaults for invalid configs
+                logger.warning(f"Failed to load config from {config_file}: {e}")
                 pass
 
         return config
 
     def _deep_copy(self, d: dict) -> dict:
         """Deep copy a dictionary."""
-        import copy
-
         return copy.deepcopy(d)
 
     def _merge_config(self, base: dict, override: dict) -> dict:
