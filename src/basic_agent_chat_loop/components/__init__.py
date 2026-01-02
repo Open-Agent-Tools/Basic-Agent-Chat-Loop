@@ -11,6 +11,7 @@ from .agent_loader import (
 )
 from .alias_manager import AliasManager
 from .audio_notifier import AudioNotifier
+from .command_router import CommandResult, CommandRouter, CommandType
 from .config_wizard import ConfigWizard
 from .dependency_manager import DependencyManager
 from .display_manager import DisplayManager
@@ -27,6 +28,9 @@ from .usage_extractor import UsageExtractor
 __all__ = [
     "AudioNotifier",
     "Colors",
+    "CommandResult",
+    "CommandRouter",
+    "CommandType",
     "ConfigWizard",
     "DependencyManager",
     "DisplayManager",

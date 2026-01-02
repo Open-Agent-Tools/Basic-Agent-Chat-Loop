@@ -74,6 +74,7 @@ from .components import (
     AliasManager,
     AudioNotifier,
     Colors,
+    CommandRouter,  # Available for future command handling improvements
     ConfigWizard,
     DependencyManager,
     DisplayManager,
