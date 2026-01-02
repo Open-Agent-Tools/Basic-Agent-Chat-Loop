@@ -19,6 +19,7 @@ from .error_messages import ErrorMessages
 from .harmony_processor import HarmonyProcessor
 from .response_renderer import ResponseRenderer
 from .session_manager import SessionInfo, SessionManager
+from .session_state import SessionState
 from .streaming_event_parser import StreamingEventParser
 from .template_manager import TemplateManager
 from .token_tracker import TokenTracker
@@ -40,6 +41,7 @@ __all__ = [
     "ResponseRenderer",
     "SessionInfo",
     "SessionManager",
+    "SessionState",
     "StatusBar",
     "StreamingEventParser",
     "TemplateManager",

@@ -82,6 +82,7 @@ from .components import (
     HarmonyProcessor,
     ResponseRenderer,
     SessionManager,
+    SessionState,  # Available for future session state improvements
     StatusBar,
     StreamingEventParser,
     TemplateManager,
