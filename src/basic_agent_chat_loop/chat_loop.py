@@ -81,6 +81,7 @@ from .components import (
     HarmonyProcessor,
     SessionManager,
     StatusBar,
+    StreamingEventParser,
     TemplateManager,
     TokenTracker,
     extract_agent_metadata,
@@ -637,6 +638,9 @@ class ChatLoop:
         # Setup session manager for conversation persistence
         # Sessions are saved to ./.chat-sessions in current directory
         self.session_manager = SessionManager()
+
+        # Setup streaming event parser for extracting text from various formats
+        self.event_parser = StreamingEventParser()
 
         # Setup Harmony processor if agent uses Harmony format
         self.harmony_processor = None
@@ -1934,65 +1938,8 @@ class ChatLoop:
                             await thinking_task
                         first_token_received = True
 
-                    # Handle different event types
-                    text_to_add = None  # Track text to add to response
-
-                    # First check if event is a dict (AWS Strands format)
-                    if isinstance(event, dict):
-                        # AWS Strands dict format:
-                        # {'event': {'contentBlockDelta': {'delta': {'text': '...'}}}}
-                        if "event" in event and isinstance(event["event"], dict):
-                            nested_event = event["event"]
-                            if "contentBlockDelta" in nested_event:
-                                delta_block = nested_event["contentBlockDelta"]
-                                if (
-                                    isinstance(delta_block, dict)
-                                    and "delta" in delta_block
-                                ):
-                                    delta = delta_block["delta"]
-                                    if isinstance(delta, dict) and "text" in delta:
-                                        text_to_add = delta["text"]
-                        # Fallback: check for direct text field
-                        elif "text" in event:
-                            text_to_add = event["text"]
-
-                    elif hasattr(event, "data"):
-                        data = event.data
-                        if isinstance(data, str):
-                            text_to_add = data
-                        elif isinstance(data, dict):
-                            # Handle structured data
-                            if "text" in data:
-                                text_to_add = data["text"]
-                            elif "content" in data:
-                                content = data["content"]
-                                if isinstance(content, list):
-                                    for block in content:
-                                        if isinstance(block, dict) and "text" in block:
-                                            text_to_add = block["text"]
-                                            break
-                                else:
-                                    text_to_add = str(content)
-
-                    # Fallback: Check for common streaming event patterns
-                    # (AWS Strands object events, etc.)
-                    elif hasattr(event, "delta"):
-                        # AWS Strands/Anthropic delta events (object format)
-                        delta = event.delta
-                        if isinstance(delta, str):
-                            text_to_add = delta
-                        elif hasattr(delta, "text"):
-                            text_to_add = delta.text
-                        elif isinstance(delta, dict) and "text" in delta:
-                            text_to_add = delta["text"]
-
-                    elif hasattr(event, "text"):
-                        # Direct text attribute
-                        text_to_add = event.text
-
-                    elif isinstance(event, str):
-                        # Event is the text itself
-                        text_to_add = event
+                    # Extract text from streaming event using event parser
+                    text_to_add = self.event_parser.parse_event(event)
 
                     # Append text if found and display it
                     if text_to_add:

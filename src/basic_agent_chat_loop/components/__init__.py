@@ -17,6 +17,7 @@ from .display_manager import DisplayManager
 from .error_messages import ErrorMessages
 from .harmony_processor import HarmonyProcessor
 from .session_manager import SessionInfo, SessionManager
+from .streaming_event_parser import StreamingEventParser
 from .template_manager import TemplateManager
 from .token_tracker import TokenTracker
 from .ui_components import Colors, StatusBar
@@ -33,6 +34,7 @@ __all__ = [
     "SessionInfo",
     "SessionManager",
     "StatusBar",
+    "StreamingEventParser",
     "TemplateManager",
     "TokenTracker",
     "extract_agent_metadata",
