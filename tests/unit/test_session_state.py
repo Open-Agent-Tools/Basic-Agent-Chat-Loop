@@ -2,7 +2,6 @@
 
 import time
 
-import pytest
 from basic_agent_chat_loop.components.session_state import SessionState
 
 

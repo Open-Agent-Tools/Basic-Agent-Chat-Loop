@@ -1,6 +1,5 @@
 """Tests for UsageExtractor component."""
 
-import pytest
 from basic_agent_chat_loop.components.usage_extractor import UsageExtractor
 
 

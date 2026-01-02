@@ -34,20 +34,20 @@ classifiers = [
 keywords = ["agent", "chat", "loop", "cli"]
 
 dependencies = [
-    "pyyaml>=6.0.1",
-    "rich>=13.7.0",
-    "pyreadline3>=3.4.1; platform_system=='Windows'",  # Command history on Windows
-    "pyperclip>=1.8.0",  # Clipboard support for copy command
+    "pyyaml>=6.0.3",
+    "rich>=14.2.0",
+    "pyreadline3>=3.5.4; platform_system=='Windows'",  # Command history on Windows
+    "pyperclip>=1.11.0",  # Clipboard support for copy command
     "openai-harmony>=0.0.8",  # OpenAI Harmony format support for gpt-oss models
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "black>=23.0",
-    "ruff>=0.1.0",
-    "mypy>=1.0.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "black>=25.12.0",
+    "ruff>=0.14.10",
+    "mypy>=1.19.1",
 ]
 windows = [
     # pyreadline3 is now installed automatically on Windows (kept for compatibility)
@@ -86,3 +86,6 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["N815"]  # Allow mixedCase in test mocks matching AWS SDK

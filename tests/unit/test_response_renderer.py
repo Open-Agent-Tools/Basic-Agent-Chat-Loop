@@ -1,10 +1,9 @@
 """Tests for ResponseRenderer component."""
 
-import io
-import sys
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
+
 from basic_agent_chat_loop.components.response_renderer import ResponseRenderer
 
 

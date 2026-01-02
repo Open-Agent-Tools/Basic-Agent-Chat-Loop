@@ -1,6 +1,7 @@
 """Tests for CommandRouter component."""
 
 import pytest
+
 from basic_agent_chat_loop.components.command_router import (
     CommandResult,
     CommandRouter,

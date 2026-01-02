@@ -1,6 +1,5 @@
 """Tests for StreamingEventParser component."""
 
-import pytest
 from basic_agent_chat_loop.components.streaming_event_parser import (
     StreamingEventParser,
 )
@@ -257,7 +256,8 @@ class TestParsingPriority:
     def test_dict_takes_priority_over_attributes(self):
         """Test that dict parsing is checked before object attributes."""
         parser = StreamingEventParser()
-        # This is a dict, so it should use dict parsing even if it looks like it has attributes
+        # This is a dict, so it should use dict parsing even if
+        # it looks like it has attributes
         event = {"text": "Dict text", "data": "Should not be used"}
         result = parser.parse_event(event)
         assert result == "Dict text"
