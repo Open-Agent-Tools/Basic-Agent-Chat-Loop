@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-01-02
+
 ### Changed
 - **Internal Refactoring** - Improved code organization and maintainability
   - Integrated `SessionState` component to centralize session management
@@ -18,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - All commands now use `CommandType` enum for type safety
     - Easier to add new commands and maintain existing ones
     - Better separation of command parsing from command handling
+  - Extracted 5 new components for better modularity:
+    - `StreamingEventParser` - Event parsing logic
+    - `ResponseRenderer` - Response formatting and display
+    - `UsageExtractor` - Token/metadata extraction
+    - `CommandRouter` - Command parsing and routing
+    - `SessionState` - Session state management
+  - Reduced `chat_loop.py` from 3,188 to 2,948 lines (-240 lines)
   - All 510 tests passing, 100% mypy type coverage, ruff compliant
   - No user-facing changes - purely internal code quality improvements
 
