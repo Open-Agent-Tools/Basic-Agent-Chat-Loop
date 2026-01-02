@@ -74,6 +74,7 @@ from .components import (
     AliasManager,
     AudioNotifier,
     Colors,
+    CommandRouter,
     ConfigWizard,
     DependencyManager,
     DisplayManager,
@@ -81,6 +82,7 @@ from .components import (
     HarmonyProcessor,
     ResponseRenderer,
     SessionManager,
+    SessionState,
     StatusBar,
     StreamingEventParser,
     TemplateManager,
@@ -447,21 +449,12 @@ class ChatLoop:
         self.agent_factory = agent_factory  # Function to create fresh agent instance
         self.agent_path = agent_path or "unknown"  # Store for session metadata
         self.history_file = None
-        self.last_response = ""  # Track last response for copy command
-        self.last_query = ""  # Track last user query for copy command
-
-        # Conversation tracking - simple markdown buffer
-        self.conversation_markdown: list[str] = []
-        self.query_count = 0
         self.total_input_tokens = 0
         self.total_output_tokens = 0
 
-        # Generate session ID for this chat session
-        from datetime import datetime
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_agent_name = agent_name.lower().replace(" ", "_").replace("/", "_")
-        self.session_id = f"{safe_agent_name}_{timestamp}"
+        # Session state management
+        # (query count, conversation, last query/response, etc.)
+        self.session_state = SessionState(agent_name)
 
         # Load or use provided config
         self.config = config if config else get_config()
@@ -559,15 +552,6 @@ class ChatLoop:
         # Always create token tracker for session summary
         # (not just when show_tokens is true)
         self.token_tracker = TokenTracker(model_for_pricing)
-
-        # Track previous accumulated usage for delta calculation
-        # (AWS Strands agents report cumulative usage, we need the delta)
-        self.last_accumulated_input = 0
-        self.last_accumulated_output = 0
-
-        # Track session start time for summary
-        self.session_start_time = time.time()
-        self.query_count = 0
 
         # Setup status bar if enabled
         self.show_status_bar_enabled = (
@@ -719,6 +703,9 @@ class ChatLoop:
             harmony_processor=self.harmony_processor,
             colors_module=Colors,
         )
+
+        # Setup command router for parsing user input
+        self.command_router = CommandRouter()
 
     def _normalize_harmony_config(self, value: Any) -> Optional[bool]:
         """
@@ -1073,12 +1060,12 @@ class ChatLoop:
             session_data: Dict with query_count, total_tokens, summary, session_file
         """
         # Initialize new session
-        self.session_id = new_session_id
+        self.session_state.session_id = new_session_id
         self._resumed_from = old_session_id  # Track parent session
         self._previous_summary = session_data["summary"]  # Store for next compaction
 
         # Reset conversation but add restoration exchange
-        self.conversation_markdown = [
+        self.session_state.conversation_markdown = [
             f"\n## Session Restored ({datetime.now().strftime('%H:%M:%S')})\n",
             f"**Context:** Resumed from {old_session_id} "
             f"({session_data['query_count']} queries, "
@@ -1093,15 +1080,15 @@ class ChatLoop:
         ]
 
         # Reset counters (restoration tokens tracked separately)
-        self.query_count = 0
+        self.session_state.query_count = 0
         self.total_input_tokens = 0
         self.total_output_tokens = 0
-        self.session_start_time = time.time()
+        self.session_state.session_start_time = time.time()
 
         # Update status bar if enabled
         if self.status_bar:
             self.status_bar.query_count = 0
-            self.status_bar.start_time = self.session_start_time
+            self.status_bar.start_time = self.session_state.session_start_time
 
         print(Colors.success("✓ Session restored! Ready to continue."))
         print()
@@ -1117,12 +1104,12 @@ class ChatLoop:
         """
         header = [
             f"# {self.agent_name} - Conversation\n\n",
-            f"Session ID: {self.session_id}\n",
+            f"Session ID: {self.session_state.session_id}\n",
             f"Agent: {self.agent_name}\n",
-            f"Queries: {self.query_count}\n\n",
+            f"Queries: {self.session_state.query_count}\n\n",
             "---\n",
         ]
-        return "".join(header + self.conversation_markdown)
+        return "".join(header + self.session_state.conversation_markdown)
 
     async def restore_session(self, session_id: str) -> bool:
         """
@@ -1300,7 +1287,7 @@ class ChatLoop:
 
             # Add current session conversation
             prompt_parts.append("**Current Session:**\n")
-            prompt_parts.extend(self.conversation_markdown)
+            prompt_parts.extend(self.session_state.conversation_markdown)
             prompt_parts.append("\n\n")
 
             # Add instructions
@@ -1377,7 +1364,7 @@ class ChatLoop:
 
         Args:
             session_id: Optional custom session ID.
-                Uses self.session_id if not provided.
+                Uses self.session_state.session_id if not provided.
             generate_summary: Whether to generate an AI summary of the session.
                 Defaults to False to avoid generating summaries after every turn.
                 Should be True when explicitly compacting or ending a session.
@@ -1386,12 +1373,12 @@ class ChatLoop:
             True if save was successful, False otherwise
         """
         # Only save if there's conversation content
-        if not self.conversation_markdown:
+        if not self.session_state.conversation_markdown:
             logger.debug("No conversation to save")
             return False
 
-        # Use provided session_id or fall back to self.session_id
-        save_session_id = session_id or self.session_id
+        # Use provided session_id or fall back to self.session_state.session_id
+        save_session_id = session_id or self.session_state.session_id
 
         try:
             # Generate summary for the session (only if requested)
@@ -1415,7 +1402,7 @@ class ChatLoop:
                 f"**Date:** {datetime.now().isoformat()}\n\n",
                 f"**Agent:** {self.agent_name}\n\n",
                 f"**Agent Path:** {self.agent_path}\n\n",
-                f"**Total Queries:** {self.query_count}\n\n",
+                f"**Total Queries:** {self.session_state.query_count}\n\n",
             ]
 
             # Add "Resumed from" info if this session was resumed
@@ -1425,7 +1412,7 @@ class ChatLoop:
             markdown_content.append("---\n")
 
             # Add conversation content
-            markdown_content.extend(self.conversation_markdown)
+            markdown_content.extend(self.session_state.conversation_markdown)
 
             # Add summary if generated successfully
             if summary:
@@ -1450,8 +1437,10 @@ class ChatLoop:
 
             # Update session index
             first_query = (
-                self.conversation_markdown[1].replace("**You:** ", "").strip()
-                if len(self.conversation_markdown) > 1
+                self.session_state.conversation_markdown[1]
+                .replace("**You:** ", "")
+                .strip()
+                if len(self.session_state.conversation_markdown) > 1
                 else ""
             )
             preview = first_query[:100]
@@ -1462,7 +1451,7 @@ class ChatLoop:
                 session_id=save_session_id,
                 agent_name=self.agent_name,
                 agent_path=self.agent_path,
-                query_count=self.query_count,
+                query_count=self.session_state.query_count,
                 total_tokens=total_tokens,
                 preview=preview,
             )
@@ -1485,7 +1474,7 @@ class ChatLoop:
         print()
         print(Colors.system(f"  Session ID: {session_id}"))
         print(Colors.system(f"  File:       {md_path}"))
-        print(Colors.system(f"  Queries:    {self.query_count}"))
+        print(Colors.system(f"  Queries:    {self.session_state.query_count}"))
 
         # Show token count if available
         total_tokens = self.total_input_tokens + self.total_output_tokens
@@ -1508,7 +1497,7 @@ class ChatLoop:
         4. Agent acknowledges the restored context
         """
         # Check if there's anything to compact
-        if not self.conversation_markdown:
+        if not self.session_state.conversation_markdown:
             print(
                 Colors.system("No conversation to compact yet. Start chatting first!")
             )
@@ -1517,8 +1506,8 @@ class ChatLoop:
         try:
             # Save current session with summary
             print(Colors.system("\n📋 Compacting current session..."))
-            old_session_id = self.session_id
-            old_query_count = self.query_count
+            old_session_id = self.session_state.session_id
+            old_query_count = self.session_state.query_count
             old_total_tokens = self.total_input_tokens + self.total_output_tokens
 
             # Generate summary for compaction
@@ -1915,7 +1904,7 @@ class ChatLoop:
                     logger.debug("Harmony response contains tool calls")
 
             # Store last response for copy commands (what user sees)
-            self.last_response = display_text
+            self.session_state.update_last_response(display_text)
 
             #  Render final response (only if not already printed during streaming)
             if not already_printed_streaming:
@@ -1940,12 +1929,12 @@ class ChatLoop:
                     current_input = usage_info["input_tokens"]
                     current_output = usage_info["output_tokens"]
 
-                    delta_input = current_input - self.last_accumulated_input
-                    delta_output = current_output - self.last_accumulated_output
-
-                    # Update tracking
-                    self.last_accumulated_input = current_input
-                    self.last_accumulated_output = current_output
+                    (
+                        delta_input,
+                        delta_output,
+                    ) = self.session_state.update_accumulated_usage(
+                        current_input, current_output
+                    )
 
                     # Add only the delta
                     if delta_input > 0 or delta_output > 0:
@@ -2005,12 +1994,12 @@ class ChatLoop:
             logger.info(f"Query completed successfully in {duration:.1f}s")
 
             # Track conversation as markdown for saving
-            self.query_count += 1
+            query_num = self.session_state.increment_query_count()
             entry_timestamp = datetime.now().strftime("%H:%M:%S")
 
             # Build markdown entry
             md_entry = [
-                f"\n## Query {self.query_count} ({entry_timestamp})\n",
+                f"\n## Query {query_num} ({entry_timestamp})\n",
                 f"**You:** {query}\n\n",
                 f"**{self.agent_name}:** {display_text}\n\n",
             ]
@@ -2033,7 +2022,7 @@ class ChatLoop:
             md_entry.append(f"*{' | '.join(metadata_parts)}*\n\n")
             md_entry.append("---\n")
 
-            self.conversation_markdown.extend(md_entry)
+            self.session_state.conversation_markdown.extend(md_entry)
 
             # Save conversation incrementally after each query-response
             await self.save_conversation()
@@ -2264,15 +2253,15 @@ class ChatLoop:
 
                                 if copy_mode == "query":
                                     # Copy last user query
-                                    if self.last_query:
-                                        content = self.last_query
+                                    if self.session_state.last_query:
+                                        content = self.session_state.last_query
                                         description = "last query"
                                     else:
                                         print(Colors.system("No query to copy yet"))
                                         continue
                                 elif copy_mode == "all":
                                     # Copy entire conversation as markdown
-                                    if self.conversation_markdown:
+                                    if self.session_state.conversation_markdown:
                                         content = (
                                             self._format_conversation_as_markdown()
                                         )
@@ -2284,9 +2273,9 @@ class ChatLoop:
                                         continue
                                 elif copy_mode == "code":
                                     # Copy just code blocks from last response
-                                    if self.last_response:
+                                    if self.session_state.last_response:
                                         code_blocks = self._extract_code_blocks(
-                                            self.last_response
+                                            self.session_state.last_response
                                         )
                                         if code_blocks:
                                             content = "\n\n".join(code_blocks)
@@ -2304,8 +2293,8 @@ class ChatLoop:
                                         continue
                                 else:
                                     # Default: copy last response
-                                    if self.last_response:
-                                        content = self.last_response
+                                    if self.session_state.last_response:
+                                        content = self.session_state.last_response
                                         description = "last response"
                                     else:
                                         print(Colors.system("No response to copy yet"))
@@ -2368,7 +2357,9 @@ class ChatLoop:
                                 percentage_str = f" ({percentage:.1f}%)"
 
                             # Calculate session duration
-                            session_duration = time.time() - self.session_start_time
+                            session_duration = (
+                                time.time() - self.session_state.session_start_time
+                            )
                             if session_duration < 60:
                                 duration_str = f"{session_duration:.0f}s"
                             elif session_duration < 3600:
@@ -2403,7 +2394,7 @@ class ChatLoop:
                                 f"  Output Tokens:  "
                                 f"{self.token_tracker.format_tokens(output_tokens)}"
                             )
-                            print(f"  Queries:        {self.query_count}")
+                            print(f"  Queries:        {self.session_state.query_count}")
                             print(f"  Session Time:   {duration_str}")
 
                             # Show warning if approaching limits
@@ -2536,7 +2527,7 @@ class ChatLoop:
                     logger.info(f"Processing query: {user_input[:100]}...")
 
                     # Track query for copy command
-                    self.last_query = user_input
+                    self.session_state.update_last_query(user_input)
 
                     # Update terminal title to show processing
                     if self.update_terminal_title:
@@ -2583,7 +2574,7 @@ class ChatLoop:
             # (incremental saves happen after each query without summaries)
             success = await self.save_conversation(generate_summary=True)
             if success:
-                self._show_save_confirmation(self.session_id)
+                self._show_save_confirmation(self.session_state.session_id)
 
             # Cleanup agent if it has cleanup method
             if hasattr(self.agent, "cleanup"):
@@ -2597,7 +2588,9 @@ class ChatLoop:
 
             # Display session summary
             self.display_manager.display_session_summary(
-                self.session_start_time, self.query_count, self.token_tracker
+                self.session_state.session_start_time,
+                self.session_state.query_count,
+                self.token_tracker,
             )
 
             print(Colors.success(f"\n{self.agent_name} session complete!"))

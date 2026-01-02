@@ -120,8 +120,8 @@ class TestFormatConversationAsMarkdown:
             chat_loop = ChatLoop(agent, "Test Agent", "Desc")
 
             # Add conversation markdown
-            chat_loop.query_count = 1
-            chat_loop.conversation_markdown = [
+            chat_loop.session_state.query_count = 1
+            chat_loop.session_state.conversation_markdown = [
                 "\n## Query 1 (00:00:00)\n",
                 "**You:** What is 2+2?\n\n",
                 "**Test Agent:** The answer is 4.\n\n",
@@ -148,8 +148,8 @@ class TestFormatConversationAsMarkdown:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test", "Desc")
 
-            chat_loop.query_count = 1
-            chat_loop.conversation_markdown = [
+            chat_loop.session_state.query_count = 1
+            chat_loop.session_state.conversation_markdown = [
                 "\n## Query 1 (00:00:00)\n",
                 "**You:** Hello\n\n",
                 "**Test:** Hi there!\n\n",
@@ -183,10 +183,10 @@ class TestCopyCommand:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(mock_agent, "Test", "Desc")
 
-            assert chat_loop.last_query == ""
+            assert chat_loop.session_state.last_query == ""
 
-            chat_loop.last_query = "test query"
-            assert chat_loop.last_query == "test query"
+            chat_loop.session_state.last_query = "test query"
+            assert chat_loop.session_state.last_query == "test query"
 
     def test_last_response_tracked(self, mock_agent):
         """Test that last_response is initialized and can be set."""
@@ -196,7 +196,7 @@ class TestCopyCommand:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(mock_agent, "Test", "Desc")
 
-            assert chat_loop.last_response == ""
+            assert chat_loop.session_state.last_response == ""
 
-            chat_loop.last_response = "test response"
-            assert chat_loop.last_response == "test response"
+            chat_loop.session_state.last_response = "test response"
+            assert chat_loop.session_state.last_response == "test response"

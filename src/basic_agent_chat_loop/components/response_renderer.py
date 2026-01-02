@@ -57,7 +57,7 @@ class ResponseRenderer:
         self.use_rich = use_rich and RICH_AVAILABLE
         self.console = console if self.use_rich else None
         self.harmony_processor = harmony_processor
-        self.colors: type["Colors"] = colors_module  # Guaranteed to be non-None here
+        self.colors: type[Colors] = colors_module  # Guaranteed to be non-None here
 
     def render_agent_header(self) -> None:
         """Print the agent name header at the start of a response.

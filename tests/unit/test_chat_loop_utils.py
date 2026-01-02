@@ -72,8 +72,8 @@ class TestChatLoopInitialization:
         assert chat_loop.agent == mock_agent
         assert chat_loop.agent_name == "Test Agent"
         assert chat_loop.agent_description == "A test agent"
-        assert chat_loop.query_count == 0
-        assert chat_loop.last_response == ""
+        assert chat_loop.session_state.query_count == 0
+        assert chat_loop.session_state.last_response == ""
 
     def test_initialization_with_defaults(self, mock_agent):
         """Test that default configuration values are set."""
