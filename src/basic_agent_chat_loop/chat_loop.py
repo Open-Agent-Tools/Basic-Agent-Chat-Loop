@@ -79,6 +79,7 @@ from .components import (
     DisplayManager,
     ErrorMessages,
     HarmonyProcessor,
+    ResponseRenderer,
     SessionManager,
     StatusBar,
     StreamingEventParser,
@@ -705,6 +706,15 @@ class ChatLoop:
             logger.info(
                 "✗ Harmony NOT enabled (agent not detected as harmony, config not set)"
             )
+
+        # Setup response renderer for displaying agent responses
+        self.response_renderer = ResponseRenderer(
+            agent_name=self.agent_name,
+            use_rich=self.use_rich,
+            console=self.console,
+            harmony_processor=self.harmony_processor,
+            colors_module=Colors,
+        )
 
     def _normalize_harmony_config(self, value: Any) -> Optional[bool]:
         """
@@ -1899,8 +1909,8 @@ class ChatLoop:
         response_text = []  # Collect response for rich rendering
         response_obj = None  # Store the response object for token extraction
 
-        # Agent name in blue
-        print(f"\n{Colors.agent(self.agent_name)}: ", end="", flush=True)
+        # Render agent name header
+        self.response_renderer.render_agent_header()
 
         # Setup thinking indicator
         stop_thinking = asyncio.Event()
@@ -1944,11 +1954,8 @@ class ChatLoop:
                     # Append text if found and display it
                     if text_to_add:
                         response_text.append(text_to_add)
-                        if not self.use_rich and not self.harmony_processor:
-                            # Apply colorization for tool messages during streaming
-                            # Skip if harmony will post-process the response
-                            formatted_text = Colors.format_agent_response(text_to_add)
-                            print(formatted_text, end="", flush=True)
+                        # Display streaming text (renderer handles skip logic)
+                        self.response_renderer.render_streaming_text(text_to_add)
             else:
                 # Fallback to non-streaming call if streaming not supported
                 response = await asyncio.get_event_loop().run_in_executor(
@@ -2051,20 +2058,9 @@ class ChatLoop:
 
             #  Render final response (only if not already printed during streaming)
             if not already_printed_streaming:
-                # Add visual separator before final response when streaming occurred
-                if first_token_received:
-                    print("\n")
-                    print(Colors.success("─── Final Response ───"))
-
-                if self.use_rich and display_text.strip() and self.console:
-                    # Use rich markdown rendering
-                    print()  # New line after agent name
-                    md = Markdown(display_text)
-                    self.console.print(md)
-                elif display_text.strip():
-                    # Non-streaming or non-rich: print plain text
-                    formatted_response = Colors.format_agent_response(display_text)
-                    print(formatted_response)
+                self.response_renderer.render_final_response(
+                    display_text=display_text, first_token_received=first_token_received
+                )
 
             duration = time.time() - start_time
 

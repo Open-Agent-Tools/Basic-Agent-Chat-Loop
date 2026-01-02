@@ -16,6 +16,7 @@ from .dependency_manager import DependencyManager
 from .display_manager import DisplayManager
 from .error_messages import ErrorMessages
 from .harmony_processor import HarmonyProcessor
+from .response_renderer import ResponseRenderer
 from .session_manager import SessionInfo, SessionManager
 from .streaming_event_parser import StreamingEventParser
 from .template_manager import TemplateManager
@@ -31,6 +32,7 @@ __all__ = [
     "ErrorMessages",
     "AliasManager",
     "HarmonyProcessor",
+    "ResponseRenderer",
     "SessionInfo",
     "SessionManager",
     "StatusBar",
