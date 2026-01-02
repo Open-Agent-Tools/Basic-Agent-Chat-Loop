@@ -2104,6 +2104,14 @@ class ChatLoop:
 
             #  Render final response (only if not already printed during streaming)
             if not already_printed_streaming:
+                # Add visual separator when Harmony hid thinking/reasoning
+                if (
+                    self.harmony_processor
+                    and not self.harmony_processor.show_detailed_thinking
+                ):
+                    print("\n")
+                    print(Colors.success("─── Final Response ───"))
+
                 if self.use_rich and display_text.strip() and self.console:
                     # Use rich markdown rendering
                     print()  # New line after agent name
