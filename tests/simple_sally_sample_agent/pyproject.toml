@@ -27,6 +27,7 @@ classifiers = [
 
 dependencies = [
     "strands-agents",
+    "strands-agents-tools",
     "python-dotenv",
     "boto3",
     "bedrock-agentcore",

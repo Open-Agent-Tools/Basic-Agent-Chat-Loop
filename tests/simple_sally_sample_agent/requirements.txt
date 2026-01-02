@@ -1,5 +1,6 @@
 # Simple Sally Agent Dependencies
 strands-agents
+strands-agents-tools
 python-dotenv
 boto3
 bedrock-agentcore

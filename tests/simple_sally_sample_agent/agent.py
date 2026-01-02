@@ -10,6 +10,7 @@ from pathlib import Path
 
 from strands import Agent
 from strands.models.anthropic import AnthropicModel
+from strands_tools import file_read, file_write, editor
 
 # Load .env file
 try:
@@ -55,7 +56,7 @@ def create_agent() -> Agent:
         description="A friendly minimal agent",
         model=model,
         system_prompt=SYSTEM_PROMPT,
-        tools=[],
+        tools=[file_read, file_write, editor],
     )
 
 
