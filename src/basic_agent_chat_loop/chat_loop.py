@@ -2104,11 +2104,8 @@ class ChatLoop:
 
             #  Render final response (only if not already printed during streaming)
             if not already_printed_streaming:
-                # Add visual separator when Harmony hid thinking/reasoning
-                if (
-                    self.harmony_processor
-                    and not self.harmony_processor.show_detailed_thinking
-                ):
+                # Add visual separator before final response when streaming occurred
+                if first_token_received:
                     print("\n")
                     print(Colors.success("─── Final Response ───"))
 
