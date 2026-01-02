@@ -22,6 +22,7 @@ from .streaming_event_parser import StreamingEventParser
 from .template_manager import TemplateManager
 from .token_tracker import TokenTracker
 from .ui_components import Colors, StatusBar
+from .usage_extractor import UsageExtractor
 
 __all__ = [
     "AudioNotifier",
@@ -39,6 +40,7 @@ __all__ = [
     "StreamingEventParser",
     "TemplateManager",
     "TokenTracker",
+    "UsageExtractor",
     "extract_agent_metadata",
     "load_agent_module",
 ]

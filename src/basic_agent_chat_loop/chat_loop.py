@@ -85,6 +85,7 @@ from .components import (
     StreamingEventParser,
     TemplateManager,
     TokenTracker,
+    UsageExtractor,
     extract_agent_metadata,
     load_agent_module,
 )
@@ -643,6 +644,9 @@ class ChatLoop:
         # Setup streaming event parser for extracting text from various formats
         self.event_parser = StreamingEventParser()
 
+        # Setup usage extractor for token/metrics extraction
+        self.usage_extractor = UsageExtractor()
+
         # Setup Harmony processor if agent uses Harmony format
         self.harmony_processor = None
 
@@ -766,149 +770,6 @@ class ChatLoop:
             f"Invalid harmony.enabled type: {type(value).__name__} - "
             f"using auto-detect (expected: bool or string)"
         )
-        return None
-
-    def _try_bedrock_token_extraction(
-        self, response_obj: dict
-    ) -> Optional[tuple[Any, bool]]:
-        """
-        Try to extract AWS Bedrock style accumulated usage.
-
-        Args:
-            response_obj: Response dict potentially containing Bedrock metrics
-
-        Returns:
-            Tuple of (usage_object, is_accumulated) or None if not found
-        """
-        if "result" in response_obj:
-            result = response_obj["result"]
-            if hasattr(result, "metrics") and hasattr(
-                result.metrics, "accumulated_usage"
-            ):
-                return (result.metrics.accumulated_usage, True)
-        return None
-
-    def _try_standard_usage_extraction(self, response_obj) -> Optional[Any]:
-        """
-        Try to extract usage from common patterns.
-
-        Args:
-            response_obj: Response object to extract from
-
-        Returns:
-            Usage object or None if not found
-        """
-        # Pattern 1: response.usage (Anthropic/Claude style)
-        if hasattr(response_obj, "usage"):
-            return response_obj.usage
-
-        # Pattern 2: response['usage'] (dict style)
-        if isinstance(response_obj, dict) and "usage" in response_obj:
-            return response_obj["usage"]
-
-        # Pattern 3: response.metadata.usage
-        if hasattr(response_obj, "metadata") and hasattr(
-            response_obj.metadata, "usage"
-        ):
-            return response_obj.metadata.usage
-
-        # Pattern 4: response.data.usage (streaming event)
-        if hasattr(response_obj, "data") and hasattr(response_obj.data, "usage"):
-            return response_obj.data.usage
-
-        # Pattern 5: response.data['usage'] (streaming event dict)
-        if (
-            hasattr(response_obj, "data")
-            and isinstance(response_obj.data, dict)
-            and "usage" in response_obj.data
-        ):
-            return response_obj.data["usage"]
-
-        return None
-
-    def _extract_tokens_from_usage(self, usage) -> Optional[dict[str, int]]:
-        """
-        Extract input and output tokens from usage object.
-
-        Args:
-            usage: Usage object (dict or object with attributes)
-
-        Returns:
-            Dict with 'input_tokens' and 'output_tokens', or None if invalid
-        """
-        input_tokens: int = 0
-        output_tokens: int = 0
-
-        # Try different attribute names (check dict keys first, then attributes)
-        if isinstance(usage, dict):
-            # AWS Bedrock camelCase - explicit or chain with default
-            input_tokens = (
-                usage.get("inputTokens")
-                or usage.get("input_tokens")
-                or usage.get("prompt_tokens")
-                or 0
-            )
-            output_tokens = (
-                usage.get("outputTokens")
-                or usage.get("output_tokens")
-                or usage.get("completion_tokens")
-                or 0
-            )
-        else:
-            # Object attributes
-            input_tokens = getattr(
-                usage, "input_tokens", getattr(usage, "prompt_tokens", 0)
-            )
-            output_tokens = getattr(
-                usage, "output_tokens", getattr(usage, "completion_tokens", 0)
-            )
-
-        # Ensure tokens are integers (handle mocks/test objects)
-        try:
-            input_tokens = int(input_tokens) if input_tokens is not None else 0
-            output_tokens = int(output_tokens) if output_tokens is not None else 0
-        except (TypeError, ValueError):
-            return None
-
-        if input_tokens > 0 or output_tokens > 0:
-            return {"input_tokens": input_tokens, "output_tokens": output_tokens}
-
-        return None
-
-    def _extract_token_usage(
-        self, response_obj
-    ) -> Optional[tuple[dict[str, int], bool]]:
-        """
-        Extract token usage from response object.
-
-        Args:
-            response_obj: Response object from agent
-
-        Returns:
-            Tuple of (usage_dict, is_accumulated) where:
-            - usage_dict: Dict with 'input_tokens' and 'output_tokens'
-            - is_accumulated: True if usage is cumulative across session
-            Returns None if no usage info available
-        """
-        if not response_obj:
-            return None
-
-        # Try AWS Bedrock accumulated usage first (cumulative)
-        if isinstance(response_obj, dict):
-            bedrock_result = self._try_bedrock_token_extraction(response_obj)
-            if bedrock_result:
-                usage, is_accumulated = bedrock_result
-                tokens = self._extract_tokens_from_usage(usage)
-                if tokens:
-                    return (tokens, is_accumulated)
-
-        # Try standard usage patterns (per-request)
-        usage = self._try_standard_usage_extraction(response_obj)
-        if usage:
-            tokens = self._extract_tokens_from_usage(usage)
-            if tokens:
-                return (tokens, False)
-
         return None
 
     def _extract_code_blocks(self, text: str) -> list:
@@ -2064,41 +1925,10 @@ class ChatLoop:
 
             duration = time.time() - start_time
 
-            # Extract token usage if available
-            usage_result = self._extract_token_usage(response_obj)
-
-            # Extract additional metrics (framework-specific)
-            cycle_count = None
-            tool_count = None
-            if isinstance(response_obj, dict) and "result" in response_obj:
-                result = response_obj["result"]
-                if hasattr(result, "metrics"):
-                    metrics = result.metrics
-                    if hasattr(metrics, "cycle_count"):
-                        cycle_count = metrics.cycle_count
-                    if hasattr(metrics, "tool_metrics") and metrics.tool_metrics:
-                        # Count total tool calls across all tools
-                        try:
-                            if isinstance(metrics.tool_metrics, dict):
-                                tool_count = sum(
-                                    len(calls)
-                                    for calls in metrics.tool_metrics.values()
-                                )
-                            elif hasattr(metrics.tool_metrics, "__len__"):
-                                tool_count = len(metrics.tool_metrics)
-                            elif hasattr(metrics.tool_metrics, "__dict__"):
-                                # ToolMetrics object - count attributes
-                                # that look like tool calls
-                                tool_count = len(
-                                    [
-                                        k
-                                        for k in metrics.tool_metrics.__dict__.keys()
-                                        if not k.startswith("_")
-                                    ]
-                                )
-                        except Exception as e:
-                            logger.debug(f"Could not extract tool count: {e}")
-                            tool_count = None
+            # Extract token usage and metrics if available
+            usage_result = self.usage_extractor.extract_token_usage(response_obj)
+            cycle_count = self.usage_extractor.extract_cycle_count(response_obj)
+            tool_count = self.usage_extractor.extract_tool_count(response_obj)
 
             # Track tokens (always, for session summary)
             if usage_result:
