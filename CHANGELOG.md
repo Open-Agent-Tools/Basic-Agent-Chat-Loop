@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Internal Refactoring** - Improved code organization and maintainability
+  - Integrated `SessionState` component to centralize session management
+    - Replaced 8 scattered instance variables with single cohesive component
+    - Single source of truth for query count, conversation history, timing, and accumulated usage
+    - Cleaner delta calculation for AWS Strands cumulative token tracking
+  - Integrated `CommandRouter` component for type-safe command parsing
+    - Replaced 330+ lines of manual string parsing with enum-based routing
+    - All commands now use `CommandType` enum for type safety
+    - Easier to add new commands and maintain existing ones
+    - Better separation of command parsing from command handling
+  - All 510 tests passing, 100% mypy type coverage, ruff compliant
+  - No user-facing changes - purely internal code quality improvements
+
 ## [1.6.1] - 2025-12-31
 
 ### Added
