@@ -1997,8 +1997,9 @@ class ChatLoop:
                     # Append text if found and display it
                     if text_to_add:
                         response_text.append(text_to_add)
-                        if not self.use_rich:
+                        if not self.use_rich and not self.harmony_processor:
                             # Apply colorization for tool messages during streaming
+                            # Skip streaming display if harmony will post-process the response
                             formatted_text = Colors.format_agent_response(text_to_add)
                             print(formatted_text, end="", flush=True)
             else:
@@ -2047,7 +2048,10 @@ class ChatLoop:
             full_response = "".join(response_text)
 
             # Track if we already printed during streaming (to prevent duplicates)
-            already_printed_streaming = first_token_received and not self.use_rich
+            # Note: Don't consider it printed if harmony will transform the output
+            already_printed_streaming = (
+                first_token_received and not self.use_rich and not self.harmony_processor
+            )
 
             # Process through Harmony if available
             display_text = full_response
