@@ -104,7 +104,7 @@ class UsageExtractor:
                         # Object format: count non-private attributes
                         else:
                             # Use vars() to get both instance and class attributes
-                            attrs = []
+                            attrs: list[str] = []
                             # Get instance attributes
                             if hasattr(metrics.tool_metrics, "__dict__"):
                                 attrs.extend(

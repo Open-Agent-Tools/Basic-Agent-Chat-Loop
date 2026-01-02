@@ -10,7 +10,6 @@ Manages all session-related state including:
 
 import time
 from datetime import datetime
-from typing import Optional
 
 
 class SessionState:

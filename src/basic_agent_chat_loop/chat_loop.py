@@ -74,7 +74,6 @@ from .components import (
     AliasManager,
     AudioNotifier,
     Colors,
-    CommandRouter,  # Available for future command handling improvements
     ConfigWizard,
     DependencyManager,
     DisplayManager,
@@ -82,7 +81,6 @@ from .components import (
     HarmonyProcessor,
     ResponseRenderer,
     SessionManager,
-    SessionState,  # Available for future session state improvements
     StatusBar,
     StreamingEventParser,
     TemplateManager,

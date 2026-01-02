@@ -121,9 +121,7 @@ class CommandRouter:
             is_command=False,
         )
 
-    def _parse_hash_command(
-        self, stripped: str, original_input: str
-    ) -> CommandResult:
+    def _parse_hash_command(self, stripped: str, original_input: str) -> CommandResult:
         """Parse a # command and extract arguments.
 
         Args:
@@ -269,9 +267,7 @@ class CommandRouter:
         result = self.parse_input(user_input)
         return result.command_type == CommandType.QUERY
 
-    def extract_template_info(
-        self, command_result: CommandResult
-    ) -> tuple[str, str]:
+    def extract_template_info(self, command_result: CommandResult) -> tuple[str, str]:
         """Extract template name and input from template command result.
 
         Args:

@@ -7,7 +7,10 @@ Handles formatting and display of agent responses with support for:
 - Agent name headers
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from .ui_components import Colors
 
 try:
     from rich.console import Console
@@ -36,7 +39,7 @@ class ResponseRenderer:
         use_rich: bool = True,
         console: Optional["Console"] = None,
         harmony_processor: Optional[object] = None,
-        colors_module: Optional[object] = None,
+        colors_module: Optional[type["Colors"]] = None,
     ):
         """Initialize the response renderer.
 
@@ -45,16 +48,16 @@ class ResponseRenderer:
             use_rich: Whether to use rich markdown rendering
             console: Rich Console instance (required if use_rich=True)
             harmony_processor: Optional HarmonyProcessor for format detection
-            colors_module: Colors module for text colorization (required)
+            colors_module: Colors class for text colorization (required)
         """
+        if not colors_module:
+            raise ValueError("colors_module is required for ResponseRenderer")
+
         self.agent_name = agent_name
         self.use_rich = use_rich and RICH_AVAILABLE
         self.console = console if self.use_rich else None
         self.harmony_processor = harmony_processor
-        self.colors = colors_module
-
-        if not colors_module:
-            raise ValueError("colors_module is required for ResponseRenderer")
+        self.colors: type["Colors"] = colors_module  # Guaranteed to be non-None here
 
     def render_agent_header(self) -> None:
         """Print the agent name header at the start of a response.
@@ -121,6 +124,7 @@ class ResponseRenderer:
         """
         print()  # New line after separator
         md = Markdown(text)
+        assert self.console is not None  # Only called when use_rich is True
         self.console.print(md)
 
     def _render_plain_text(self, text: str) -> None:
