@@ -75,6 +75,7 @@ from .components import (
     AudioNotifier,
     Colors,
     CommandRouter,
+    CommandType,
     ConfigWizard,
     DependencyManager,
     DisplayManager,
@@ -2189,10 +2190,12 @@ class ChatLoop:
                     # Don't use executor as it breaks readline editing
                     user_input = input(f"\n{Colors.user('You')}: ").strip()
 
-                    # Handle exit commands (with or without # or /)
-                    # Support: exit, quit, bye, #exit, /exit, etc.
-                    normalized_input = user_input.lstrip("#/").lower()
-                    if normalized_input in ["exit", "quit", "bye"]:
+                    # Parse user input using CommandRouter
+                    command_result = self.command_router.parse_input(user_input)
+
+                    # Route based on command type
+                    if command_result.command_type == CommandType.EXIT:
+                        # Handle exit commands
                         print(
                             Colors.system(
                                 f"\nGoodbye! Thanks for using {self.agent_name}!"
@@ -2200,107 +2203,90 @@ class ChatLoop:
                         )
                         break
 
-                    # Handle commands (commands start with #)
-                    # Note: / prefix is reserved for templates (see below)
-                    if user_input.startswith("#"):
-                        # Strip # and get command
-                        cmd_input = user_input[1:].strip()
-                        cmd_lower = cmd_input.lower()
+                    elif command_result.command_type == CommandType.HELP:
+                        self.display_manager.display_help()
+                        continue
 
-                        if cmd_lower in ["exit", "quit", "bye"]:
-                            print(
-                                Colors.system(
-                                    f"\nGoodbye! Thanks for using {self.agent_name}!"
-                                )
-                            )
-                            break
-                        elif cmd_lower == "help":
-                            self.display_manager.display_help()
-                            continue
-                        elif cmd_lower == "info":
-                            self.display_manager.display_info()
-                            continue
-                        elif cmd_lower == "templates":
-                            # List available prompt templates
-                            templates = (
-                                self.template_manager.list_templates_with_descriptions()
-                            )
-                            self.display_manager.display_templates(
-                                templates, self.prompts_dir
-                            )
-                            continue
-                        elif cmd_lower == "sessions":
-                            # List saved sessions
-                            sessions = self.session_manager.list_sessions(
-                                agent_name=self.agent_name, limit=20
-                            )
-                            self.display_manager.display_sessions(
-                                sessions, agent_name=self.agent_name
-                            )
-                            continue
-                        elif cmd_lower == "compact":
-                            # Compact session command
-                            await self._handle_compact_command()
-                            continue
-                        elif cmd_lower.startswith("copy"):
-                            # Copy command with variants
-                            parts = cmd_lower.split(maxsplit=1)
-                            copy_mode = parts[1] if len(parts) > 1 else ""
+                    elif command_result.command_type == CommandType.INFO:
+                        self.display_manager.display_info()
+                        continue
 
-                            try:
-                                content = None
-                                description = ""
+                    elif command_result.command_type == CommandType.TEMPLATES:
+                        # List available prompt templates
+                        templates = (
+                            self.template_manager.list_templates_with_descriptions()
+                        )
+                        self.display_manager.display_templates(
+                            templates, self.prompts_dir
+                        )
+                        continue
 
-                                if copy_mode == "query":
-                                    # Copy last user query
-                                    if self.session_state.last_query:
-                                        content = self.session_state.last_query
-                                        description = "last query"
+                    elif command_result.command_type == CommandType.SESSIONS:
+                        # List saved sessions
+                        sessions = self.session_manager.list_sessions(
+                            agent_name=self.agent_name, limit=20
+                        )
+                        self.display_manager.display_sessions(
+                            sessions, agent_name=self.agent_name
+                        )
+                        continue
+
+                    elif command_result.command_type == CommandType.COMPACT:
+                        # Compact session command
+                        await self._handle_compact_command()
+                        continue
+
+                    elif command_result.command_type == CommandType.COPY:
+                        # Copy command with variants (args contains the mode)
+                        copy_mode = command_result.args or ""
+
+                        try:
+                            content = None
+                            description = ""
+
+                            if copy_mode == "query":
+                                # Copy last user query
+                                if self.session_state.last_query:
+                                    content = self.session_state.last_query
+                                    description = "last query"
+                                else:
+                                    print(Colors.system("No query to copy yet"))
+                                    continue
+                            elif copy_mode == "all":
+                                # Copy entire conversation as markdown
+                                if self.session_state.conversation_markdown:
+                                    content = self._format_conversation_as_markdown()
+                                    description = "entire conversation"
+                                else:
+                                    print(Colors.system("No conversation to copy yet"))
+                                    continue
+                            elif copy_mode == "code":
+                                # Copy just code blocks from last response
+                                if self.session_state.last_response:
+                                    code_blocks = self._extract_code_blocks(
+                                        self.session_state.last_response
+                                    )
+                                    if code_blocks:
+                                        content = "\n\n".join(code_blocks)
+                                        description = "code blocks from last response"
                                     else:
-                                        print(Colors.system("No query to copy yet"))
-                                        continue
-                                elif copy_mode == "all":
-                                    # Copy entire conversation as markdown
-                                    if self.session_state.conversation_markdown:
-                                        content = (
-                                            self._format_conversation_as_markdown()
-                                        )
-                                        description = "entire conversation"
-                                    else:
-                                        print(
-                                            Colors.system("No conversation to copy yet")
-                                        )
-                                        continue
-                                elif copy_mode == "code":
-                                    # Copy just code blocks from last response
-                                    if self.session_state.last_response:
-                                        code_blocks = self._extract_code_blocks(
-                                            self.session_state.last_response
-                                        )
-                                        if code_blocks:
-                                            content = "\n\n".join(code_blocks)
-                                            description = (
-                                                "code blocks from last response"
-                                            )
-                                        else:
-                                            msg = (
-                                                "No code blocks found in last response"
-                                            )
-                                            print(Colors.system(msg))
-                                            continue
-                                    else:
-                                        print(Colors.system("No response to copy yet"))
+                                        msg = "No code blocks found in last response"
+                                        print(Colors.system(msg))
                                         continue
                                 else:
-                                    # Default: copy last response
-                                    if self.session_state.last_response:
-                                        content = self.session_state.last_response
-                                        description = "last response"
-                                    else:
-                                        print(Colors.system("No response to copy yet"))
-                                        continue
+                                    print(Colors.system("No response to copy yet"))
+                                    continue
+                            else:
+                                # Default: copy last response
+                                if self.session_state.last_response:
+                                    content = self.session_state.last_response
+                                    description = "last response"
+                                else:
+                                    print(Colors.system("No response to copy yet"))
+                                    continue
 
-                                # Copy to clipboard
+                            # Copy to clipboard
+                            if content:
                                 pyperclip.copy(content)
                                 print(
                                     Colors.success(
@@ -2308,195 +2294,197 @@ class ChatLoop:
                                     )
                                 )
 
-                            except Exception as e:
-                                print(Colors.error(f"Failed to copy: {e}"))
-                                logger.error(f"Copy command failed: {e}")
+                        except Exception as e:
+                            print(Colors.error(f"Failed to copy: {e}"))
+                            logger.error(f"Copy command failed: {e}")
+                        continue
+
+                    elif command_result.command_type == CommandType.RESUME:
+                        # Resume a previous session
+                        session_ref = command_result.args
+
+                        # If no session specified, show list of sessions
+                        if not session_ref:
+                            sessions = self.session_manager.list_sessions(
+                                agent_name=self.agent_name, limit=20
+                            )
+                            self.display_manager.display_sessions(
+                                sessions, agent_name=self.agent_name
+                            )
+                            usage_msg = "Usage: #resume <number or session_id>"
+                            print(f"\n{Colors.system(usage_msg)}")
                             continue
-                        elif cmd_lower == "resume" or cmd_lower.startswith("resume "):
-                            # Resume a previous session
-                            parts = cmd_input.split(maxsplit=1)
 
-                            # If no session specified, show list of sessions
-                            if len(parts) < 2:
-                                sessions = self.session_manager.list_sessions(
-                                    agent_name=self.agent_name, limit=20
-                                )
-                                self.display_manager.display_sessions(
-                                    sessions, agent_name=self.agent_name
-                                )
-                                usage_msg = "Usage: #resume <number or session_id>"
-                                print(f"\n{Colors.system(usage_msg)}")
-                                continue
+                        success = await self.restore_session(session_ref)
 
-                            session_ref = parts[1].strip()
-                            success = await self.restore_session(session_ref)
-
-                            if success:
-                                # Show banner after resume
-                                self.display_manager.display_banner()
-                            continue
-                        elif cmd_lower == "context":
-                            # Show context usage statistics
-                            total_tokens = self.token_tracker.get_total_tokens()
-                            input_tokens = self.token_tracker.total_input_tokens
-                            output_tokens = self.token_tracker.total_output_tokens
-
-                            # Get max tokens from agent metadata
-                            max_tokens = self.agent_metadata.get(
-                                "max_tokens", "Unknown"
-                            )
-
-                            # Calculate percentage if max_tokens is known
-                            percentage_str = ""
-                            if (
-                                max_tokens != "Unknown"
-                                and isinstance(max_tokens, (int, float))
-                                and max_tokens > 0
-                            ):
-                                percentage = (total_tokens / max_tokens) * 100
-                                percentage_str = f" ({percentage:.1f}%)"
-
-                            # Calculate session duration
-                            session_duration = (
-                                time.time() - self.session_state.session_start_time
-                            )
-                            if session_duration < 60:
-                                duration_str = f"{session_duration:.0f}s"
-                            elif session_duration < 3600:
-                                minutes = int(session_duration / 60)
-                                seconds = int(session_duration % 60)
-                                duration_str = f"{minutes}m {seconds}s"
-                            else:
-                                hours = int(session_duration / 3600)
-                                minutes = int((session_duration % 3600) / 60)
-                                duration_str = f"{hours}h {minutes}m"
-
-                            # Display context information
-                            print(f"\n{Colors.system('Context Usage')}")
-                            print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
-
-                            # Format max tokens display
-                            if max_tokens == "Unknown":
-                                max_str = "Unknown"
-                            else:
-                                max_str = self.token_tracker.format_tokens(max_tokens)
-
-                            print(
-                                f"  Total Tokens:   "
-                                f"{self.token_tracker.format_tokens(total_tokens)} / "
-                                f"{max_str}{percentage_str}"
-                            )
-                            print(
-                                f"  Input Tokens:   "
-                                f"{self.token_tracker.format_tokens(input_tokens)}"
-                            )
-                            print(
-                                f"  Output Tokens:  "
-                                f"{self.token_tracker.format_tokens(output_tokens)}"
-                            )
-                            print(f"  Queries:        {self.session_state.query_count}")
-                            print(f"  Session Time:   {duration_str}")
-
-                            # Show warning if approaching limits
-                            if (
-                                max_tokens != "Unknown"
-                                and isinstance(max_tokens, (int, float))
-                                and max_tokens > 0
-                            ):
-                                percentage = (total_tokens / max_tokens) * 100
-
-                                # Sort thresholds in descending order
-                                sorted_thresholds = sorted(
-                                    self.context_warning_thresholds, reverse=True
-                                )
-
-                                # Check thresholds from highest to lowest
-                                for threshold in sorted_thresholds:
-                                    if percentage >= threshold:
-                                        # Highest threshold gets special treatment
-                                        if threshold == sorted_thresholds[0]:
-                                            msg = (
-                                                f"⚠️  Warning: {threshold}% "
-                                                f"of context used!"
-                                            )
-                                            print(f"\n  {Colors.error(msg)}")
-                                            msg2 = (
-                                                "Consider using #compact "
-                                                "to free up context."
-                                            )
-                                            print(f"  {Colors.system(msg2)}")
-                                        # Second highest threshold
-                                        elif (
-                                            threshold == sorted_thresholds[1]
-                                            if len(sorted_thresholds) > 1
-                                            else False
-                                        ):
-                                            msg = (
-                                                f"⚠️  Warning: {threshold}% "
-                                                f"of context used"
-                                            )
-                                            print(f"\n  {Colors.error(msg)}")
-                                        # Other thresholds
-                                        else:
-                                            msg = f"💡 Context usage: {threshold}%"
-                                            print(f"\n  {Colors.system(msg)}")
-                                        break  # Only show highest matched threshold
-
-                            print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
-                            continue
-                        elif cmd_lower == "clear":
-                            # Clear screen (cross-platform)
-                            os.system("clear" if os.name != "nt" else "cls")
-
-                            # Reset agent session if factory available
-                            if self.agent_factory:
-                                try:
-                                    # Cleanup old agent if possible
-                                    if hasattr(self.agent, "cleanup"):
-                                        try:
-                                            if asyncio.iscoroutinefunction(
-                                                self.agent.cleanup
-                                            ):
-                                                await self.agent.cleanup()
-                                            else:
-                                                self.agent.cleanup()
-                                        except Exception as e:
-                                            logger.debug(
-                                                f"Error during agent cleanup: {e}"
-                                            )
-
-                                    # Create fresh agent instance
-                                    self.agent = self.agent_factory()
-                                    print(
-                                        Colors.success(
-                                            "✓ Screen cleared and agent session reset"
-                                        )
-                                    )
-                                    logger.info("Agent session reset via clear command")
-                                except Exception as e:
-                                    print(
-                                        Colors.error(
-                                            f"⚠️  Could not reset agent session: {e}"
-                                        )
-                                    )
-                                    logger.error(f"Failed to reset agent session: {e}")
-                                    msg = "Screen cleared but agent session maintained"
-                                    print(Colors.system(msg))
-                            else:
-                                print(Colors.success("✓ Screen cleared"))
-
+                        if success:
+                            # Show banner after resume
                             self.display_manager.display_banner()
-                            continue
-                        else:
-                            # Unknown # command
-                            print(Colors.error(f"Unknown command: #{cmd_input}"))
-                            print("Type '#help' for available commands")
-                            continue
+                        continue
 
-                    # Template command: /template_name <optional input>
-                    elif user_input.startswith("/") and len(user_input) > 1:
-                        parts = user_input[1:].split(maxsplit=1)
-                        template_name = parts[0]
+                    elif command_result.command_type == CommandType.CONTEXT:
+                        # Show context usage statistics
+                        total_tokens = self.token_tracker.get_total_tokens()
+                        input_tokens = self.token_tracker.total_input_tokens
+                        output_tokens = self.token_tracker.total_output_tokens
+
+                        # Get max tokens from agent metadata
+                        max_tokens = self.agent_metadata.get("max_tokens", "Unknown")
+
+                        # Calculate percentage if max_tokens is known
+                        percentage_str = ""
+                        if (
+                            max_tokens != "Unknown"
+                            and isinstance(max_tokens, (int, float))
+                            and max_tokens > 0
+                        ):
+                            percentage = (total_tokens / max_tokens) * 100
+                            percentage_str = f" ({percentage:.1f}%)"
+
+                        # Calculate session duration
+                        session_duration = (
+                            time.time() - self.session_state.session_start_time
+                        )
+                        if session_duration < 60:
+                            duration_str = f"{session_duration:.0f}s"
+                        elif session_duration < 3600:
+                            minutes = int(session_duration / 60)
+                            seconds = int(session_duration % 60)
+                            duration_str = f"{minutes}m {seconds}s"
+                        else:
+                            hours = int(session_duration / 3600)
+                            minutes = int((session_duration % 3600) / 60)
+                            duration_str = f"{hours}h {minutes}m"
+
+                        # Display context information
+                        print(f"\n{Colors.system('Context Usage')}")
+                        print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+
+                        # Format max tokens display
+                        if max_tokens == "Unknown":
+                            max_str = "Unknown"
+                        else:
+                            max_str = self.token_tracker.format_tokens(max_tokens)
+
+                        print(
+                            f"  Total Tokens:   "
+                            f"{self.token_tracker.format_tokens(total_tokens)} / "
+                            f"{max_str}{percentage_str}"
+                        )
+                        print(
+                            f"  Input Tokens:   "
+                            f"{self.token_tracker.format_tokens(input_tokens)}"
+                        )
+                        print(
+                            f"  Output Tokens:  "
+                            f"{self.token_tracker.format_tokens(output_tokens)}"
+                        )
+                        print(f"  Queries:        {self.session_state.query_count}")
+                        print(f"  Session Time:   {duration_str}")
+
+                        # Show warning if approaching limits
+                        if (
+                            max_tokens != "Unknown"
+                            and isinstance(max_tokens, (int, float))
+                            and max_tokens > 0
+                        ):
+                            percentage = (total_tokens / max_tokens) * 100
+
+                            # Sort thresholds in descending order
+                            sorted_thresholds = sorted(
+                                self.context_warning_thresholds, reverse=True
+                            )
+
+                            # Check thresholds from highest to lowest
+                            for threshold in sorted_thresholds:
+                                if percentage >= threshold:
+                                    # Highest threshold gets special treatment
+                                    if threshold == sorted_thresholds[0]:
+                                        msg = (
+                                            f"⚠️  Warning: {threshold}% of context used!"
+                                        )
+                                        print(f"\n  {Colors.error(msg)}")
+                                        msg2 = (
+                                            "Consider using #compact "
+                                            "to free up context."
+                                        )
+                                        print(f"  {Colors.system(msg2)}")
+                                    # Second highest threshold
+                                    elif (
+                                        threshold == sorted_thresholds[1]
+                                        if len(sorted_thresholds) > 1
+                                        else False
+                                    ):
+                                        msg = (
+                                            f"⚠️  Warning: {threshold}% of context used"
+                                        )
+                                        print(f"\n  {Colors.error(msg)}")
+                                    # Other thresholds
+                                    else:
+                                        msg = f"💡 Context usage: {threshold}%"
+                                        print(f"\n  {Colors.system(msg)}")
+                                    break  # Only show highest matched threshold
+
+                        print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+                        continue
+
+                    elif command_result.command_type == CommandType.CLEAR:
+                        # Clear screen (cross-platform)
+                        os.system("clear" if os.name != "nt" else "cls")
+
+                        # Reset agent session if factory available
+                        if self.agent_factory:
+                            try:
+                                # Cleanup old agent if possible
+                                if hasattr(self.agent, "cleanup"):
+                                    try:
+                                        if asyncio.iscoroutinefunction(
+                                            self.agent.cleanup
+                                        ):
+                                            await self.agent.cleanup()
+                                        else:
+                                            self.agent.cleanup()
+                                    except Exception as e:
+                                        logger.debug(f"Error during agent cleanup: {e}")
+
+                                # Create fresh agent instance
+                                self.agent = self.agent_factory()
+                                print(
+                                    Colors.success(
+                                        "✓ Screen cleared and agent session reset"
+                                    )
+                                )
+                                logger.info("Agent session reset via clear command")
+                            except Exception as e:
+                                print(
+                                    Colors.error(
+                                        f"⚠️  Could not reset agent session: {e}"
+                                    )
+                                )
+                                logger.error(f"Failed to reset agent session: {e}")
+                                msg = "Screen cleared but agent session maintained"
+                                print(Colors.system(msg))
+                        else:
+                            print(Colors.success("✓ Screen cleared"))
+
+                        self.display_manager.display_banner()
+                        continue
+
+                    elif command_result.command_type == CommandType.UNKNOWN_COMMAND:
+                        # Unknown # command
+                        print(
+                            Colors.error(
+                                f"Unknown command: #{command_result.args or ''}"
+                            )
+                        )
+                        print("Type '#help' for available commands")
+                        continue
+
+                    elif command_result.command_type == CommandType.TEMPLATE:
+                        # Template command: /template_name <optional input>
+                        template_name = command_result.args or ""
+                        parts = template_name.split(maxsplit=1)
+                        template_name = parts[0] if parts else ""
                         input_text = parts[1] if len(parts) > 1 else ""
 
                         # Try to load template
@@ -2507,6 +2495,7 @@ class ChatLoop:
                             print(Colors.system(f"✓ Loaded template: {template_name}"))
                             # Use the template as the user input
                             user_input = template
+                            # Fall through to process as query
                         else:
                             print(Colors.error(f"Template not found: {template_name}"))
                             templates = self.template_manager.list_templates()
@@ -2515,37 +2504,42 @@ class ChatLoop:
                             print(f"Create at: {self.prompts_dir}/{template_name}.md")
                             continue
 
-                    # Multi-line input trigger
-                    elif user_input == "\\\\":  # Multi-line input trigger
+                    elif command_result.command_type == CommandType.MULTILINE:
+                        # Multi-line input trigger
                         user_input = await self.get_multiline_input()
                         if not user_input.strip():
                             continue
-                    elif not user_input:
-                        continue
+                        # Fall through to process as query
 
-                    # Process query through agent
-                    logger.info(f"Processing query: {user_input[:100]}...")
+                    # For CommandType.QUERY or template/multiline that falls through
+                    if command_result.command_type in (
+                        CommandType.QUERY,
+                        CommandType.TEMPLATE,
+                        CommandType.MULTILINE,
+                    ):
+                        # Process query through agent
+                        logger.info(f"Processing query: {user_input[:100]}...")
 
-                    # Track query for copy command
-                    self.session_state.update_last_query(user_input)
+                        # Track query for copy command
+                        self.session_state.update_last_query(user_input)
 
-                    # Update terminal title to show processing
-                    if self.update_terminal_title:
-                        set_terminal_title(f"{self.agent_name} - Processing...")
+                        # Update terminal title to show processing
+                        if self.update_terminal_title:
+                            set_terminal_title(f"{self.agent_name} - Processing...")
 
-                    # Update status bar before query
-                    if self.status_bar:
-                        self.status_bar.increment_query()
-                        # Clear screen and redraw status bar
-                        print("\033[2J\033[H", end="")  # Clear screen, move to top
-                        print(self.status_bar.render())
-                        print()  # Blank line after status bar
+                        # Update status bar before query
+                        if self.status_bar:
+                            self.status_bar.increment_query()
+                            # Clear screen and redraw status bar
+                            print("\033[2J\033[H", end="")  # Clear screen, move to top
+                            print(self.status_bar.render())
+                            print()  # Blank line after status bar
 
-                    await self.process_query(user_input)
+                        await self.process_query(user_input)
 
-                    # Update terminal title back to idle
-                    if self.update_terminal_title:
-                        set_terminal_title(f"{self.agent_name} - Idle")
+                        # Update terminal title back to idle
+                        if self.update_terminal_title:
+                            set_terminal_title(f"{self.agent_name} - Idle")
 
                 except KeyboardInterrupt:
                     print(
