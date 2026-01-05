@@ -184,7 +184,9 @@ class ResponseStreamer:
 
             # Check if agent supports streaming
             if hasattr(self.agent, "stream_async"):
+                print(f"\n[DEBUG] MAIN LOOP: Starting stream_async iteration", file=sys.stderr)
                 async for event in self.agent.stream_async(query):
+                    print(f"\n[DEBUG] MAIN LOOP: Received event from stream_async", file=sys.stderr)
                     # Store last event for token extraction
                     response_obj = event
 
@@ -213,6 +215,8 @@ class ResponseStreamer:
                         # Display streaming text (renderer handles skip logic)
                         self.response_renderer.render_streaming_text(text_to_add)
                         print(f"[DEBUG] STREAM LOOP: Returned from render_streaming_text()", file=sys.stderr)
+
+                    print(f"[DEBUG] MAIN LOOP: End of iteration, about to yield back to stream_async", file=sys.stderr)
             else:
                 # Fallback to non-streaming call if streaming not supported
                 response = await asyncio.get_event_loop().run_in_executor(
