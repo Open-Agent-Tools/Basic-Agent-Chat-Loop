@@ -1,6 +1,26 @@
 {
   "sessions": [
     {
+      "session_id": "simple_sally_20260105_162941",
+      "agent_name": "Simple Sally",
+      "agent_path": "/Users/wes/Development/Basic-Agent-Chat-Loop/tests/simple_sally_sample_agent/agent.py",
+      "created": "2026-01-05T16:31:04.793653",
+      "last_updated": "2026-01-05T16:31:04.793653",
+      "query_count": 1,
+      "total_tokens": 3150,
+      "preview": "hello"
+    },
+    {
+      "session_id": "simple_sally_20260105_161400",
+      "agent_name": "Simple Sally",
+      "agent_path": "/Users/wes/Development/Basic-Agent-Chat-Loop/tests/simple_sally_sample_agent/agent.py",
+      "created": "2026-01-05T16:14:07.265533",
+      "last_updated": "2026-01-05T16:14:07.265533",
+      "query_count": 1,
+      "total_tokens": 3148,
+      "preview": "hello"
+    },
+    {
       "session_id": "simple_sally_20260105_160134",
       "agent_name": "Simple Sally",
       "agent_path": "/Users/wes/Development/Basic-Agent-Chat-Loop/tests/simple_sally_sample_agent/agent.py",
@@ -21,5 +41,5 @@
       "preview": "hello"
     }
   ],
-  "last_updated": "2026-01-05T16:01:39.753610"
+  "last_updated": "2026-01-05T16:31:04.794523"
 }

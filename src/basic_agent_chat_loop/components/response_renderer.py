@@ -10,7 +10,6 @@ Uses OutputState enum to determine rendering strategy (streaming vs buffering).
 """
 
 import logging
-import sys
 from typing import TYPE_CHECKING, Optional
 
 from .output_mode import determine_output_state
@@ -91,17 +90,8 @@ class ResponseRenderer:
         Args:
             text: Text chunk to display
         """
-        # DIAGNOSTIC: Log every call with full details
-        print(f"\n[DEBUG] render_streaming_text called:", file=sys.stderr)
-        print(f"[DEBUG]   output_state: {self.output_state.value}", file=sys.stderr)
-        print(f"[DEBUG]   should_buffer(): {self.output_state.should_buffer()}", file=sys.stderr)
-        print(f"[DEBUG]   console is None: {self.console is None}", file=sys.stderr)
-        print(f"[DEBUG]   harmony is None: {self.harmony_processor is None}", file=sys.stderr)
-        print(f"[DEBUG]   text length: {len(text)}", file=sys.stderr)
-
         if self.output_state.should_buffer():
             # Buffering mode - text will be rendered later
-            print(f"[DEBUG]   ACTION: SKIPPING (buffering mode)", file=sys.stderr)
             logger.debug(
                 f"SKIP streaming (buffering): state={self.output_state.value}, "
                 f"text_len={len(text)}"
@@ -109,7 +99,6 @@ class ResponseRenderer:
             return
 
         # Streaming mode - print immediately
-        print(f"[DEBUG]   ACTION: PRINTING (streaming mode)", file=sys.stderr)
         logger.debug(
             f"PRINT streaming: state={self.output_state.value}, text_len={len(text)}"
         )
@@ -139,30 +128,19 @@ class ResponseRenderer:
             display_text: The final response text to display
             first_token_received: Whether any tokens were received during streaming
         """
-        # DIAGNOSTIC: Log final response rendering
-        print(f"\n[DEBUG] render_final_response called:", file=sys.stderr)
-        print(f"[DEBUG]   output_state: {self.output_state.value}", file=sys.stderr)
-        print(f"[DEBUG]   first_token_received: {first_token_received}", file=sys.stderr)
-        print(f"[DEBUG]   console is None: {self.console is None}", file=sys.stderr)
-        print(f"[DEBUG]   text length: {len(display_text)}", file=sys.stderr)
-
         if not display_text.strip():
-            print(f"[DEBUG]   ACTION: SKIPPING (empty text)", file=sys.stderr)
             return
 
         # Add visual separator when streaming occurred in buffering mode
         # (In streaming mode, text was already printed, no separator needed)
         if first_token_received and self.output_state.should_buffer():
-            print(f"[DEBUG]   Adding separator (buffering mode with tokens)", file=sys.stderr)
             print("\n")
             print(self.colors.success("─── Final Response ───"))
 
         # Render using rich markdown or plain text
         if self.console is not None:
-            print(f"[DEBUG]   ACTION: Rich markdown rendering", file=sys.stderr)
             self._render_rich_markdown(display_text)
         else:
-            print(f"[DEBUG]   ACTION: Plain text rendering", file=sys.stderr)
             self._render_plain_text(display_text)
 
     def _render_rich_markdown(self, text: str) -> None:

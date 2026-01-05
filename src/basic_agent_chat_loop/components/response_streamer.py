@@ -188,8 +188,6 @@ class ResponseStreamer:
 
             # Check if agent supports streaming
             if hasattr(self.agent, "stream_async"):
-                print(f"\n[DEBUG] MAIN LOOP: Starting stream_async iteration", file=sys.stderr)
-
                 # WORKAROUND: Suppress stdout during streaming to prevent agent libraries
                 # from printing accumulated response text as a side effect
                 # (Discovered in beta.8 diagnostics - text appears between event loop iterations)
@@ -207,7 +205,6 @@ class ResponseStreamer:
                         if self.suppress_agent_stdout:
                             sys.stdout = old_stdout
 
-                        print(f"\n[DEBUG] MAIN LOOP: Received event from stream_async", file=sys.stderr)
                         # Store last event for token extraction
                         response_obj = event
 
@@ -225,19 +222,11 @@ class ResponseStreamer:
                         # Extract text from streaming event using event parser
                         text_to_add = self.event_parser.parse_event(event)
 
-                        # DIAGNOSTIC: Log text extraction
-                        if text_to_add:
-                            print(f"\n[DEBUG] STREAM LOOP: Got text chunk, length={len(text_to_add)}", file=sys.stderr)
-                            print(f"[DEBUG] STREAM LOOP: About to call render_streaming_text()", file=sys.stderr)
-
                         # Append text if found and display it
                         if text_to_add:
                             response_text.append(text_to_add)
                             # Display streaming text (renderer handles skip logic)
                             self.response_renderer.render_streaming_text(text_to_add)
-                            print(f"[DEBUG] STREAM LOOP: Returned from render_streaming_text()", file=sys.stderr)
-
-                        print(f"[DEBUG] MAIN LOOP: End of iteration, about to yield back to stream_async", file=sys.stderr)
 
                         # Suppress stdout again before yielding back to stream_async
                         if self.suppress_agent_stdout:
