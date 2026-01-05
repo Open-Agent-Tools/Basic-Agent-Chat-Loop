@@ -605,10 +605,33 @@ class ChatLoop:
 
         # Setup response renderer for displaying agent responses
         # OutputState is determined automatically from console and harmony_processor
+
+        # DEFENSIVE: Prevent both Rich and Harmony from being active simultaneously
+        # This handles legacy configs that may have both enabled
+        console_to_use = self.console
+        harmony_to_use = self.harmony_processor
+
+        if self.console is not None and self.harmony_processor is not None:
+            # Both are enabled - prioritize Harmony (more specific)
+            # Disable Rich console to prevent double-output
+            logger.warning(
+                "⚠️  Both Rich and Harmony are enabled in config. "
+                "Disabling Rich to prevent double-output. "
+                "Use 'chat --wizard' to update your config."
+            )
+            print(
+                Colors.system(
+                    "\n⚠️  Config Issue: Both Rich and Harmony are enabled.\n"
+                    "   Using Harmony only to prevent double-output.\n"
+                    "   Run 'chat --wizard' to update your config.\n"
+                )
+            )
+            console_to_use = None  # Disable Rich, keep Harmony
+
         self.response_renderer = ResponseRenderer(
             agent_name=self.agent_name,
-            console=self.console,
-            harmony_processor=self.harmony_processor,
+            console=console_to_use,
+            harmony_processor=harmony_to_use,
             colors_module=Colors,
         )
 
@@ -626,7 +649,7 @@ class ChatLoop:
             show_thinking=self.show_thinking,
             show_duration=self.show_duration,
             show_tokens=self.show_tokens,
-            harmony_processor=self.harmony_processor,
+            harmony_processor=harmony_to_use,  # Use the defensively-checked version
             status_bar=self.status_bar,
         )
 
