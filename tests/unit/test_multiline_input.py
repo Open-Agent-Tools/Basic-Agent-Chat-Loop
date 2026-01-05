@@ -5,10 +5,11 @@ from unittest.mock import Mock, patch
 import pytest
 
 from basic_agent_chat_loop.chat_loop import ChatLoop
+from basic_agent_chat_loop.components.input_handler import get_multiline_input
 
 # Patch to use regular input() for testing (bypass ESC detection)
 # This allows us to test with simple mocked input
-INPUT_PATCH_TARGET = "basic_agent_chat_loop.chat_loop.input_with_esc"
+INPUT_PATCH_TARGET = "basic_agent_chat_loop.components.input_handler.input_with_esc"
 
 
 @pytest.fixture
@@ -36,7 +37,7 @@ async def test_multiline_input_submit(chat_loop):
     # Mock input to return lines then empty line to submit
     inputs = ["line 1", "line 2", "line 3", ""]
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        result = await chat_loop.get_multiline_input()
+        result = await get_multiline_input()
 
     assert result == "line 1\nline 2\nline 3"
 
@@ -46,7 +47,7 @@ async def test_multiline_input_cancel_command(chat_loop):
     """Test cancelling multi-line input with .cancel command."""
     inputs = ["line 1", ".cancel"]
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        result = await chat_loop.get_multiline_input()
+        result = await get_multiline_input()
 
     assert result == ""
 
@@ -56,7 +57,7 @@ async def test_multiline_input_cancel_esc(chat_loop):
     """Test cancelling multi-line input with ESC key."""
     inputs = ["line 1", None]  # None indicates ESC was pressed
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        result = await chat_loop.get_multiline_input()
+        result = await get_multiline_input()
 
     assert result == ""
 
@@ -69,7 +70,7 @@ async def test_multiline_input_cancel_ctrl_d(chat_loop):
         raise EOFError()
 
     with patch(INPUT_PATCH_TARGET, side_effect=mock_input_with_eof):
-        result = await chat_loop.get_multiline_input()
+        result = await get_multiline_input()
 
     assert result == ""
 
@@ -82,7 +83,7 @@ async def test_multiline_input_cancel_ctrl_c(chat_loop):
         raise KeyboardInterrupt()
 
     with patch(INPUT_PATCH_TARGET, side_effect=mock_input_with_interrupt):
-        result = await chat_loop.get_multiline_input()
+        result = await get_multiline_input()
 
     assert result == ""
 
@@ -100,9 +101,9 @@ async def test_multiline_input_back_command(chat_loop):
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        with patch("basic_agent_chat_loop.chat_loop.READLINE_AVAILABLE", True):
+        with patch("basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True):
             with patch("readline.add_history"):
-                result = await chat_loop.get_multiline_input()
+                result = await get_multiline_input()
 
     assert result == "line 1\nline 2 edited"
 
@@ -120,9 +121,9 @@ async def test_multiline_input_up_arrow(chat_loop):
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        with patch("basic_agent_chat_loop.chat_loop.READLINE_AVAILABLE", True):
+        with patch("basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True):
             with patch("readline.add_history"):
-                result = await chat_loop.get_multiline_input()
+                result = await get_multiline_input()
 
     assert result == "line 1\nline 2 edited"
 
@@ -133,7 +134,7 @@ async def test_multiline_input_up_arrow_on_empty(chat_loop):
     inputs = ["UP_ARROW", "line 1", ""]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        result = await chat_loop.get_multiline_input()
+        result = await get_multiline_input()
 
     assert result == "line 1"
 
@@ -144,7 +145,7 @@ async def test_multiline_input_back_on_empty(chat_loop):
     inputs = [".back", "line 1", ""]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        result = await chat_loop.get_multiline_input()
+        result = await get_multiline_input()
 
     assert result == "line 1"
 
@@ -159,7 +160,7 @@ async def test_multiline_input_empty_first_line(chat_loop):
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        result = await chat_loop.get_multiline_input()
+        result = await get_multiline_input()
 
     assert result == "line 1"
 
@@ -170,9 +171,9 @@ async def test_multiline_input_history_saved(chat_loop):
     inputs = ["line 1", "line 2", ""]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        with patch("basic_agent_chat_loop.chat_loop.READLINE_AVAILABLE", True):
+        with patch("basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True):
             with patch("readline.add_history") as mock_add_history:
-                _ = await chat_loop.get_multiline_input()
+                _ = await get_multiline_input()
 
     # Verify the full block was added to history
     mock_add_history.assert_called_with("line 1\nline 2")
@@ -190,7 +191,7 @@ async def test_multiline_input_line_numbers(chat_loop):
         return inputs.pop(0)
 
     with patch(INPUT_PATCH_TARGET, side_effect=capture_prompts):
-        _ = await chat_loop.get_multiline_input()
+        _ = await get_multiline_input()
 
     # Check that prompts contain line numbers
     assert any("1" in p for p in prompts_received)
@@ -212,8 +213,8 @@ async def test_multiline_input_multiple_back_commands(chat_loop):
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        with patch("basic_agent_chat_loop.chat_loop.READLINE_AVAILABLE", True):
+        with patch("basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True):
             with patch("readline.add_history"):
-                result = await chat_loop.get_multiline_input()
+                result = await get_multiline_input()
 
     assert result == "line 1\nline 2\nline 3 final"

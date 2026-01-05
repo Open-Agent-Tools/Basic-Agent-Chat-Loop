@@ -5,9 +5,14 @@ Handles formatting and display of agent responses with support for:
 - Plain text with colorization
 - Visual separators for final responses
 - Agent name headers
+
+Uses OutputState enum to determine rendering strategy (streaming vs buffering).
 """
 
+import logging
 from typing import TYPE_CHECKING, Optional
+
+from .output_mode import OutputState, determine_output_state
 
 if TYPE_CHECKING:
     from .ui_components import Colors
@@ -22,21 +27,23 @@ except ImportError:
     Console = None  # type: ignore
     Markdown = None  # type: ignore
 
+logger = logging.getLogger(__name__)
+
 
 class ResponseRenderer:
     """Renderer for formatting and displaying agent responses.
 
-    Supports multiple display modes:
-    - Rich markdown rendering (when enabled)
-    - Plain text with ANSI colorization
-    - Visual separators for final responses
-    - Streaming text display
+    Uses OutputState pattern to determine rendering strategy:
+    - STREAMING: Print text immediately (plain text mode)
+    - BUFFERING: Accumulate and render with Rich/Harmony
+
+    This eliminates complex boolean logic and provides a single source
+    of truth for output behavior.
     """
 
     def __init__(
         self,
         agent_name: str,
-        use_rich: bool = True,
         console: Optional["Console"] = None,
         harmony_processor: Optional[object] = None,
         colors_module: Optional[type["Colors"]] = None,
@@ -45,8 +52,7 @@ class ResponseRenderer:
 
         Args:
             agent_name: Name of the agent for header display
-            use_rich: Whether to use rich markdown rendering
-            console: Rich Console instance (required if use_rich=True)
+            console: Rich Console instance (None if Rich not available)
             harmony_processor: Optional HarmonyProcessor for format detection
             colors_module: Colors class for text colorization (required)
         """
@@ -54,21 +60,19 @@ class ResponseRenderer:
             raise ValueError("colors_module is required for ResponseRenderer")
 
         self.agent_name = agent_name
-        self.use_rich = use_rich and RICH_AVAILABLE
-        self.console = console if self.use_rich else None
+        self.console = console
         self.harmony_processor = harmony_processor
-        self.colors: type[Colors] = colors_module  # Guaranteed to be non-None here
+        self.colors: type[Colors] = colors_module
 
-        # Debug logging for Windows troubleshooting
-        import logging
+        # Determine output state once at initialization
+        # This is the single source of truth for rendering behavior
+        self.output_state = determine_output_state(console, harmony_processor)
 
-        logger = logging.getLogger(__name__)
-        logger.debug("ResponseRenderer initialized:")
-        logger.debug(f"  use_rich (param): {use_rich}")
-        logger.debug(f"  RICH_AVAILABLE: {RICH_AVAILABLE}")
-        logger.debug(f"  self.use_rich: {self.use_rich}")
-        logger.debug(f"  console provided: {console is not None}")
-        logger.debug(f"  self.console: {self.console is not None}")
+        logger.debug(f"ResponseRenderer initialized:")
+        logger.debug(f"  agent_name: {agent_name}")
+        logger.debug(f"  console: {console is not None}")
+        logger.debug(f"  harmony: {harmony_processor is not None}")
+        logger.debug(f"  output_state: {self.output_state.value}")
 
     def render_agent_header(self) -> None:
         """Print the agent name header at the start of a response.
@@ -80,35 +84,23 @@ class ResponseRenderer:
     def render_streaming_text(self, text: str) -> None:
         """Display text during streaming (real-time display).
 
-        Only displays if NOT using rich mode and NOT using harmony processor,
-        as those require post-processing before display.
+        Only displays if output_state is STREAMING (plain text mode).
+        Skips display if BUFFERING (Rich/Harmony will render later).
 
         Args:
             text: Text chunk to display
         """
-        # Skip streaming display if we have a console object (Rich mode)
-        # or harmony processor (needs post-processing)
-        # Check console directly as it's more reliable than use_rich flag
-        if self.console is not None or self.harmony_processor is not None:
-            # Debug logging to understand what's happening
-            import logging
-
-            logger = logging.getLogger(__name__)
+        if self.output_state.should_buffer():
+            # Buffering mode - text will be rendered later
             logger.debug(
-                f"SKIP streaming display: console={self.console is not None}, "
-                f"harmony={self.harmony_processor is not None}, "
+                f"SKIP streaming (buffering): state={self.output_state.value}, "
                 f"text_len={len(text)}"
             )
             return
 
-        # Only print in plain text mode (no console, no harmony)
-        import logging
-
-        logger = logging.getLogger(__name__)
+        # Streaming mode - print immediately
         logger.debug(
-            f"PRINT streaming text: console={self.console is not None}, "
-            f"harmony={self.harmony_processor is not None}, "
-            f"text_len={len(text)}"
+            f"PRINT streaming: state={self.output_state.value}, text_len={len(text)}"
         )
         formatted_text = self.colors.format_agent_response(text)
         print(formatted_text, end="", flush=True)
@@ -117,9 +109,10 @@ class ResponseRenderer:
         """Check if streaming display should be skipped.
 
         Returns:
-            True if using rich mode or harmony processor (requires post-processing)
+            True if in BUFFERING mode (Rich/Harmony)
+            False if in STREAMING mode (plain text)
         """
-        return self.console is not None or self.harmony_processor is not None
+        return self.output_state.should_buffer()
 
     def render_final_response(
         self, display_text: str, first_token_received: bool
@@ -128,8 +121,8 @@ class ResponseRenderer:
 
         Handles:
         - Visual separator (if streaming occurred)
-        - Rich markdown rendering (if enabled)
-        - Plain text with colorization (if rich disabled)
+        - Rich markdown rendering (if console available)
+        - Plain text with colorization (if no console)
 
         Args:
             display_text: The final response text to display
@@ -138,13 +131,14 @@ class ResponseRenderer:
         if not display_text.strip():
             return
 
-        # Add visual separator when streaming occurred
-        if first_token_received:
+        # Add visual separator when streaming occurred in buffering mode
+        # (In streaming mode, text was already printed, no separator needed)
+        if first_token_received and self.output_state.should_buffer():
             print("\n")
             print(self.colors.success("─── Final Response ───"))
 
         # Render using rich markdown or plain text
-        if self.use_rich and self.console:
+        if self.console is not None:
             self._render_rich_markdown(display_text)
         else:
             self._render_plain_text(display_text)
@@ -157,7 +151,7 @@ class ResponseRenderer:
         """
         print()  # New line after separator
         md = Markdown(text)
-        assert self.console is not None  # Only called when use_rich is True
+        assert self.console is not None  # Only called when console exists
         self.console.print(md)
 
     def _render_plain_text(self, text: str) -> None:

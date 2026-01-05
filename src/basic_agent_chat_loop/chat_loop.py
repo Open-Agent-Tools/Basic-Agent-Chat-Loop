@@ -54,17 +54,6 @@ try:
 except ImportError:
     READLINE_AVAILABLE = False
 
-# Platform-specific imports for ESC key detection
-# Note: imports are done inside functions to avoid unused import warnings
-try:
-    if sys.platform != "win32":
-        TERMIOS_AVAILABLE = True
-    else:
-        TERMIOS_AVAILABLE = False
-    ESC_KEY_SUPPORT = True
-except Exception:
-    ESC_KEY_SUPPORT = False
-    TERMIOS_AVAILABLE = False
 
 
 # Components
@@ -82,7 +71,10 @@ from .components import (
     ErrorMessages,
     HarmonyProcessor,
     ResponseRenderer,
+    ResponseStreamer,
     SessionManager,
+    SessionPersister,
+    SessionRestorer,
     SessionState,
     StatusBar,
     StreamingEventParser,
@@ -90,6 +82,7 @@ from .components import (
     TokenTracker,
     UsageExtractor,
     extract_agent_metadata,
+    get_multiline_input,
     load_agent_module,
 )
 
@@ -335,103 +328,6 @@ def save_readline_history(history_file: Optional[Path]) -> bool:
         logger.warning(f"Could not save command history to {history_file}: {e}")
         return False
 
-
-def get_char_with_esc_detection() -> Optional[str]:
-    """
-    Get a single character from stdin with ESC and arrow key detection.
-
-    Returns:
-        The character typed, None if ESC was pressed,
-        "UP_ARROW" if up arrow was pressed, or "" if detection failed
-    """
-    if not ESC_KEY_SUPPORT:
-        return ""  # Fall back to regular input
-
-    try:
-        if sys.platform == "win32":
-            # Windows implementation
-            import msvcrt
-
-            if msvcrt.kbhit():
-                char = msvcrt.getch()
-                if char == b"\xe0":  # Extended key prefix on Windows
-                    if msvcrt.kbhit():
-                        extended = msvcrt.getch()
-                        if extended == b"H":  # Up arrow
-                            return "UP_ARROW"
-                    return ""
-                elif char == b"\x1b":  # ESC key
-                    return None
-                return char.decode("utf-8", errors="ignore")
-            return ""
-        else:
-            # Unix/Linux/Mac implementation
-            import select
-            import termios
-            import tty
-
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
-            try:
-                tty.setraw(fd)
-                char = sys.stdin.read(1)
-                if char == "\x1b":  # ESC or arrow key sequence
-                    # Check if more characters follow (within 100ms)
-                    if select.select([sys.stdin], [], [], 0.1)[0]:
-                        seq = sys.stdin.read(2)
-                        if seq == "[A":  # Up arrow
-                            return "UP_ARROW"
-                        # Other arrow keys would be [B, [C, [D
-                    # Just ESC pressed
-                    return None
-                return char
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    except Exception as e:
-        logger.debug(f"Key detection failed: {e}")
-        return ""  # Fall back to regular input
-
-
-def input_with_esc(prompt: str) -> Optional[str]:
-    """
-    Enhanced input() that detects ESC and arrow key presses.
-
-    Args:
-        prompt: The prompt to display
-
-    Returns:
-        The user's input string, None if ESC was pressed,
-        or "UP_ARROW" if up arrow was pressed
-    """
-    if not ESC_KEY_SUPPORT:
-        # Fall back to regular input
-        return input(prompt)
-
-    # Print the prompt
-    print(prompt, end="", flush=True)
-
-    # Try to detect ESC/arrows on first character
-    first_char = get_char_with_esc_detection()
-
-    if first_char is None:
-        # ESC was pressed
-        print()  # New line after ESC
-        return None
-    elif first_char == "UP_ARROW":
-        # Up arrow was pressed
-        print()  # New line
-        return "UP_ARROW"
-    elif first_char == "":
-        # Detection not available or failed, use regular input
-        # But we already printed the prompt, so use empty prompt
-        return input("")
-    else:
-        # Got a character, print it and continue with regular input
-        print(first_char, end="", flush=True)
-        rest_of_line = input("")
-        return first_char + rest_of_line
-
-
 class ChatLoop:
     """Generic chat loop for any AI agent with async streaming support."""
 
@@ -450,8 +346,7 @@ class ChatLoop:
         self.agent_factory = agent_factory  # Function to create fresh agent instance
         self.agent_path = agent_path or "unknown"  # Store for session metadata
         self.history_file = None
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
+        # Note: total_input_tokens and total_output_tokens moved to ResponseStreamer
 
         # Session state management
         # (query count, conversation, last query/response, etc.)
@@ -712,12 +607,57 @@ class ChatLoop:
             )
 
         # Setup response renderer for displaying agent responses
+        # OutputState is determined automatically from console and harmony_processor
         self.response_renderer = ResponseRenderer(
             agent_name=self.agent_name,
-            use_rich=self.use_rich,
             console=self.console,
             harmony_processor=self.harmony_processor,
             colors_module=Colors,
+        )
+
+        # Setup response streamer for handling agent interactions
+        self.response_streamer = ResponseStreamer(
+            agent=self.agent,
+            agent_name=self.agent_name,
+            response_renderer=self.response_renderer,
+            event_parser=self.event_parser,
+            session_state=self.session_state,
+            usage_extractor=self.usage_extractor,
+            token_tracker=self.token_tracker,
+            audio_notifier=self.audio_notifier,
+            colors_module=Colors,
+            show_thinking=self.show_thinking,
+            show_duration=self.show_duration,
+            show_tokens=self.show_tokens,
+            harmony_processor=self.harmony_processor,
+            status_bar=self.status_bar,
+        )
+
+        # Setup session restorer for resuming previous sessions
+        self.session_restorer = SessionRestorer(
+            agent=self.agent,
+            agent_name=self.agent_name,
+            agent_path=self.agent_path,
+            session_manager=self.session_manager,
+            session_state=self.session_state,
+            token_tracker=self.token_tracker,
+            colors_module=Colors,
+            use_rich=self.use_rich,
+            console=self.console,
+            status_bar=self.status_bar,
+        )
+
+        # Initialize session persister for saving and compacting sessions
+        self.session_persister = SessionPersister(
+            agent=self.agent,
+            agent_name=self.agent_name,
+            agent_path=self.agent_path,
+            session_manager=self.session_manager,
+            session_state=self.session_state,
+            session_restorer=self.session_restorer,
+            token_tracker=self.token_tracker,
+            colors_module=Colors,
+            response_streamer=self.response_streamer,
         )
 
         # Setup command router for parsing user input
@@ -790,327 +730,6 @@ class ChatLoop:
         matches = re.findall(pattern, text, re.DOTALL)
         return [match.strip() for match in matches]
 
-    def _build_restoration_prompt(
-        self,
-        session_id: str,
-        query_count: int,
-        total_tokens: int,
-        summary: str,
-        session_file: Optional[Path] = None,
-        resumed_from: Optional[str] = None,
-    ) -> str:
-        """
-        Build restoration prompt for session resumption or compaction.
-
-        Args:
-            session_id: ID of the session being restored
-            query_count: Number of queries in the session
-            total_tokens: Total tokens used in the session
-            summary: Summary text to include
-            session_file: Optional path to the session file
-            resumed_from: Optional ID of parent session (for resumed sessions)
-
-        Returns:
-            Formatted restoration prompt string
-        """
-        restoration_prompt_parts = [
-            "CONTEXT RESTORATION: You are continuing a previous conversation "
-            f"from {session_id}.\n\n",
-            f"Previous session summary (Session ID: {session_id}, ",
-            f"{query_count} queries, ",
-            f"{self.token_tracker.format_tokens(total_tokens)}):\n\n",
-        ]
-
-        # Add resumed_from info if present
-        if resumed_from:
-            restoration_prompt_parts.append(
-                f"This session was resumed from: {resumed_from}\n\n"
-            )
-
-        # Add session file path if provided
-        if session_file:
-            restoration_prompt_parts.append(
-                f"Previous session file: {session_file}\n\n"
-            )
-
-        restoration_prompt_parts.append(summary)
-        restoration_prompt_parts.append(
-            "\n\nTask: Review the above and provide a brief acknowledgment "
-            "(2-6 sentences or bullets) that includes:\n"
-            "1. Main topics discussed\n"
-            "2. Key decisions made\n"
-            "3. Confirmation you're ready to continue\n\n"
-            "Keep your response concise."
-        )
-
-        return "".join(restoration_prompt_parts)
-
-    def _extract_text_from_event(self, event) -> str:
-        """
-        Extract text content from a streaming event.
-
-        Handles various event formats from different agent implementations:
-        - AWS Bedrock delta events: {"delta": {"text": "..."}}
-        - Data attribute events: {"data": {"text": "..."}}
-        - Simple text events: {"text": "..."}
-        - String events: "..."
-
-        Args:
-            event: Streaming event from agent
-
-        Returns:
-            Extracted text string (empty if no text found)
-        """
-        if isinstance(event, str):
-            return event
-        if isinstance(event, dict):
-            if "delta" in event and "text" in event["delta"]:
-                return event["delta"]["text"]
-            elif "data" in event and "text" in event["data"]:
-                return event["data"]["text"]
-            elif "text" in event:
-                return event["text"]
-        return ""
-
-    async def _stream_response(self, prompt: str) -> str:
-        """
-        Stream response from agent and accumulate text.
-
-        Args:
-            prompt: Prompt to send to agent
-
-        Returns:
-            Complete accumulated response text
-        """
-        response = ""
-        async for event in self.agent.stream_async(prompt):
-            response += self._extract_text_from_event(event)
-        return response
-
-    def _resolve_session_id(self, session_id: str) -> Optional[str]:
-        """
-        Resolve session ID from numeric index or direct ID.
-
-        Args:
-            session_id: Session ID or numeric index (1-based)
-
-        Returns:
-            Actual session ID string, or None if invalid
-        """
-        # If session_id is a number, resolve it from the list
-        if session_id.isdigit():
-            session_num = int(session_id)
-            sessions = self.session_manager.list_sessions(
-                agent_name=self.agent_name, limit=20
-            )
-
-            if session_num < 1 or session_num > len(sessions):
-                print(Colors.error(f"Invalid session number: {session_num}"))
-                print(f"Valid range: 1-{len(sessions)}")
-                return None
-
-            # Get actual session_id from the list (1-indexed)
-            session_info = sessions[session_num - 1]
-            return session_info.session_id
-
-        return session_id
-
-    def _load_and_validate_session(self, session_id: str) -> Optional[dict[str, Any]]:
-        """
-        Load session data and validate it's restorable.
-
-        Args:
-            session_id: Session ID to load
-
-        Returns:
-            Dict with session data (metadata, summary, query_count, total_tokens,
-            session_file), or None if validation fails
-        """
-        # Load markdown file
-        sessions_dir = self.session_manager.sessions_dir
-        session_file = sessions_dir / f"{session_id}.md"
-
-        if not session_file.exists():
-            print(Colors.error(f"⚠️  Session file not found: {session_id}"))
-            return None
-
-        # Extract metadata from markdown
-        metadata = self._extract_metadata_from_markdown(session_file)
-        if not metadata:
-            print(Colors.error("Failed to parse session metadata"))
-            return None
-
-        # Extract summary
-        summary = self._extract_summary_from_markdown(session_file)
-        if not summary:
-            print(
-                Colors.error(
-                    "⚠️  Session can't be resumed (no summary). "
-                    "Starting fresh session..."
-                )
-            )
-            return None
-
-        # Get query count and tokens from metadata or session index
-        query_count = metadata.get("query_count", 0)
-        session_info_data = self.session_manager.get_session_metadata(session_id)
-        total_tokens = session_info_data.total_tokens if session_info_data else 0
-
-        # Display session info
-        print(
-            Colors.success(
-                f"✓ Found: {metadata.get('agent_name', 'Unknown')} - {session_id}"
-            )
-        )
-        print(
-            Colors.system(
-                f"  ({query_count} queries, "
-                f"{self.token_tracker.format_tokens(total_tokens)})"
-            )
-        )
-
-        return {
-            "metadata": metadata,
-            "summary": summary,
-            "query_count": query_count,
-            "total_tokens": total_tokens,
-            "session_file": session_file,
-        }
-
-    def _validate_agent_compatibility(self, metadata: dict) -> bool:
-        """
-        Check if session agent matches current agent, prompt user if different.
-
-        Args:
-            metadata: Session metadata dict
-
-        Returns:
-            True if user confirms continuation, False otherwise
-        """
-        # Check if agent path matches (graceful warning)
-        if "agent_path" in metadata and metadata["agent_path"] != self.agent_path:
-            print(
-                Colors.system(
-                    f"\n⚠️  Different agent detected:\n"
-                    f"  Session created with: {metadata['agent_path']}\n"
-                    f"  Current agent:        {self.agent_path}"
-                )
-            )
-            confirm = input(Colors.system("Continue? (y/n): "))
-            if confirm.lower() != "y":
-                print(Colors.system("Resume cancelled"))
-                return False
-
-        return True
-
-    async def _send_restoration_prompt(
-        self, restoration_prompt: str
-    ) -> tuple[str, float]:
-        """
-        Send restoration prompt to agent and get response.
-
-        Args:
-            restoration_prompt: Prompt to send
-
-        Returns:
-            Tuple of (response_text, duration_seconds)
-        """
-        restoration_start = time.time()
-        restoration_response = ""
-
-        # Check if agent supports streaming
-        if hasattr(self.agent, "stream_async"):
-            # Display with spinner while streaming
-            if self.use_rich and self.console:
-                spinner = Spinner("dots", text="Restoring context...")
-                with Live(spinner, console=self.console, refresh_per_second=10):
-                    restoration_response = await self._stream_response(
-                        restoration_prompt
-                    )
-            else:
-                restoration_response = await self._stream_response(restoration_prompt)
-        else:
-            # Non-streaming agent
-            restoration_response = await asyncio.get_event_loop().run_in_executor(
-                None, self.agent, restoration_prompt
-            )
-
-        restoration_duration = time.time() - restoration_start
-        return restoration_response, restoration_duration
-
-    def _display_restoration_response(self, restoration_response: str) -> None:
-        """
-        Display agent's restoration acknowledgment.
-
-        Args:
-            restoration_response: Agent's response to display
-        """
-        print(Colors.agent(f"{self.agent_name}:"), end=" ")
-        if self.use_rich and self.console:
-            md = Markdown(restoration_response.strip())
-            self.console.print(md)
-        else:
-            print(restoration_response.strip())
-        print()
-
-    def _initialize_restored_session(
-        self,
-        old_session_id: str,
-        new_session_id: str,
-        restoration_response: str,
-        restoration_duration: float,
-        restoration_input_tokens: float,
-        restoration_output_tokens: float,
-        session_data: dict,
-    ) -> None:
-        """
-        Initialize new session with restored context.
-
-        Args:
-            old_session_id: Previous session ID
-            new_session_id: New session ID for resumed session
-            restoration_response: Agent's restoration response
-            restoration_duration: Time taken for restoration
-            restoration_input_tokens: Approximate input tokens
-            restoration_output_tokens: Approximate output tokens
-            session_data: Dict with query_count, total_tokens, summary, session_file
-        """
-        # Initialize new session
-        self.session_state.session_id = new_session_id
-        self._resumed_from = old_session_id  # Track parent session
-        self._previous_summary = session_data["summary"]  # Store for next compaction
-
-        # Reset conversation but add restoration exchange
-        self.session_state.conversation_markdown = [
-            f"\n## Session Restored ({datetime.now().strftime('%H:%M:%S')})\n",
-            f"**Context:** Resumed from {old_session_id} "
-            f"({session_data['query_count']} queries, "
-            f"{self.token_tracker.format_tokens(session_data['total_tokens'])})\n",
-            f"**Previous Session:** {session_data['session_file']}\n\n",
-            f"**{self.agent_name}:** {restoration_response.strip()}\n\n",
-            f"*Time: {restoration_duration:.1f}s | ",
-            f"Tokens: {int(restoration_input_tokens + restoration_output_tokens)} ",
-            f"(in: {int(restoration_input_tokens)}, "
-            f"out: {int(restoration_output_tokens)})*\n\n",
-            "---\n",
-        ]
-
-        # Reset counters (restoration tokens tracked separately)
-        self.session_state.query_count = 0
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
-        self.session_state.session_start_time = time.time()
-
-        # Update status bar if enabled
-        if self.status_bar:
-            self.status_bar.query_count = 0
-            self.status_bar.start_time = self.session_state.session_start_time
-
-        print(Colors.success("✓ Session restored! Ready to continue."))
-        print()
-
-        logger.info(f"Successfully restored session: {old_session_id}")
-
     def _format_conversation_as_markdown(self) -> str:
         """
         Format entire conversation history as markdown.
@@ -1126,88 +745,6 @@ class ChatLoop:
             "---\n",
         ]
         return "".join(header + self.session_state.conversation_markdown)
-
-    async def restore_session(self, session_id: str) -> bool:
-        """
-        Restore a previous session by loading its summary and creating a new session.
-
-        Args:
-            session_id: Session ID or number from sessions list
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            print(Colors.system("\n📋 Loading session..."))
-
-            # Resolve numeric session IDs to actual IDs
-            resolved_id = self._resolve_session_id(session_id)
-            if not resolved_id:
-                return False
-            session_id = resolved_id
-
-            # Load and validate session data
-            session_data = self._load_and_validate_session(session_id)
-            if not session_data:
-                return False
-
-            # Validate agent compatibility
-            if not self._validate_agent_compatibility(session_data["metadata"]):
-                return False
-
-            # Build and send restoration prompt
-            print(Colors.system("🔄 Restoring context..."))
-            print()
-
-            restoration_prompt = self._build_restoration_prompt(
-                session_id=session_id,
-                query_count=session_data["query_count"],
-                total_tokens=session_data["total_tokens"],
-                summary=session_data["summary"],
-                session_file=session_data["session_file"],
-                resumed_from=session_data["metadata"].get("resumed_from"),
-            )
-
-            (
-                restoration_response,
-                restoration_duration,
-            ) = await self._send_restoration_prompt(restoration_prompt)
-
-            # Display agent acknowledgment
-            self._display_restoration_response(restoration_response)
-
-            # Track restoration tokens (approximate - word count * ratio)
-            restoration_input_tokens = (
-                len(restoration_prompt.split()) * TOKEN_TO_WORD_RATIO
-            )
-            restoration_output_tokens = (
-                len(restoration_response.split()) * TOKEN_TO_WORD_RATIO
-            )
-
-            # Create new session ID for resumed session
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe_agent_name = (
-                self.agent_name.lower().replace(" ", "_").replace("/", "_")
-            )
-            new_session_id = f"{safe_agent_name}_{timestamp}"
-
-            # Initialize new session with restored context
-            self._initialize_restored_session(
-                old_session_id=session_id,
-                new_session_id=new_session_id,
-                restoration_response=restoration_response,
-                restoration_duration=restoration_duration,
-                restoration_input_tokens=restoration_input_tokens,
-                restoration_output_tokens=restoration_output_tokens,
-                session_data=session_data,
-            )
-
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to restore session: {e}", exc_info=True)
-            print(Colors.error(f"\n⚠️  Failed to restore session: {e}"))
-            return False
 
     def _extract_summary_from_markdown(self, file_path: Path) -> Optional[str]:
         """
@@ -1275,809 +812,13 @@ class ChatLoop:
             logger.warning(f"Failed to extract metadata: {e}")
             return None
 
-    async def _generate_session_summary(
-        self, previous_summary: Optional[str] = None
-    ) -> Optional[str]:
-        """
-        Generate a structured summary of the current session.
-
-        Args:
-            previous_summary: Optional summary from parent session for
-                progressive summarization
-
-        Returns:
-            Summary text with HTML markers, or None if generation failed
-        """
-        try:
-            # Build the summarization prompt
-            prompt_parts = ["Generate a progressive session summary:\n\n"]
-
-            # Add background context if there's a previous summary
-            if previous_summary:
-                prompt_parts.append(
-                    "**Background Context:** Condense this previous summary to 1-2 "
-                    "sentences:\n"
-                )
-                prompt_parts.append(previous_summary)
-                prompt_parts.append("\n\n")
-
-            # Add current session conversation
-            prompt_parts.append("**Current Session:**\n")
-            prompt_parts.extend(self.session_state.conversation_markdown)
-            prompt_parts.append("\n\n")
-
-            # Add instructions
-            prompt_parts.append(
-                "Create a structured summary:\n\n**Background Context:** "
-            )
-            if previous_summary:
-                prompt_parts.append(
-                    "[Condense the previous summary to 1-2 sentences]\n\n"
-                )
-            else:
-                prompt_parts.append("Initial session.\n\n")
-
-            prompt_parts.append(
-                "**Current Session Summary:**\n"
-                "**Topics Discussed:**\n"
-                "- [bullet points about THIS session]\n\n"
-                "**Decisions Made:**\n"
-                "- [bullet points about THIS session]\n\n"
-                "**Pending:**\n"
-                "- [what's still open]\n\n"
-                "Aim for less than 500 words, be complete but terse, no fluff.\n"
-                "Use the exact format with HTML comment markers:\n\n"
-                "<!-- SESSION_SUMMARY_START -->\n"
-                "[your summary here]\n"
-                "<!-- SESSION_SUMMARY_END -->"
-            )
-
-            summary_prompt = "".join(prompt_parts)
-
-            # Call agent to generate summary
-            print(
-                Colors.system("📝 Generating session summary... "), end="", flush=True
-            )
-
-            summary_response = ""
-
-            # Check if agent supports streaming
-            if hasattr(self.agent, "stream_async"):
-                # Use streaming
-                summary_response = await self._stream_response(summary_prompt)
-            else:
-                # Non-streaming agent
-                summary_response = await asyncio.get_event_loop().run_in_executor(
-                    None, self.agent, summary_prompt
-                )
-
-            print("✓")
-
-            # Validate that summary has the required markers
-            if (
-                "<!-- SESSION_SUMMARY_START -->" not in summary_response
-                or "<!-- SESSION_SUMMARY_END -->" not in summary_response
-            ):
-                logger.warning("Summary missing required HTML markers")
-                return None
-
-            return summary_response.strip()
-
-        except asyncio.TimeoutError:
-            logger.warning("Summary generation timed out")
-            print("⏱️ timeout")
-            return None
-        except Exception as e:
-            logger.warning(f"Failed to generate summary: {e}", exc_info=True)
-            print(f"⚠️ failed ({e})")
-            return None
-
-    async def save_conversation(
-        self, session_id: Optional[str] = None, generate_summary: bool = False
-    ) -> bool:
-        """
-        Save conversation as markdown file with optional auto-generated summary.
-
-        Args:
-            session_id: Optional custom session ID.
-                Uses self.session_state.session_id if not provided.
-            generate_summary: Whether to generate an AI summary of the session.
-                Defaults to False to avoid generating summaries after every turn.
-                Should be True when explicitly compacting or ending a session.
-
-        Returns:
-            True if save was successful, False otherwise
-        """
-        # Only save if there's conversation content
-        if not self.session_state.conversation_markdown:
-            logger.debug("No conversation to save")
-            return False
-
-        # Use provided session_id or fall back to self.session_state.session_id
-        save_session_id = session_id or self.session_state.session_id
-
-        try:
-            # Generate summary for the session (only if requested)
-            summary = None
-            if generate_summary:
-                summary = await self._generate_session_summary(
-                    previous_summary=getattr(self, "_previous_summary", None)
-                )
-
-            # Ensure sessions directory exists
-            sessions_dir = self.session_manager.sessions_dir
-            sessions_dir.mkdir(parents=True, exist_ok=True)
-
-            # Build full markdown with header
-            md_path = sessions_dir / f"{save_session_id}.md"
-            total_tokens = self.total_input_tokens + self.total_output_tokens
-
-            markdown_content = [
-                f"# {self.agent_name} Conversation\n\n",
-                f"**Session ID:** {save_session_id}\n\n",
-                f"**Date:** {datetime.now().isoformat()}\n\n",
-                f"**Agent:** {self.agent_name}\n\n",
-                f"**Agent Path:** {self.agent_path}\n\n",
-                f"**Total Queries:** {self.session_state.query_count}\n\n",
-            ]
-
-            # Add "Resumed from" info if this session was resumed
-            if hasattr(self, "_resumed_from") and self._resumed_from:
-                markdown_content.append(f"**Resumed From:** {self._resumed_from}\n\n")
-
-            markdown_content.append("---\n")
-
-            # Add conversation content
-            markdown_content.extend(self.session_state.conversation_markdown)
-
-            # Add summary if generated successfully
-            if summary:
-                markdown_content.append("\n")
-                markdown_content.append(summary)
-                markdown_content.append("\n")
-            elif generate_summary:
-                # Only warn if we tried to generate a summary but it failed
-                logger.warning("Session saved without summary - resume will not work")
-                print(
-                    Colors.system(
-                        "  ⚠️  Summary generation failed - session cannot be resumed"
-                    )
-                )
-
-            # Write markdown file
-            with open(md_path, "w", encoding="utf-8") as f:
-                f.writelines(markdown_content)
-
-            # Set secure permissions (owner read/write only)
-            md_path.chmod(0o600)
-
-            # Update session index
-            first_query = (
-                self.session_state.conversation_markdown[1]
-                .replace("**You:** ", "")
-                .strip()
-                if len(self.session_state.conversation_markdown) > 1
-                else ""
-            )
-            preview = first_query[:100]
-            if len(first_query) > 100:
-                preview += "..."
-
-            self.session_manager._update_index_simple(
-                session_id=save_session_id,
-                agent_name=self.agent_name,
-                agent_path=self.agent_path,
-                query_count=self.session_state.query_count,
-                total_tokens=total_tokens,
-                preview=preview,
-            )
-
-            logger.info(f"Conversation saved: {save_session_id}")
-            return True
-
-        except Exception as e:
-            logger.warning(f"Failed to save conversation: {e}", exc_info=True)
-            print(Colors.error(f"\n⚠️  Could not save conversation: {e}"))
-            return False
-
-    def _show_save_confirmation(self, session_id: str):
-        """Show user-friendly save confirmation with file paths."""
-        save_dir = self.session_manager.sessions_dir
-        md_path = save_dir / f"{session_id}.md"
-
-        print()
-        print(Colors.success("✓ Conversation saved successfully!"))
-        print()
-        print(Colors.system(f"  Session ID: {session_id}"))
-        print(Colors.system(f"  File:       {md_path}"))
-        print(Colors.system(f"  Queries:    {self.session_state.query_count}"))
-
-        # Show token count if available
-        total_tokens = self.total_input_tokens + self.total_output_tokens
-        if total_tokens > 0:
-            print(
-                Colors.system(
-                    f"  Tokens:     {self.token_tracker.format_tokens(total_tokens)}"
-                )
-            )
-        print()
-
-    async def _handle_compact_command(self):
-        """
-        Compact current session and continue in new session.
-
-        This command:
-        1. Saves current session with summary
-        2. Extracts the summary
-        3. Starts a new session with the summary as context
-        4. Agent acknowledges the restored context
-        """
-        # Check if there's anything to compact
-        if not self.session_state.conversation_markdown:
-            print(
-                Colors.system("No conversation to compact yet. Start chatting first!")
-            )
-            return
-
-        try:
-            # Save current session with summary
-            print(Colors.system("\n📋 Compacting current session..."))
-            old_session_id = self.session_state.session_id
-            old_query_count = self.session_state.query_count
-            old_total_tokens = self.total_input_tokens + self.total_output_tokens
-
-            # Generate summary for compaction
-            success = await self.save_conversation(generate_summary=True)
-            if not success:
-                print(Colors.error("Failed to save session for compaction"))
-                return
-
-            # Extract summary from saved file
-            sessions_dir = self.session_manager.sessions_dir
-            saved_file = sessions_dir / f"{old_session_id}.md"
-            summary = self._extract_summary_from_markdown(saved_file)
-
-            if not summary:
-                print(
-                    Colors.error(
-                        "Failed to extract summary - session saved but cannot compact"
-                    )
-                )
-                return
-
-            # Show save confirmation
-            print(Colors.success(f"✓ Saved session: {old_session_id}"))
-            print(
-                Colors.system(
-                    f"  ({old_query_count} queries, "
-                    f"{self.token_tracker.format_tokens(old_total_tokens)})"
-                )
-            )
-
-            # Build and send restoration prompt
-            print(Colors.system("🔄 Starting new session with summary..."))
-            print()
-
-            restoration_prompt = self._build_restoration_prompt(
-                session_id=old_session_id,
-                query_count=old_query_count,
-                total_tokens=old_total_tokens,
-                summary=summary,
-                session_file=saved_file,
-            )
-
-            (
-                restoration_response,
-                restoration_duration,
-            ) = await self._send_restoration_prompt(restoration_prompt)
-
-            # Display agent acknowledgment
-            self._display_restoration_response(restoration_response)
-
-            # Track restoration tokens (approximate - word count * ratio)
-            restoration_input_tokens = (
-                len(restoration_prompt.split()) * TOKEN_TO_WORD_RATIO
-            )
-            restoration_output_tokens = (
-                len(restoration_response.split()) * TOKEN_TO_WORD_RATIO
-            )
-
-            # Create new session ID
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe_agent_name = (
-                self.agent_name.lower().replace(" ", "_").replace("/", "_")
-            )
-            new_session_id = f"{safe_agent_name}_{timestamp}"
-
-            # Initialize new session with compacted context
-            session_data = {
-                "query_count": old_query_count,
-                "total_tokens": old_total_tokens,
-                "summary": summary,
-                "session_file": saved_file,
-            }
-
-            self._initialize_restored_session(
-                old_session_id=old_session_id,
-                new_session_id=new_session_id,
-                restoration_response=restoration_response,
-                restoration_duration=restoration_duration,
-                restoration_input_tokens=restoration_input_tokens,
-                restoration_output_tokens=restoration_output_tokens,
-                session_data=session_data,
-            )
-
-            print(Colors.success("✓ Session compacted and ready to continue!"))
-            print()
-
-        except Exception as e:
-            logger.error(f"Failed to compact session: {e}", exc_info=True)
-            print(Colors.error(f"\n⚠️  Compaction failed: {e}"))
-            print(Colors.system("Your previous session was saved successfully."))
-            print(Colors.system("Continuing in current session..."))
-
-    async def get_multiline_input(self) -> str:
-        """
-        Get multi-line input from user.
-
-        Features:
-        - Empty line submits
-        - Ctrl+D or .cancel to cancel input
-        - Up arrow or .back to edit previous line
-        - Saves to history as single entry
-        """
-        lines: list[str] = []
-        print(Colors.system("Multi-line mode:"))
-        print(Colors.system("  • Empty line to submit"))
-        print(Colors.system("  • Ctrl+D or .cancel to cancel"))
-        if ESC_KEY_SUPPORT:
-            print(Colors.system("  • ↑ or .back to edit previous line"))
-        else:
-            print(Colors.system("  • .back to edit previous line"))
-
-        # Variable to hold text for pre-input hook
-        prefill_text = None
-
-        def startup_hook():
-            """Readline startup hook to pre-fill input buffer."""
-            nonlocal prefill_text
-            if prefill_text is not None:
-                readline.insert_text(prefill_text)
-                readline.redisplay()
-
-        # Set the startup hook if readline is available
-        if READLINE_AVAILABLE:
-            readline.set_startup_hook(startup_hook)
-
-        try:
-            while True:
-                try:
-                    # Show line number for context
-                    line_num = len(lines) + 1
-                    prompt = Colors.user(f"{line_num:2d}│ ")
-
-                    # Use input_with_esc for ESC/arrow key detection
-                    line = input_with_esc(prompt)
-
-                    # Check if ESC was pressed (returns None)
-                    if line is None:
-                        print(Colors.system("✗ Multi-line input cancelled (ESC)"))
-                        return ""
-
-                    # Check if up arrow was pressed - edit previous line
-                    if line == "UP_ARROW":
-                        if lines:
-                            # Pop the last line and let user edit it
-                            prev_line = lines.pop()
-                            print(Colors.system(f"↑ Editing line {len(lines) + 1}..."))
-                            # Set prefill text for next input
-                            prefill_text = prev_line
-                        else:
-                            print(Colors.system("⚠ No previous line to edit"))
-                        continue
-
-                    # Clear prefill text after each input
-                    prefill_text = None
-
-                    # Check for cancel command
-                    if line.strip() == ".cancel":
-                        print(Colors.system("✗ Multi-line input cancelled"))
-                        return ""
-
-                    # Check for back command - edit previous line
-                    if line.strip() == ".back":
-                        if lines:
-                            # Pop the last line and let user edit it
-                            prev_line = lines.pop()
-                            print(Colors.system(f"↑ Editing line {len(lines) + 1}..."))
-                            # Set prefill text for next input
-                            prefill_text = prev_line
-                        else:
-                            print(Colors.system("⚠ No previous line to edit"))
-                        continue
-
-                    # Empty line submits (only if we have content)
-                    if not line.strip():
-                        if lines:
-                            break
-                        else:
-                            # First line can't be empty
-                            print(Colors.system("⚠ Enter some text or use .cancel"))
-                            continue
-
-                    # Add the line
-                    lines.append(line)
-
-                except EOFError:
-                    # Ctrl+D cancels
-                    print(Colors.system("\n✗ Multi-line input cancelled (Ctrl+D)"))
-                    return ""
-                except KeyboardInterrupt:
-                    # Ctrl+C cancels
-                    print(Colors.system("\n✗ Multi-line input cancelled (Ctrl+C)"))
-                    return ""
-
-            result = "\n".join(lines)
-
-            # Save to readline history as single entry for later recall
-            if result and READLINE_AVAILABLE:
-                readline.add_history(result)
-
-            print(Colors.success(f"✓ {len(lines)} lines captured"))
-            return result
-
-        finally:
-            # Clean up the startup hook
-            if READLINE_AVAILABLE:
-                readline.set_startup_hook(None)
-
-    async def _show_thinking_indicator(self, stop_event: asyncio.Event):
-        """Show thinking indicator while waiting for response."""
-        if not self.show_thinking:
-            # Just wait silently
-            while not stop_event.is_set():
-                await asyncio.sleep(0.1)
-            return
-
-        if not self.use_rich:
-            # Fallback to simple dots animation
-            print(Colors.system("Thinking"), end="", flush=True)
-            dot_count = 0
-            while not stop_event.is_set():
-                print(".", end="", flush=True)
-                dot_count += 1
-                if dot_count >= 3:
-                    print("\b\b\b   \b\b\b", end="", flush=True)  # Clear dots
-                    dot_count = 0
-                await asyncio.sleep(0.5)
-            print("\r" + " " * 15 + "\r", end="", flush=True)  # Clear line
-        else:
-            # Use rich spinner with configured style
-            spinner_style = (
-                self.spinner_style if hasattr(self, "spinner_style") else "dots"
-            )
-            with Live(
-                Spinner(spinner_style, text=Colors.system("Thinking...")),
-                console=self.console,
-                refresh_per_second=10,
-            ):
-                while not stop_event.is_set():
-                    await asyncio.sleep(0.1)
-
-    async def _stream_agent_response(self, query: str) -> dict[str, Any]:
-        """
-        Stream agent response asynchronously.
-
-        Returns:
-            Dict with 'duration' and optional 'usage' (input_tokens, output_tokens)
-        """
-        start_time = time.time()
-        response_text = []  # Collect response for rich rendering
-        response_obj = None  # Store the response object for token extraction
-
-        # Render agent name header
-        self.response_renderer.render_agent_header()
-
-        # Setup thinking indicator
-        stop_thinking = asyncio.Event()
-        thinking_task = None
-
-        try:
-            # Start thinking indicator if enabled
-            if self.show_thinking:
-                thinking_task = asyncio.create_task(
-                    self._show_thinking_indicator(stop_thinking)
-                )
-
-            first_token_received = False
-
-            # Log request payload sent to agent
-            logger.debug("=" * 60)
-            logger.debug("REQUEST TO AGENT:")
-            logger.debug(f"Query: {_serialize_for_logging(query)}")
-            logger.debug("=" * 60)
-
-            # Check if agent supports streaming
-            if hasattr(self.agent, "stream_async"):
-                async for event in self.agent.stream_async(query):
-                    # Store last event for token extraction
-                    response_obj = event
-
-                    # Log streaming event received from agent
-                    logger.debug("STREAMING EVENT FROM AGENT:")
-                    logger.debug(_serialize_for_logging(event))
-
-                    # Stop thinking indicator on first token
-                    if not first_token_received:
-                        stop_thinking.set()
-                        if thinking_task:
-                            await thinking_task
-                        first_token_received = True
-
-                    # Extract text from streaming event using event parser
-                    text_to_add = self.event_parser.parse_event(event)
-
-                    # Append text if found and display it
-                    if text_to_add:
-                        response_text.append(text_to_add)
-                        # Display streaming text (renderer handles skip logic)
-                        self.response_renderer.render_streaming_text(text_to_add)
-            else:
-                # Fallback to non-streaming call if streaming not supported
-                response = await asyncio.get_event_loop().run_in_executor(
-                    None, self.agent, query
-                )
-                response_obj = response  # Store for token extraction
-
-                # Log response received from agent
-                logger.debug("RESPONSE FROM AGENT:")
-                logger.debug(_serialize_for_logging(response))
-                logger.debug("=" * 60)
-
-                # Stop thinking indicator
-                stop_thinking.set()
-                if thinking_task:
-                    await thinking_task
-
-                # Format and display response
-                if hasattr(response, "message"):
-                    message = response.message
-                    if isinstance(message, dict) and "content" in message:
-                        content = message["content"]
-                        if isinstance(content, list):
-                            for block in content:
-                                if isinstance(block, dict) and "text" in block:
-                                    response_text.append(block["text"])
-                        else:
-                            response_text.append(str(content))
-                    else:
-                        response_text.append(str(message))
-                elif isinstance(response, str):
-                    response_text.append(response)
-                else:
-                    response_text.append(str(response))
-
-            # Log final response object (for streaming, this is the last event)
-            if hasattr(self.agent, "stream_async"):
-                logger.debug("FINAL RESPONSE OBJECT (last streaming event):")
-                logger.debug(_serialize_for_logging(response_obj))
-                logger.debug("=" * 60)
-
-            # Render collected response
-            # Concatenate streaming chunks directly (they may break mid-word)
-            full_response = "".join(response_text)
-
-            # Track if we already printed during streaming (to prevent duplicates)
-            # Use renderer's method to determine if streaming was skipped
-            # (skipped means we need to print in final response)
-            already_printed_streaming = (
-                first_token_received
-                and not self.response_renderer.should_skip_streaming_display()
-            )
-
-            # Process through Harmony if available
-            display_text = full_response
-            if self.harmony_processor:
-                # Debug: Log response object structure
-                # (safely handle mocks/test objects)
-                try:
-                    logger.debug(f"Response object type: {type(response_obj)}")
-                    logger.debug(f"Response object attrs: {dir(response_obj)[:20]}")
-                    if response_obj and hasattr(response_obj, "choices"):
-                        try:
-                            logger.debug(
-                                f"Response has choices: {len(response_obj.choices)}"
-                            )
-                        except TypeError:
-                            logger.debug(
-                                "Response has choices attribute (non-sequence)"
-                            )
-
-                        if response_obj.choices:
-                            choice = response_obj.choices[0]
-                            logger.debug(f"Choice type: {type(choice)}")
-                            logger.debug(f"Choice attrs: {dir(choice)[:20]}")
-                            if hasattr(choice, "logprobs"):
-                                logger.debug(
-                                    f"Has logprobs: {choice.logprobs is not None}"
-                                )
-                            if hasattr(choice, "message"):
-                                logger.debug(f"Message type: {type(choice.message)}")
-                except Exception as e:
-                    logger.debug(
-                        f"Error logging response structure (safe to ignore): {e}"
-                    )
-
-                processed = self.harmony_processor.process_response(
-                    full_response, metadata=response_obj
-                )
-                display_text = self.harmony_processor.format_for_display(processed)
-
-                # Log if Harmony-specific features detected
-                if processed.get("has_reasoning"):
-                    logger.debug("Harmony response contains reasoning")
-                if processed.get("has_tools"):
-                    logger.debug("Harmony response contains tool calls")
-
-            # Store last response for copy commands (what user sees)
-            self.session_state.update_last_response(display_text)
-
-            #  Render final response (only if not already printed during streaming)
-            if not already_printed_streaming:
-                self.response_renderer.render_final_response(
-                    display_text=display_text, first_token_received=first_token_received
-                )
-
-            duration = time.time() - start_time
-
-            # Extract token usage and metrics if available
-            usage_result = self.usage_extractor.extract_token_usage(response_obj)
-            cycle_count = self.usage_extractor.extract_cycle_count(response_obj)
-            tool_count = self.usage_extractor.extract_tool_count(response_obj)
-
-            # Track tokens (always, for session summary)
-            if usage_result:
-                usage_info, is_accumulated = usage_result
-
-                if is_accumulated:
-                    # AWS Strands accumulated_usage is cumulative across session
-                    # Calculate delta from last query
-                    current_input = usage_info["input_tokens"]
-                    current_output = usage_info["output_tokens"]
-
-                    (
-                        delta_input,
-                        delta_output,
-                    ) = self.session_state.update_accumulated_usage(
-                        current_input, current_output
-                    )
-
-                    # Add only the delta
-                    if delta_input > 0 or delta_output > 0:
-                        self.token_tracker.add_usage(delta_input, delta_output)
-                else:
-                    # Non-accumulated usage - add directly
-                    self.token_tracker.add_usage(
-                        usage_info["input_tokens"], usage_info["output_tokens"]
-                    )
-
-                # Update status bar
-                if self.status_bar:
-                    self.status_bar.update_tokens(self.token_tracker.get_total_tokens())
-
-            # Display duration and token info
-            # Determine what to show
-            show_info_line = (
-                self.show_duration
-                or (self.show_tokens and usage_info)
-                or cycle_count
-                or tool_count
-            )
-
-            if show_info_line:
-                print(f"\n{Colors.DIM}{'-' * 60}{Colors.RESET}")
-
-                info_parts = []
-                if self.show_duration:
-                    info_parts.append(f"Time: {duration:.1f}s")
-
-                # Show agent metrics (cycles, tools) - always show if available
-                if cycle_count is not None and cycle_count > 0:
-                    cycle_word = "cycle" if cycle_count == 1 else "cycles"
-                    info_parts.append(f"{cycle_count} {cycle_word}")
-
-                if tool_count is not None and tool_count > 0:
-                    tool_word = "tool" if tool_count == 1 else "tools"
-                    info_parts.append(f"{tool_count} {tool_word}")
-
-                # Only show tokens if show_tokens is enabled
-                if self.show_tokens and usage_info:
-                    input_tok = usage_info["input_tokens"]
-                    output_tok = usage_info["output_tokens"]
-                    total_tok = input_tok + output_tok
-
-                    # Format tokens
-                    token_str = (
-                        f"Tokens: {self.token_tracker.format_tokens(total_tok)} "
-                    )
-                    token_str += f"(in: {self.token_tracker.format_tokens(input_tok)}, "
-                    token_str += f"out: {self.token_tracker.format_tokens(output_tok)})"
-                    info_parts.append(token_str)
-
-                if info_parts:  # Only print if we have something to show
-                    print(Colors.system(" │ ".join(info_parts)))
-
-            logger.info(f"Query completed successfully in {duration:.1f}s")
-
-            # Track conversation as markdown for saving
-            query_num = self.session_state.increment_query_count()
-            entry_timestamp = datetime.now().strftime("%H:%M:%S")
-
-            # Build markdown entry
-            md_entry = [
-                f"\n## Query {query_num} ({entry_timestamp})\n",
-                f"**You:** {query}\n\n",
-                f"**{self.agent_name}:** {display_text}\n\n",
-            ]
-
-            # Add metadata
-            metadata_parts = [f"Time: {duration:.1f}s"]
-            if usage_info:
-                input_tok = usage_info.get("input_tokens", 0)
-                output_tok = usage_info.get("output_tokens", 0)
-                total_tok = input_tok + output_tok
-                self.total_input_tokens += input_tok
-                self.total_output_tokens += output_tok
-                if total_tok > 0:
-                    tok_str = (
-                        f"Tokens: {total_tok:,} "
-                        f"(in: {input_tok:,}, out: {output_tok:,})"
-                    )
-                    metadata_parts.append(tok_str)
-
-            md_entry.append(f"*{' | '.join(metadata_parts)}*\n\n")
-            md_entry.append("---\n")
-
-            self.session_state.conversation_markdown.extend(md_entry)
-
-            # Save conversation incrementally after each query-response
-            await self.save_conversation()
-
-            # Play audio notification on agent turn completion
-            self.audio_notifier.play()
-
-            return {"duration": duration, "usage": usage_info}
-
-        except Exception as e:
-            duration = time.time() - start_time
-            print(f"\n{Colors.DIM}{'-' * 60}{Colors.RESET}")
-            print(Colors.error(f"{self.agent_name}: Query failed - {e}"))
-            print(
-                Colors.system(
-                    "Try rephrasing your question or check the logs for details."
-                )
-            )
-            logger.error(
-                f"Agent query failed after {duration:.1f}s: {e}", exc_info=True
-            )
-
-            return {"duration": duration, "usage": None}
-
-        finally:
-            # Always cleanup thinking indicator, even on KeyboardInterrupt
-            stop_thinking.set()
-            if thinking_task and not thinking_task.done():
-                thinking_task.cancel()
-                try:
-                    await thinking_task
-                except asyncio.CancelledError:
-                    pass  # Expected when cancelling
-
     async def process_query(self, query: str):
         """Process query through agent with streaming and error recovery."""
         for attempt in range(1, self.max_retries + 1):
             try:
-                await self._stream_agent_response(query)
+                await self.response_streamer.stream_agent_response(
+                    query, save_conversation_callback=self.session_persister.save_conversation
+                )
                 return  # Success, exit retry loop
 
             except asyncio.TimeoutError:
@@ -2169,7 +910,9 @@ class ChatLoop:
                         choice = input(Colors.system(prompt)).strip()
 
                         if choice:
-                            success = await self.restore_session(choice)
+                            success = await self.session_restorer.restore_session(
+                                choice, self.response_streamer
+                            )
                             if success:
                                 # Display banner after successful resume
                                 self.display_manager.display_banner()
@@ -2189,7 +932,9 @@ class ChatLoop:
                         self.display_manager.display_banner()
             else:
                 # Direct resume with specific session ID/number
-                success = await self.restore_session(session_ref)
+                success = await self.session_restorer.restore_session(
+                    session_ref, self.response_streamer
+                )
                 if success:
                     # Display banner after successful resume
                     self.display_manager.display_banner()
@@ -2248,7 +993,7 @@ class ChatLoop:
 
                     elif command_result.command_type == CommandType.COMPACT:
                         # Compact session command
-                        await self._handle_compact_command()
+                        await self.session_persister.handle_compact_command()
                         continue
 
                     elif command_result.command_type == CommandType.COPY:
@@ -2330,7 +1075,9 @@ class ChatLoop:
                             print(f"\n{Colors.system(usage_msg)}")
                             continue
 
-                        success = await self.restore_session(session_ref)
+                        success = await self.session_restorer.restore_session(
+                            session_ref, self.response_streamer
+                        )
 
                         if success:
                             # Show banner after resume
@@ -2521,7 +1268,7 @@ class ChatLoop:
 
                     elif command_result.command_type == CommandType.MULTILINE:
                         # Multi-line input trigger
-                        user_input = await self.get_multiline_input()
+                        user_input = await get_multiline_input()
                         if not user_input.strip():
                             continue
                         # Fall through to process as query
@@ -2581,9 +1328,9 @@ class ChatLoop:
 
             # Final save on exit with summary
             # (incremental saves happen after each query without summaries)
-            success = await self.save_conversation(generate_summary=True)
+            success = await self.session_persister.save_conversation(generate_summary=True)
             if success:
-                self._show_save_confirmation(self.session_state.session_id)
+                self.session_persister.show_save_confirmation(self.session_state.session_id)
 
             # Cleanup agent if it has cleanup method
             if hasattr(self.agent, "cleanup"):

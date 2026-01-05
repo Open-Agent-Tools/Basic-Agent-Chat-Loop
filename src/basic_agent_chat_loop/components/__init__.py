@@ -17,8 +17,12 @@ from .dependency_manager import DependencyManager
 from .display_manager import DisplayManager
 from .error_messages import ErrorMessages
 from .harmony_processor import HarmonyProcessor
+from .input_handler import get_multiline_input, input_with_esc
 from .response_renderer import ResponseRenderer
+from .response_streamer import ResponseStreamer
 from .session_manager import SessionInfo, SessionManager
+from .session_persister import SessionPersister
+from .session_restorer import SessionRestorer
 from .session_state import SessionState
 from .streaming_event_parser import StreamingEventParser
 from .template_manager import TemplateManager
@@ -39,8 +43,11 @@ __all__ = [
     "AliasManager",
     "HarmonyProcessor",
     "ResponseRenderer",
+    "ResponseStreamer",
     "SessionInfo",
     "SessionManager",
+    "SessionPersister",
+    "SessionRestorer",
     "SessionState",
     "StatusBar",
     "StreamingEventParser",
@@ -48,5 +55,7 @@ __all__ = [
     "TokenTracker",
     "UsageExtractor",
     "extract_agent_metadata",
+    "get_multiline_input",
+    "input_with_esc",
     "load_agent_module",
 ]
