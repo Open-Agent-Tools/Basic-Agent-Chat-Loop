@@ -1868,11 +1868,11 @@ class ChatLoop:
             full_response = "".join(response_text)
 
             # Track if we already printed during streaming (to prevent duplicates)
-            # Note: Don't consider it printed if harmony will transform the output
+            # Use renderer's method to determine if streaming was skipped
+            # (skipped means we need to print in final response)
             already_printed_streaming = (
                 first_token_received
-                and not self.use_rich
-                and not self.harmony_processor
+                and not self.response_renderer.should_skip_streaming_display()
             )
 
             # Process through Harmony if available

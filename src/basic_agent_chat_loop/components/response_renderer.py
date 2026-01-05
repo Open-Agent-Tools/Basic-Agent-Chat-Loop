@@ -86,10 +86,15 @@ class ResponseRenderer:
         Args:
             text: Text chunk to display
         """
-        if not self.use_rich and not self.harmony_processor:
-            # Apply colorization for tool messages during streaming
-            formatted_text = self.colors.format_agent_response(text)
-            print(formatted_text, end="", flush=True)
+        # Skip streaming display if we have a console object (Rich mode)
+        # or harmony processor (needs post-processing)
+        # Check console directly as it's more reliable than use_rich flag
+        if self.console is not None or self.harmony_processor is not None:
+            return
+
+        # Only print in plain text mode (no console, no harmony)
+        formatted_text = self.colors.format_agent_response(text)
+        print(formatted_text, end="", flush=True)
 
     def should_skip_streaming_display(self) -> bool:
         """Check if streaming display should be skipped.
@@ -97,7 +102,7 @@ class ResponseRenderer:
         Returns:
             True if using rich mode or harmony processor (requires post-processing)
         """
-        return self.use_rich or self.harmony_processor is not None
+        return self.console is not None or self.harmony_processor is not None
 
     def render_final_response(
         self, display_text: str, first_token_received: bool
