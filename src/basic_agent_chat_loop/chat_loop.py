@@ -529,7 +529,7 @@ class ChatLoop:
 
         # Log terminal capabilities for debugging
         if self.console:
-            logger.debug(f"Rich Console initialized:")
+            logger.debug("Rich Console initialized:")
             logger.debug(f"  is_terminal: {self.console.is_terminal}")
             logger.debug(f"  color_system: {self.console.color_system}")
             logger.debug(f"  legacy_windows: {self.console.legacy_windows}")

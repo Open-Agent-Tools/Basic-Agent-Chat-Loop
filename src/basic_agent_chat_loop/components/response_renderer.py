@@ -61,8 +61,9 @@ class ResponseRenderer:
 
         # Debug logging for Windows troubleshooting
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.debug(f"ResponseRenderer initialized:")
+        logger.debug("ResponseRenderer initialized:")
         logger.debug(f"  use_rich (param): {use_rich}")
         logger.debug(f"  RICH_AVAILABLE: {RICH_AVAILABLE}")
         logger.debug(f"  self.use_rich: {self.use_rich}")
