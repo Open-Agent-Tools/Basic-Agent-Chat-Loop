@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1-beta.2] - 2026-01-05
+
+### Fixed
+- **Duplicate Text Output** - Resolved text appearing twice in terminal (streaming + final render)
+  - Changed `render_streaming_text()` to check console object directly instead of `use_rich` flag
+  - The `use_rich` flag could be incorrectly set or out of sync with actual console state
+  - Now checks if `console is not None` as single source of truth for Rich availability
+  - If console exists → skip streaming output (Rich will render later)
+  - If console is None → print streaming text (plain text mode)
+  - Updated `chat_loop.py` to use renderer's `should_skip_streaming_display()` method for consistency
+  - Fixes user-reported issue: "text is still double printing to the terminal"
+  - Changes in response_renderer.py (lines 89-97, 105) and chat_loop.py (lines 1870-1876)
+
+### Technical Details
+The root cause was using the `use_rich` flag to determine whether to skip streaming output. This flag is set during initialization and could become out of sync with the actual console object state. By checking the console object directly (`self.console is not None`), we ensure the decision is based on the actual availability of Rich rendering, not a potentially stale flag value.
+
 ## [1.7.1-beta.1] - 2026-01-05
 
 ### Fixed
@@ -693,6 +709,7 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
+[1.7.1-beta.2]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.7.1-beta.2
 [1.7.1-beta.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.7.1-beta.1
 [1.7.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.7.0
 [1.6.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.6.1
