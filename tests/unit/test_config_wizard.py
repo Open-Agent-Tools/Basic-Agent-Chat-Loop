@@ -358,7 +358,7 @@ class TestConfigureFeatures:
     @patch("builtins.input")
     def test_configure_features_custom_values(self, mock_input, wizard):
         """Test configuring features with custom values."""
-        # Updated for new display_mode: show_tokens, show_metadata, display_mode, readline
+        # Updated for new display_mode: tokens, metadata, mode, readline
         mock_input.side_effect = ["y", "n", "streaming", "y"]
 
         wizard._configure_features()

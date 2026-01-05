@@ -367,8 +367,16 @@ class ConfigWizard:
         )
 
         # display_mode - unified choice for output formatting
-        current_rich = self.current_config.get("features.rich_enabled", True) if self.current_config else True
-        current_harmony = self.current_config.get("harmony.enabled", None) if self.current_config else None
+        current_rich = (
+            self.current_config.get("features.rich_enabled", True)
+            if self.current_config
+            else True
+        )
+        current_harmony = (
+            self.current_config.get("harmony.enabled", None)
+            if self.current_config
+            else None
+        )
 
         # Determine current mode from existing settings
         if not current_rich and current_harmony is False:
@@ -381,8 +389,14 @@ class ConfigWizard:
         print("\nDisplay Mode:")
         print("  streaming = Plain text output, no formatting (fastest)")
         print("  rich      = Rich markdown formatting with syntax highlighting")
-        print("  auto      = Auto-detect Harmony agents, otherwise use Rich (recommended)")
-        mode = input(f"Display mode? [streaming/rich/auto] [{current_mode}]: ").strip().lower()
+        print(
+            "  auto      = Auto-detect Harmony agents, otherwise use Rich (recommended)"
+        )
+        mode = (
+            input(f"Display mode? [streaming/rich/auto] [{current_mode}]: ")
+            .strip()
+            .lower()
+        )
 
         if not mode:
             mode = current_mode
