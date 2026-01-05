@@ -8,7 +8,6 @@ Extracted from chat_loop.py to improve modularity and reduce file size.
 import asyncio
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
@@ -357,7 +356,9 @@ class SessionPersister:
         # Check if there's anything to compact
         if not self.session_state.conversation_markdown:
             print(
-                self.colors.system("No conversation to compact yet. Start chatting first!")
+                self.colors.system(
+                    "No conversation to compact yet. Start chatting first!"
+                )
             )
             return
 

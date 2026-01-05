@@ -41,7 +41,6 @@ import re
 import stat
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -53,7 +52,6 @@ try:
     READLINE_AVAILABLE = True
 except ImportError:
     READLINE_AVAILABLE = False
-
 
 
 # Components
@@ -89,9 +87,7 @@ from .components import (
 # Rich library for better formatting
 try:
     from rich.console import Console
-    from rich.live import Live
     from rich.markdown import Markdown
-    from rich.spinner import Spinner
 
     RICH_AVAILABLE = True
     ConsoleType = Console
@@ -327,6 +323,7 @@ def save_readline_history(history_file: Optional[Path]) -> bool:
     except Exception as e:
         logger.warning(f"Could not save command history to {history_file}: {e}")
         return False
+
 
 class ChatLoop:
     """Generic chat loop for any AI agent with async streaming support."""
@@ -817,7 +814,8 @@ class ChatLoop:
         for attempt in range(1, self.max_retries + 1):
             try:
                 await self.response_streamer.stream_agent_response(
-                    query, save_conversation_callback=self.session_persister.save_conversation
+                    query,
+                    save_conversation_callback=self.session_persister.save_conversation,
                 )
                 return  # Success, exit retry loop
 
@@ -1328,9 +1326,13 @@ class ChatLoop:
 
             # Final save on exit with summary
             # (incremental saves happen after each query without summaries)
-            success = await self.session_persister.save_conversation(generate_summary=True)
+            success = await self.session_persister.save_conversation(
+                generate_summary=True
+            )
             if success:
-                self.session_persister.show_save_confirmation(self.session_state.session_id)
+                self.session_persister.show_save_confirmation(
+                    self.session_state.session_id
+                )
 
             # Cleanup agent if it has cleanup method
             if hasattr(self.agent, "cleanup"):

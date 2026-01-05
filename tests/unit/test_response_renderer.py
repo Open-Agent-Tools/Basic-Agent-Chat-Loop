@@ -31,14 +31,13 @@ class TestResponseRendererInitialization:
 
     def test_initialization_minimal(self):
         """Test basic initialization with required parameters."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         assert renderer.agent_name == "TestAgent"
         assert renderer.console is None
         assert renderer.colors == MockColors
         # OutputState should be STREAMING (no console, no harmony)
         from basic_agent_chat_loop.components.output_mode import OutputState
+
         assert renderer.output_state == OutputState.STREAMING
 
     def test_initialization_with_rich(self):
@@ -50,6 +49,7 @@ class TestResponseRendererInitialization:
             colors_module=MockColors,
         )
         from basic_agent_chat_loop.components.output_mode import OutputState
+
         assert renderer.output_state == OutputState.BUFFERING
         assert renderer.console == mock_console
 
@@ -62,6 +62,7 @@ class TestResponseRendererInitialization:
             colors_module=MockColors,
         )
         from basic_agent_chat_loop.components.output_mode import OutputState
+
         assert renderer.output_state == OutputState.BUFFERING
         assert renderer.harmony_processor == mock_harmony
 
@@ -76,9 +77,7 @@ class TestRenderAgentHeader:
 
     def test_render_agent_header(self, capsys):
         """Test rendering agent name header."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_agent_header()
 
         captured = capsys.readouterr()
@@ -100,9 +99,7 @@ class TestRenderStreamingText:
 
     def test_render_streaming_text_plain_mode(self, capsys):
         """Test streaming text in plain mode (no rich, no harmony)."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_streaming_text("Hello, world!")
 
         captured = capsys.readouterr()
@@ -110,9 +107,7 @@ class TestRenderStreamingText:
 
     def test_render_streaming_text_with_tool_message(self, capsys):
         """Test streaming text with tool message colorization."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_streaming_text("[Tool #1] Calling function")
 
         captured = capsys.readouterr()
@@ -170,9 +165,7 @@ class TestShouldSkipStreamingDisplay:
 
     def test_should_not_skip_plain_mode(self):
         """Test do not skip streaming in plain mode."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         assert renderer.should_skip_streaming_display() is False
 
 
@@ -181,9 +174,7 @@ class TestRenderFinalResponsePlainText:
 
     def test_render_final_response_plain_text(self, capsys):
         """Test rendering final response in plain text mode."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_final_response(
             display_text="This is the final response", first_token_received=False
         )
@@ -193,9 +184,7 @@ class TestRenderFinalResponsePlainText:
 
     def test_render_final_response_with_separator(self, capsys):
         """Test rendering final response with visual separator."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_final_response(
             display_text="Final response", first_token_received=True
         )
@@ -207,9 +196,7 @@ class TestRenderFinalResponsePlainText:
 
     def test_render_final_response_without_separator(self, capsys):
         """Test rendering final response without separator (no streaming)."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_final_response(
             display_text="Direct response", first_token_received=False
         )
@@ -220,9 +207,7 @@ class TestRenderFinalResponsePlainText:
 
     def test_render_final_response_empty_text(self, capsys):
         """Test rendering empty final response does nothing."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_final_response(display_text="", first_token_received=True)
 
         captured = capsys.readouterr()
@@ -230,9 +215,7 @@ class TestRenderFinalResponsePlainText:
 
     def test_render_final_response_whitespace_only(self, capsys):
         """Test rendering whitespace-only final response does nothing."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_final_response(
             display_text="   \n  ", first_token_received=True
         )
@@ -303,9 +286,7 @@ class TestRenderFinalResponseWithToolMessages:
 
     def test_render_tool_message_colorization(self, capsys):
         """Test that tool messages get colorized in plain mode."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_final_response(
             display_text="[Tool #1] Function called\nRegular text",
             first_token_received=False,
@@ -323,9 +304,7 @@ class TestEdgeCases:
 
     def test_render_multiline_response(self, capsys):
         """Test rendering multiline response."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_final_response(
             display_text="Line 1\nLine 2\nLine 3", first_token_received=False
         )
@@ -337,9 +316,7 @@ class TestEdgeCases:
 
     def test_render_unicode_response(self, capsys):
         """Test rendering Unicode text."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         renderer.render_final_response(
             display_text="Hello 世界 🌍", first_token_received=False
         )
@@ -349,9 +326,7 @@ class TestEdgeCases:
 
     def test_render_very_long_response(self, capsys):
         """Test rendering very long response."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
         long_text = "A" * 10000
         renderer.render_final_response(
             display_text=long_text, first_token_received=False
@@ -362,9 +337,7 @@ class TestEdgeCases:
 
     def test_multiple_headers_same_renderer(self, capsys):
         """Test rendering multiple headers with same renderer instance."""
-        renderer = ResponseRenderer(
-            agent_name="TestAgent", colors_module=MockColors
-        )
+        renderer = ResponseRenderer(agent_name="TestAgent", colors_module=MockColors)
 
         renderer.render_agent_header()
         renderer.render_agent_header()

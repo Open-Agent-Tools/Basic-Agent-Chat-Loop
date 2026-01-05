@@ -10,7 +10,7 @@ from pathlib import Path
 
 from strands import Agent
 from strands.models.anthropic import AnthropicModel
-from strands_tools import file_read, file_write, editor
+from strands_tools import editor, file_read, file_write
 
 # Load .env file
 try:

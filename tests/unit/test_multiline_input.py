@@ -101,7 +101,9 @@ async def test_multiline_input_back_command(chat_loop):
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        with patch("basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True):
+        with patch(
+            "basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True
+        ):
             with patch("readline.add_history"):
                 result = await get_multiline_input()
 
@@ -121,7 +123,9 @@ async def test_multiline_input_up_arrow(chat_loop):
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        with patch("basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True):
+        with patch(
+            "basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True
+        ):
             with patch("readline.add_history"):
                 result = await get_multiline_input()
 
@@ -171,7 +175,9 @@ async def test_multiline_input_history_saved(chat_loop):
     inputs = ["line 1", "line 2", ""]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        with patch("basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True):
+        with patch(
+            "basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True
+        ):
             with patch("readline.add_history") as mock_add_history:
                 _ = await get_multiline_input()
 
@@ -213,7 +219,9 @@ async def test_multiline_input_multiple_back_commands(chat_loop):
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
-        with patch("basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True):
+        with patch(
+            "basic_agent_chat_loop.components.input_handler.READLINE_AVAILABLE", True
+        ):
             with patch("readline.add_history"):
                 result = await get_multiline_input()
 

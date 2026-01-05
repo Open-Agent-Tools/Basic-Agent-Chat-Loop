@@ -12,7 +12,7 @@ Uses OutputState enum to determine rendering strategy (streaming vs buffering).
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from .output_mode import OutputState, determine_output_state
+from .output_mode import determine_output_state
 
 if TYPE_CHECKING:
     from .ui_components import Colors
@@ -68,7 +68,7 @@ class ResponseRenderer:
         # This is the single source of truth for rendering behavior
         self.output_state = determine_output_state(console, harmony_processor)
 
-        logger.debug(f"ResponseRenderer initialized:")
+        logger.debug("ResponseRenderer initialized:")
         logger.debug(f"  agent_name: {agent_name}")
         logger.debug(f"  console: {console is not None}")
         logger.debug(f"  harmony: {harmony_processor is not None}")

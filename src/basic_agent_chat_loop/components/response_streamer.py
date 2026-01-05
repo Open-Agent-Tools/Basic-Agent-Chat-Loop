@@ -132,14 +132,20 @@ class ResponseStreamer:
         i = 0
 
         while not stop_event.is_set():
-            print(f"\r{self.colors.DIM}{frames[i]} Thinking...{self.colors.RESET}", end="", flush=True)
+            print(
+                f"\r{self.colors.DIM}{frames[i]} Thinking...{self.colors.RESET}",
+                end="",
+                flush=True,
+            )
             i = (i + 1) % len(frames)
             await asyncio.sleep(0.1)
 
         # Clear the thinking indicator line
         print("\r" + " " * 20 + "\r", end="", flush=True)
 
-    async def stream_agent_response(self, query: str, save_conversation_callback: Optional[Any] = None) -> dict[str, Any]:
+    async def stream_agent_response(
+        self, query: str, save_conversation_callback: Optional[Any] = None
+    ) -> dict[str, Any]:
         """Stream agent response asynchronously.
 
         Args:

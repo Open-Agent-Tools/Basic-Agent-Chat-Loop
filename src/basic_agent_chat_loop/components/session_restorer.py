@@ -407,9 +407,7 @@ class SessionRestorer:
 
         logger.info(f"Successfully restored session: {old_session_id}")
 
-    async def restore_session(
-        self, session_id: str, response_streamer: Any
-    ) -> bool:
+    async def restore_session(self, session_id: str, response_streamer: Any) -> bool:
         """Restore a previous session by loading its summary and creating a new session.
 
         Args:
