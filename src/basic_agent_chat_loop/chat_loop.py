@@ -380,6 +380,9 @@ class ChatLoop:
             self.show_banner = self.config.get(
                 "ui.show_banner", True, agent_name=agent_name
             )
+            self.suppress_agent_stdout = self.config.get(
+                "behavior.suppress_agent_stdout", True, agent_name=agent_name
+            )
             self.update_terminal_title = self.config.get(
                 "ui.update_terminal_title", True, agent_name=agent_name
             )
@@ -651,6 +654,7 @@ class ChatLoop:
             show_tokens=self.show_tokens,
             harmony_processor=harmony_to_use,  # Use the defensively-checked version
             status_bar=self.status_bar,
+            suppress_agent_stdout=self.suppress_agent_stdout,
         )
 
         # Setup session restorer for resuming previous sessions

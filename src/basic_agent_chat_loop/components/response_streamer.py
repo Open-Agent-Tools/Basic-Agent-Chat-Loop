@@ -12,6 +12,7 @@ Extracted from chat_loop.py to reduce file size and improve modularity.
 """
 
 import asyncio
+import io
 import logging
 import sys
 import time
@@ -77,6 +78,7 @@ class ResponseStreamer:
         show_tokens: bool = True,
         harmony_processor: Optional["HarmonyProcessor"] = None,
         status_bar: Optional["StatusBar"] = None,
+        suppress_agent_stdout: bool = True,
     ):
         """Initialize the response streamer.
 
@@ -95,6 +97,7 @@ class ResponseStreamer:
             show_tokens: Whether to show token usage
             harmony_processor: Optional Harmony processor for OpenAI format
             status_bar: Optional status bar for real-time updates
+            suppress_agent_stdout: Whether to suppress agent library stdout during streaming
         """
         self.agent = agent
         self.agent_name = agent_name
@@ -110,6 +113,7 @@ class ResponseStreamer:
         self.show_tokens = show_tokens
         self.harmony_processor = harmony_processor
         self.status_bar = status_bar
+        self.suppress_agent_stdout = suppress_agent_stdout
 
         # Token tracking for session (matches chat_loop.py behavior)
         self.total_input_tokens = 0
@@ -185,38 +189,63 @@ class ResponseStreamer:
             # Check if agent supports streaming
             if hasattr(self.agent, "stream_async"):
                 print(f"\n[DEBUG] MAIN LOOP: Starting stream_async iteration", file=sys.stderr)
-                async for event in self.agent.stream_async(query):
-                    print(f"\n[DEBUG] MAIN LOOP: Received event from stream_async", file=sys.stderr)
-                    # Store last event for token extraction
-                    response_obj = event
 
-                    # Log streaming event received from agent
-                    logger.debug("STREAMING EVENT FROM AGENT:")
-                    logger.debug(_serialize_for_logging(event))
+                # WORKAROUND: Suppress stdout during streaming to prevent agent libraries
+                # from printing accumulated response text as a side effect
+                # (Discovered in beta.8 diagnostics - text appears between event loop iterations)
+                # NOTE: Suppression is only active BETWEEN iterations (during yield back to
+                # stream_async). During our event processing, stdout is restored so tool calls
+                # and logging work normally.
+                old_stdout = None
+                if self.suppress_agent_stdout:
+                    old_stdout = sys.stdout
+                    sys.stdout = io.StringIO()
 
-                    # Stop thinking indicator on first token
-                    if not first_token_received:
-                        stop_thinking.set()
-                        if thinking_task:
-                            await thinking_task
-                        first_token_received = True
+                try:
+                    async for event in self.agent.stream_async(query):
+                        # Restore stdout for our controlled output and logging
+                        if self.suppress_agent_stdout:
+                            sys.stdout = old_stdout
 
-                    # Extract text from streaming event using event parser
-                    text_to_add = self.event_parser.parse_event(event)
+                        print(f"\n[DEBUG] MAIN LOOP: Received event from stream_async", file=sys.stderr)
+                        # Store last event for token extraction
+                        response_obj = event
 
-                    # DIAGNOSTIC: Log text extraction
-                    if text_to_add:
-                        print(f"\n[DEBUG] STREAM LOOP: Got text chunk, length={len(text_to_add)}", file=sys.stderr)
-                        print(f"[DEBUG] STREAM LOOP: About to call render_streaming_text()", file=sys.stderr)
+                        # Log streaming event received from agent
+                        logger.debug("STREAMING EVENT FROM AGENT:")
+                        logger.debug(_serialize_for_logging(event))
 
-                    # Append text if found and display it
-                    if text_to_add:
-                        response_text.append(text_to_add)
-                        # Display streaming text (renderer handles skip logic)
-                        self.response_renderer.render_streaming_text(text_to_add)
-                        print(f"[DEBUG] STREAM LOOP: Returned from render_streaming_text()", file=sys.stderr)
+                        # Stop thinking indicator on first token
+                        if not first_token_received:
+                            stop_thinking.set()
+                            if thinking_task:
+                                await thinking_task
+                            first_token_received = True
 
-                    print(f"[DEBUG] MAIN LOOP: End of iteration, about to yield back to stream_async", file=sys.stderr)
+                        # Extract text from streaming event using event parser
+                        text_to_add = self.event_parser.parse_event(event)
+
+                        # DIAGNOSTIC: Log text extraction
+                        if text_to_add:
+                            print(f"\n[DEBUG] STREAM LOOP: Got text chunk, length={len(text_to_add)}", file=sys.stderr)
+                            print(f"[DEBUG] STREAM LOOP: About to call render_streaming_text()", file=sys.stderr)
+
+                        # Append text if found and display it
+                        if text_to_add:
+                            response_text.append(text_to_add)
+                            # Display streaming text (renderer handles skip logic)
+                            self.response_renderer.render_streaming_text(text_to_add)
+                            print(f"[DEBUG] STREAM LOOP: Returned from render_streaming_text()", file=sys.stderr)
+
+                        print(f"[DEBUG] MAIN LOOP: End of iteration, about to yield back to stream_async", file=sys.stderr)
+
+                        # Suppress stdout again before yielding back to stream_async
+                        if self.suppress_agent_stdout:
+                            sys.stdout = io.StringIO()
+                finally:
+                    # Always restore stdout
+                    if self.suppress_agent_stdout and old_stdout is not None:
+                        sys.stdout = old_stdout
             else:
                 # Fallback to non-streaming call if streaming not supported
                 response = await asyncio.get_event_loop().run_in_executor(

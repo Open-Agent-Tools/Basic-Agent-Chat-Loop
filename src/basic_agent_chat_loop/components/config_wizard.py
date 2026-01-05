@@ -87,6 +87,7 @@ def reset_config_to_defaults() -> Optional[Path]:
                 "retry_delay": 2.0,
                 "timeout": 120.0,
                 "spinner_style": "dots",
+                "suppress_agent_stdout": True,
             },
             "paths": {
                 "log_location": "~/.chat_loop_logs",
@@ -634,6 +635,18 @@ class ConfigWizard:
         )
         self.config["behavior"]["spinner_style"] = (
             style if style in styles else current_spinner_style
+        )
+
+        # suppress_agent_stdout
+        current_suppress = (
+            self.current_config.get("behavior.suppress_agent_stdout", True)
+            if self.current_config
+            else True
+        )
+        self.config["behavior"]["suppress_agent_stdout"] = self._prompt_bool(
+            "\nSuppress agent library streaming output?",
+            default=current_suppress,
+            help_text="Prevents double-output from some agent libraries (recommended: yes)",
         )
 
     def _configure_paths(self):

@@ -54,6 +54,7 @@ class ChatConfig:
             "retry_delay": 2.0,
             "timeout": 120.0,
             "spinner_style": "dots",
+            "suppress_agent_stdout": True,  # Suppress agent library stdout during streaming
         },
         "ui": {
             "show_banner": True,
@@ -375,6 +376,9 @@ behavior:
   retry_delay: 2.0             # Seconds to wait between retries
   timeout: 120.0               # Request timeout in seconds
   spinner_style: dots          # Thinking indicator style (dots, line, arc, etc.)
+  suppress_agent_stdout: true  # Suppress agent library stdout during streaming
+                               # (prevents double-output from some agent libraries)
+                               # Note: Does NOT suppress tool calls or logging
 
 # ============================================================================
 # UI - User interface preferences
