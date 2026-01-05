@@ -90,9 +90,26 @@ class ResponseRenderer:
         # or harmony processor (needs post-processing)
         # Check console directly as it's more reliable than use_rich flag
         if self.console is not None or self.harmony_processor is not None:
+            # Debug logging to understand what's happening
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.debug(
+                f"SKIP streaming display: console={self.console is not None}, "
+                f"harmony={self.harmony_processor is not None}, "
+                f"text_len={len(text)}"
+            )
             return
 
         # Only print in plain text mode (no console, no harmony)
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            f"PRINT streaming text: console={self.console is not None}, "
+            f"harmony={self.harmony_processor is not None}, "
+            f"text_len={len(text)}"
+        )
         formatted_text = self.colors.format_agent_response(text)
         print(formatted_text, end="", flush=True)
 
