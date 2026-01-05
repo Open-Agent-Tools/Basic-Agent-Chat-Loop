@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1-beta.1] - 2026-01-05
+
+### Fixed
+- **Template Command Bug** - Fixed template commands (/) completely failing due to incorrect argument parsing
+  - `CommandRouter` encodes template info as `"name|input"` using pipe delimiter
+  - `chat_loop.py` was incorrectly splitting on whitespace instead of pipe
+  - This caused templates like `/explain some code` to look for template `"explain|some"` instead of `"explain"`
+  - Now uses `CommandRouter.extract_template_info()` helper method for correct parsing
+  - Fixes user-reported issue: "prompt template using '/' are all failing"
+  - All template functionality restored (lines 2498-2508 in chat_loop.py)
+
+### Improved
+- **Windows Rich Console Support** - Enhanced terminal compatibility for Windows systems
+  - Added `force_terminal=True` to force Rich into terminal mode even if auto-detection fails
+  - Added `legacy_windows=False` to use modern Windows Terminal features
+  - Added comprehensive debug logging for terminal capability detection
+  - Logs Rich Console state (is_terminal, color_system, legacy_windows)
+  - Logs ResponseRenderer initialization values for troubleshooting
+  - Addresses potential duplicate output issues on Windows terminals
+  - Changes in chat_loop.py (lines 519-535) and response_renderer.py (lines 62-70)
+
+### Technical Details
+The template command bug was a simple but critical parsing error. The `CommandRouter` properly encodes template name and input as a pipe-delimited string (`"name|input"`), but the chat loop was splitting on whitespace instead of using the existing `extract_template_info()` helper. This meant commands like `/explain some code` would try to load a template called `"explain|some"` (with the pipe character) instead of `"explain"`.
+
+The Windows improvements add better terminal detection and logging to help diagnose why Rich markdown rendering might show duplicate output on Windows systems. The `force_terminal=True` flag ensures Rich doesn't fall back to plain text mode when it can't detect terminal capabilities.
+
 ## [1.7.0] - 2026-01-02
 
 ### Changed
@@ -667,6 +693,22 @@ For detailed documentation, see [README.md](README.md) and [docs/](docs/).
 
 ---
 
+[1.7.1-beta.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.7.1-beta.1
+[1.7.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.7.0
+[1.6.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.6.1
+[1.6.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.6.0
+[1.6.0-beta.7]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.6.0-beta.7
+[1.6.0-beta.6]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.6.0-beta.6
+[1.5.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.5.1
+[1.5.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.5.0
+[1.4.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.4.1
+[1.4.0]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.4.0
+[1.3.9]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.9
+[1.3.8]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.8
+[1.3.7]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.7
+[1.3.6]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.6
+[1.3.5]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.5
+[1.3.4]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.4
 [1.3.3]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.3
 [1.3.2]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.2
 [1.3.1]: https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/releases/tag/v1.3.1

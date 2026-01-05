@@ -517,7 +517,22 @@ class ChatLoop:
             self.context_warning_thresholds = [80, 90, 95]
 
         # Setup rich console if available and enabled
-        self.console: Optional[Console] = Console() if self.use_rich else None
+        # Configure with Windows compatibility options
+        self.console: Optional[Console] = (
+            Console(
+                force_terminal=True,  # Force terminal mode even if detection fails
+                legacy_windows=False,  # Use modern Windows Terminal features
+            )
+            if self.use_rich
+            else None
+        )
+
+        # Log terminal capabilities for debugging
+        if self.console:
+            logger.debug(f"Rich Console initialized:")
+            logger.debug(f"  is_terminal: {self.console.is_terminal}")
+            logger.debug(f"  color_system: {self.console.color_system}")
+            logger.debug(f"  legacy_windows: {self.console.legacy_windows}")
 
         # Extract agent metadata
         self.agent_metadata = extract_agent_metadata(self.agent)
@@ -2482,10 +2497,10 @@ class ChatLoop:
 
                     elif command_result.command_type == CommandType.TEMPLATE:
                         # Template command: /template_name <optional input>
-                        template_name = command_result.args or ""
-                        parts = template_name.split(maxsplit=1)
-                        template_name = parts[0] if parts else ""
-                        input_text = parts[1] if len(parts) > 1 else ""
+                        # Extract template name and input using the router's helper
+                        template_name, input_text = (
+                            self.command_router.extract_template_info(command_result)
+                        )
 
                         # Try to load template
                         template = self.template_manager.load_template(

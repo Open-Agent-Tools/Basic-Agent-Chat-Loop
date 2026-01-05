@@ -59,6 +59,16 @@ class ResponseRenderer:
         self.harmony_processor = harmony_processor
         self.colors: type[Colors] = colors_module  # Guaranteed to be non-None here
 
+        # Debug logging for Windows troubleshooting
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"ResponseRenderer initialized:")
+        logger.debug(f"  use_rich (param): {use_rich}")
+        logger.debug(f"  RICH_AVAILABLE: {RICH_AVAILABLE}")
+        logger.debug(f"  self.use_rich: {self.use_rich}")
+        logger.debug(f"  console provided: {console is not None}")
+        logger.debug(f"  self.console: {self.console is not None}")
+
     def render_agent_header(self) -> None:
         """Print the agent name header at the start of a response.
 
