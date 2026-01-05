@@ -366,17 +366,43 @@ class ConfigWizard:
             help_text="Displays agent model, tools, and capabilities",
         )
 
-        # rich_enabled
-        current_rich_enabled = (
-            self.current_config.get("features.rich_enabled", True)
-            if self.current_config
-            else True
-        )
-        self.config["features"]["rich_enabled"] = self._prompt_bool(
-            "Use rich library for enhanced formatting?",
-            default=current_rich_enabled,
-            help_text="Enables markdown rendering and syntax highlighting",
-        )
+        # display_mode - unified choice for output formatting
+        current_rich = self.current_config.get("features.rich_enabled", True) if self.current_config else True
+        current_harmony = self.current_config.get("harmony.enabled", None) if self.current_config else None
+
+        # Determine current mode from existing settings
+        if not current_rich and current_harmony is False:
+            current_mode = "streaming"
+        elif current_harmony is not False:  # True or None (auto)
+            current_mode = "auto"
+        else:
+            current_mode = "rich"
+
+        print("\nDisplay Mode:")
+        print("  streaming = Plain text output, no formatting (fastest)")
+        print("  rich      = Rich markdown formatting with syntax highlighting")
+        print("  auto      = Auto-detect Harmony agents, otherwise use Rich (recommended)")
+        mode = input(f"Display mode? [streaming/rich/auto] [{current_mode}]: ").strip().lower()
+
+        if not mode:
+            mode = current_mode
+        elif mode not in ["streaming", "rich", "auto"]:
+            print(f"Invalid mode '{mode}', using '{current_mode}'")
+            mode = current_mode
+
+        # Set rich_enabled and harmony.enabled based on mode
+        if mode == "streaming":
+            self.config["features"]["rich_enabled"] = False
+            # Don't set harmony here, will be set in _configure_harmony_from_mode
+        elif mode == "rich":
+            self.config["features"]["rich_enabled"] = True
+            # Don't set harmony here, will be set in _configure_harmony_from_mode
+        else:  # auto
+            self.config["features"]["rich_enabled"] = True
+            # Don't set harmony here, will be set in _configure_harmony_from_mode
+
+        # Store mode for use in _configure_harmony_from_mode
+        self._selected_display_mode = mode
 
         # readline_enabled
         current_readline_enabled = (
@@ -498,69 +524,37 @@ class ConfigWizard:
             self.config["audio"]["notification_sound"] = None
 
     def _configure_harmony(self):
-        """Configure harmony section."""
-        print("\n" + "=" * 70)
-        print("HARMONY - OpenAI Harmony format settings (for gpt-oss models)")
-        print("=" * 70 + "\n")
-
+        """Configure harmony section based on display mode selection."""
         self.config["harmony"] = {}
 
-        # enabled (tri-state: None/auto, True/force, False/disable)
-        current_enabled = (
-            self.current_config.get("harmony.enabled", None)
-            if self.current_config
-            else None
-        )
+        # Set harmony.enabled based on the display mode selected in _configure_features
+        mode = getattr(self, "_selected_display_mode", "auto")
 
-        # Convert tri-state to user-friendly options
-        if current_enabled is None:
-            default_enabled_str = "auto"
-        elif current_enabled:
-            default_enabled_str = "yes"
-        else:
-            default_enabled_str = "no"
-
-        # Prompt for choice with validation
-        print(
-            "Enable Harmony processing? (auto/yes/no)\n"
-            "  auto = Auto-detect harmony agents (default)\n"
-            "  yes  = Force enable for all agents\n"
-            "  no   = Disable harmony processing"
-        )
-
-        enabled_response = None
-        while enabled_response is None:
-            response = self._prompt_string(
-                f"Enter choice [auto/yes/no] (default: {default_enabled_str})",
-                default=default_enabled_str,
-            ).lower()
-
-            if response in ["auto", "yes", "no"]:
-                enabled_response = response
-            else:
-                print("Invalid choice. Please enter 'auto', 'yes', or 'no'.")
-
-        # Convert back to tri-state
-        if enabled_response == "auto":
-            self.config["harmony"]["enabled"] = None
-        elif enabled_response == "yes":
-            self.config["harmony"]["enabled"] = True
-        else:
+        if mode == "streaming":
+            # Streaming mode - disable harmony completely
             self.config["harmony"]["enabled"] = False
+        elif mode == "rich":
+            # Rich mode - disable harmony (use Rich only)
+            self.config["harmony"]["enabled"] = False
+        else:  # auto
+            # Auto mode - enable harmony auto-detection
+            self.config["harmony"]["enabled"] = None
 
-        # show_detailed_thinking
-        current_show_detailed = (
-            self.current_config.get("harmony.show_detailed_thinking", False)
-            if self.current_config
-            else False
-        )
-        self.config["harmony"]["show_detailed_thinking"] = self._prompt_bool(
-            "Show detailed thinking with prefixes (reasoning, analysis, commentary)?",
-            default=current_show_detailed,
-            help_text="When enabled, Harmony agents will display internal reasoning, "
-            "analysis, and commentary channels with labeled prefixes. "
-            "When disabled (default), only shows final response.",
-        )
+        # show_detailed_thinking (only relevant for harmony mode)
+        if mode == "auto":
+            current_show_detailed = (
+                self.current_config.get("harmony.show_detailed_thinking", False)
+                if self.current_config
+                else False
+            )
+            self.config["harmony"]["show_detailed_thinking"] = self._prompt_bool(
+                "\nShow detailed Harmony thinking? (reasoning, analysis, commentary)",
+                default=current_show_detailed,
+                help_text="Displays internal reasoning channels with labeled prefixes",
+            )
+        else:
+            # Not using harmony, set to default
+            self.config["harmony"]["show_detailed_thinking"] = False
 
     def _configure_behavior(self):
         """Configure behavior section."""

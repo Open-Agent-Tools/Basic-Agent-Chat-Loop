@@ -358,8 +358,8 @@ class TestConfigureFeatures:
     @patch("builtins.input")
     def test_configure_features_custom_values(self, mock_input, wizard):
         """Test configuring features with custom values."""
-        # Removed auto_save, so now only 4 prompts instead of 5
-        mock_input.side_effect = ["y", "n", "n", "y"]
+        # Updated for new display_mode: show_tokens, show_metadata, display_mode, readline
+        mock_input.side_effect = ["y", "n", "streaming", "y"]
 
         wizard._configure_features()
 
