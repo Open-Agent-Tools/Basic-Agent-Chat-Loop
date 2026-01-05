@@ -13,6 +13,7 @@ Extracted from chat_loop.py to reduce file size and improve modularity.
 
 import asyncio
 import logging
+import sys
 import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
@@ -201,11 +202,17 @@ class ResponseStreamer:
                     # Extract text from streaming event using event parser
                     text_to_add = self.event_parser.parse_event(event)
 
+                    # DIAGNOSTIC: Log text extraction
+                    if text_to_add:
+                        print(f"\n[DEBUG] STREAM LOOP: Got text chunk, length={len(text_to_add)}", file=sys.stderr)
+                        print(f"[DEBUG] STREAM LOOP: About to call render_streaming_text()", file=sys.stderr)
+
                     # Append text if found and display it
                     if text_to_add:
                         response_text.append(text_to_add)
                         # Display streaming text (renderer handles skip logic)
                         self.response_renderer.render_streaming_text(text_to_add)
+                        print(f"[DEBUG] STREAM LOOP: Returned from render_streaming_text()", file=sys.stderr)
             else:
                 # Fallback to non-streaming call if streaming not supported
                 response = await asyncio.get_event_loop().run_in_executor(

@@ -1,0 +1,15 @@
+{
+  "sessions": [
+    {
+      "session_id": "simple_sally_20260105_155557",
+      "agent_name": "Simple Sally",
+      "agent_path": "/Users/wes/Development/Basic-Agent-Chat-Loop/tests/simple_sally_sample_agent/agent.py",
+      "created": "2026-01-05T15:56:03.320728",
+      "last_updated": "2026-01-05T15:56:03.320728",
+      "query_count": 1,
+      "total_tokens": 3130,
+      "preview": "hello"
+    }
+  ],
+  "last_updated": "2026-01-05T15:56:03.320876"
+}
