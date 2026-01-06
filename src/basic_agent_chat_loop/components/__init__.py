@@ -24,6 +24,7 @@ from .session_manager import SessionInfo, SessionManager
 from .session_persister import SessionPersister
 from .session_restorer import SessionRestorer
 from .session_state import SessionState
+from .smart_stdout_filter import SmartStdoutFilter
 from .streaming_event_parser import StreamingEventParser
 from .template_manager import TemplateManager
 from .token_tracker import TokenTracker
@@ -49,6 +50,7 @@ __all__ = [
     "SessionPersister",
     "SessionRestorer",
     "SessionState",
+    "SmartStdoutFilter",
     "StatusBar",
     "StreamingEventParser",
     "TemplateManager",
