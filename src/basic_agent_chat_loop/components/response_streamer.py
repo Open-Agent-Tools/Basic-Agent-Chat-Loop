@@ -2,8 +2,8 @@
 
 Manages the complete lifecycle of streaming agent responses:
 - Stream/call agent with query
-- Process events through parsers (event parser, harmony processor)
-- Render output via ResponseRenderer
+- Let agent library handle natural output (no interception)
+- Silently collect text for session history
 - Track metrics (tokens, duration, cycles, tools)
 - Save to session state
 - Play audio notifications
@@ -12,9 +12,7 @@ Extracted from chat_loop.py to reduce file size and improve modularity.
 """
 
 import asyncio
-import io
 import logging
-import sys
 import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
@@ -26,7 +24,6 @@ from .usage_extractor import UsageExtractor
 
 if TYPE_CHECKING:
     from .audio_notifier import AudioNotifier
-    from .harmony_processor import HarmonyProcessor
     from .session_state import SessionState
     from .status_bar import StatusBar
     from .ui_components import Colors
@@ -51,15 +48,14 @@ def _serialize_for_logging(obj: Any) -> str:
 
 
 class ResponseStreamer:
-    """Handles streaming agent responses and processing output.
+    """Handles streaming agent responses with minimal intervention.
 
     Coordinates multiple components to:
-    - Stream responses from agent
-    - Parse streaming events
-    - Process through Harmony (if enabled)
-    - Render to terminal
+    - Stream responses from agent (letting library handle output naturally)
+    - Silently collect text for session history
     - Track tokens and metrics
     - Save conversation history
+    - Display UI elements (thinking, agent header, stats)
     """
 
     def __init__(
@@ -76,16 +72,14 @@ class ResponseStreamer:
         show_thinking: bool = True,
         show_duration: bool = True,
         show_tokens: bool = True,
-        harmony_processor: Optional["HarmonyProcessor"] = None,
         status_bar: Optional["StatusBar"] = None,
-        suppress_agent_stdout: bool = True,
     ):
         """Initialize the response streamer.
 
         Args:
             agent: The agent instance to query
             agent_name: Name of the agent for display
-            response_renderer: Renderer for displaying responses
+            response_renderer: Renderer for UI elements (agent header)
             event_parser: Parser for streaming events
             session_state: Session state for tracking conversation
             usage_extractor: Extractor for token usage from responses
@@ -95,10 +89,7 @@ class ResponseStreamer:
             show_thinking: Whether to show thinking indicator
             show_duration: Whether to show query duration
             show_tokens: Whether to show token usage
-            harmony_processor: Optional Harmony processor for OpenAI format
             status_bar: Optional status bar for real-time updates
-            suppress_agent_stdout: Whether to suppress agent library stdout
-                during streaming
         """
         self.agent = agent
         self.agent_name = agent_name
@@ -112,9 +103,7 @@ class ResponseStreamer:
         self.show_thinking = show_thinking
         self.show_duration = show_duration
         self.show_tokens = show_tokens
-        self.harmony_processor = harmony_processor
         self.status_bar = status_bar
-        self.suppress_agent_stdout = suppress_agent_stdout
 
         # Token tracking for session (matches chat_loop.py behavior)
         self.total_input_tokens = 0
@@ -125,7 +114,6 @@ class ResponseStreamer:
         logger.debug(f"  show_thinking: {show_thinking}")
         logger.debug(f"  show_duration: {show_duration}")
         logger.debug(f"  show_tokens: {show_tokens}")
-        logger.debug(f"  harmony: {harmony_processor is not None}")
         logger.debug(f"  status_bar: {status_bar is not None}")
 
     async def _show_thinking_indicator(self, stop_event: asyncio.Event) -> None:
@@ -189,54 +177,28 @@ class ResponseStreamer:
 
             # Check if agent supports streaming
             if hasattr(self.agent, "stream_async"):
-                # WORKAROUND: Suppress stdout during streaming to prevent
-                # agent libraries from printing accumulated response text as
-                # a side effect (discovered in beta.8 diagnostics - text
-                # appears between event loop iterations)
-                # NOTE: Suppression is only active BETWEEN iterations (during
-                # yield back to stream_async). During our event processing,
-                # stdout is restored so tool calls and logging work normally.
-                old_stdout = None
-                if self.suppress_agent_stdout:
-                    old_stdout = sys.stdout
-                    sys.stdout = io.StringIO()
+                # Let agent library handle all output naturally
+                # We just collect text silently for session history
+                async for event in self.agent.stream_async(query):
+                    # Store last event for token extraction
+                    response_obj = event
 
-                try:
-                    async for event in self.agent.stream_async(query):
-                        # Restore stdout for our controlled output and logging
-                        if self.suppress_agent_stdout:
-                            sys.stdout = old_stdout
+                    # Log streaming event received from agent
+                    logger.debug("STREAMING EVENT FROM AGENT:")
+                    logger.debug(_serialize_for_logging(event))
 
-                        # Store last event for token extraction
-                        response_obj = event
+                    # Stop thinking indicator on first token
+                    if not first_token_received:
+                        stop_thinking.set()
+                        if thinking_task:
+                            await thinking_task
+                        first_token_received = True
 
-                        # Log streaming event received from agent
-                        logger.debug("STREAMING EVENT FROM AGENT:")
-                        logger.debug(_serialize_for_logging(event))
-
-                        # Stop thinking indicator on first token
-                        if not first_token_received:
-                            stop_thinking.set()
-                            if thinking_task:
-                                await thinking_task
-                            first_token_received = True
-
-                        # Extract text from streaming event using event parser
-                        text_to_add = self.event_parser.parse_event(event)
-
-                        # Append text if found and display it
-                        if text_to_add:
-                            response_text.append(text_to_add)
-                            # Display streaming text (renderer handles skip logic)
-                            self.response_renderer.render_streaming_text(text_to_add)
-
-                        # Suppress stdout again before yielding back to stream_async
-                        if self.suppress_agent_stdout:
-                            sys.stdout = io.StringIO()
-                finally:
-                    # Always restore stdout
-                    if self.suppress_agent_stdout and old_stdout is not None:
-                        sys.stdout = old_stdout
+                    # Extract text from streaming event for session history
+                    # (don't display - agent library handles that)
+                    text_to_add = self.event_parser.parse_event(event)
+                    if text_to_add:
+                        response_text.append(text_to_add)
             else:
                 # Fallback to non-streaming call if streaming not supported
                 response = await asyncio.get_event_loop().run_in_executor(
@@ -254,7 +216,7 @@ class ResponseStreamer:
                 if thinking_task:
                     await thinking_task
 
-                # Format and display response
+                # Extract text from response for history
                 if hasattr(response, "message"):
                     message = response.message
                     if isinstance(message, dict) and "content" in message:
@@ -272,76 +234,20 @@ class ResponseStreamer:
                 else:
                     response_text.append(str(response))
 
+                # For non-streaming, agent doesn't print, so we need to
+                print("".join(response_text))
+
             # Log final response object (for streaming, this is the last event)
             if hasattr(self.agent, "stream_async"):
                 logger.debug("FINAL RESPONSE OBJECT (last streaming event):")
                 logger.debug(_serialize_for_logging(response_obj))
                 logger.debug("=" * 60)
 
-            # Render collected response
-            # Concatenate streaming chunks directly (they may break mid-word)
+            # Collect full response text for session history
             full_response = "".join(response_text)
 
-            # Track if we already printed during streaming (to prevent duplicates)
-            # Use renderer's method to determine if streaming was skipped
-            # (skipped means we need to print in final response)
-            already_printed_streaming = (
-                first_token_received
-                and not self.response_renderer.should_skip_streaming_display()
-            )
-
-            # Process through Harmony if available
-            display_text = full_response
-            if self.harmony_processor:
-                # Debug: Log response object structure
-                # (safely handle mocks/test objects)
-                try:
-                    logger.debug(f"Response object type: {type(response_obj)}")
-                    logger.debug(f"Response object attrs: {dir(response_obj)[:20]}")
-                    if response_obj and hasattr(response_obj, "choices"):
-                        try:
-                            logger.debug(
-                                f"Response has choices: {len(response_obj.choices)}"
-                            )
-                        except TypeError:
-                            logger.debug(
-                                "Response has choices attribute (non-sequence)"
-                            )
-
-                        if response_obj.choices:
-                            choice = response_obj.choices[0]
-                            logger.debug(f"Choice type: {type(choice)}")
-                            logger.debug(f"Choice attrs: {dir(choice)[:20]}")
-                            if hasattr(choice, "logprobs"):
-                                logger.debug(
-                                    f"Has logprobs: {choice.logprobs is not None}"
-                                )
-                            if hasattr(choice, "message"):
-                                logger.debug(f"Message type: {type(choice.message)}")
-                except Exception as e:
-                    logger.debug(
-                        f"Error logging response structure (safe to ignore): {e}"
-                    )
-
-                processed = self.harmony_processor.process_response(
-                    full_response, metadata=response_obj
-                )
-                display_text = self.harmony_processor.format_for_display(processed)
-
-                # Log if Harmony-specific features detected
-                if processed.get("has_reasoning"):
-                    logger.debug("Harmony response contains reasoning")
-                if processed.get("has_tools"):
-                    logger.debug("Harmony response contains tool calls")
-
-            # Store last response for copy commands (what user sees)
-            self.session_state.update_last_response(display_text)
-
-            #  Render final response (only if not already printed during streaming)
-            if not already_printed_streaming:
-                self.response_renderer.render_final_response(
-                    display_text=display_text, first_token_received=first_token_received
-                )
+            # Store last response for copy commands
+            self.session_state.update_last_response(full_response)
 
             duration = time.time() - start_time
 
@@ -433,7 +339,7 @@ class ResponseStreamer:
             md_entry = [
                 f"\n## Query {query_num} ({entry_timestamp})\n",
                 f"**You:** {query}\n\n",
-                f"**{self.agent_name}:** {display_text}\n\n",
+                f"**{self.agent_name}:** {full_response}\n\n",
             ]
 
             # Add metadata
