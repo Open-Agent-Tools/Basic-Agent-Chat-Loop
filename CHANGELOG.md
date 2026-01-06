@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0-beta.1] - 2026-01-06
+
+### Changed - Major Architectural Simplification
+- **Single Output Path** - Completely redesigned output handling for simplicity and reliability
+  - Removed all bifurcated rendering paths (Rich/plain, Harmony/not, streaming/buffering)
+  - Agent library now handles all output naturally - we just collect text for history
+  - Eliminates double-output issue permanently
+  - Tool prompts (Y/n confirmations) work naturally without interception
+  - Removed 361 lines of complex rendering logic
+
+### Removed
+- **HarmonyProcessor** - Removed entire harmony processing system
+  - Removed HarmonyProcessor import and instantiation
+  - Removed 62-line harmony config logic
+  - Removed _normalize_harmony_config() method
+  - Removed harmony config sections from chat_config.py
+- **ResponseRenderer Simplification** - Reduced from 165 to 45 lines (73% reduction)
+  - Removed render_streaming_text(), render_final_response(), should_skip_streaming_display()
+  - Removed _render_rich_markdown(), _render_plain_text() methods
+  - Removed console and harmony_processor parameters
+  - Now only handles agent name header display
+- **OutputState** - Deleted components/output_mode.py (no longer needed)
+- **Rich Console** - Removed Rich Console instantiation and rendering
+- **suppress_agent_stdout** - Removed configuration option (no longer needed)
+
+### Technical Details
+The 1.8.0 release represents a fundamental shift in philosophy. Instead of trying to intercept, process, and re-render agent output (which caused double-output and hid tool prompts), we now let the agent library handle output naturally. We silently collect text for session history while the agent prints directly to terminal. This creates a single, simple output path that just works.
+
+**Before (1.7.x)**: Agent → Our Interceptor → Rich/Harmony Processing → Render
+**After (1.8.0)**: Agent → Terminal (we collect silently for history)
+
+Benefits:
+- No double-output (agent prints once)
+- Tool prompts visible (no interception)
+- Much simpler codebase (-361 lines)
+- Easier to maintain and understand
+
+Breaking Changes:
+- Harmony processing no longer applies
+- Rich markdown rendering no longer applies to agent output
+- Agent output appears exactly as library provides it
+
 ## [1.7.1-beta.2] - 2026-01-05
 
 ### Fixed

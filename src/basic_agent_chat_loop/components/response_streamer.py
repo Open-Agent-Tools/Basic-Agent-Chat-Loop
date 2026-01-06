@@ -25,7 +25,7 @@ from .usage_extractor import UsageExtractor
 if TYPE_CHECKING:
     from .audio_notifier import AudioNotifier
     from .session_state import SessionState
-    from .status_bar import StatusBar
+    from .status_bar import StatusBar  # type: ignore[import-untyped]
     from .ui_components import Colors
 
 logger = logging.getLogger(__name__)
