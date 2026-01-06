@@ -1,6 +1,26 @@
 {
   "sessions": [
     {
+      "session_id": "simple_sally_20260106_080213",
+      "agent_name": "Simple Sally",
+      "agent_path": "/Users/wes/Development/Basic-Agent-Chat-Loop/tests/simple_sally_sample_agent/agent.py",
+      "created": "2026-01-06T08:03:33.093024",
+      "last_updated": "2026-01-06T08:03:33.093024",
+      "query_count": 1,
+      "total_tokens": 3231,
+      "preview": "# Explain this code\n\nPlease explain the following code in detail:\n\n\n\nFocus on:\n- What the code does\n..."
+    },
+    {
+      "session_id": "simple_sally_20260106_075821",
+      "agent_name": "Simple Sally",
+      "agent_path": "/Users/wes/Development/Basic-Agent-Chat-Loop/tests/simple_sally_sample_agent/agent.py",
+      "created": "2026-01-06T07:58:34.605937",
+      "last_updated": "2026-01-06T07:58:34.605937",
+      "query_count": 1,
+      "total_tokens": 3130,
+      "preview": "hello"
+    },
+    {
       "session_id": "simple_sally_20260105_162941",
       "agent_name": "Simple Sally",
       "agent_path": "/Users/wes/Development/Basic-Agent-Chat-Loop/tests/simple_sally_sample_agent/agent.py",
@@ -41,5 +61,5 @@
       "preview": "hello"
     }
   ],
-  "last_updated": "2026-01-05T16:31:04.794523"
+  "last_updated": "2026-01-06T08:03:33.093638"
 }
