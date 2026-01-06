@@ -133,9 +133,11 @@ Include:
                 "load",
                 """# Load Markdown Files
 
-Please load all markdown (.md) files from the current directory or specified directory into context for analysis and reference.
+Please load all markdown (.md) files from the current directory or
+specified directory into context for analysis and reference.
 
-**Important**: Only load files directly in the specified directory, NOT in any subdirectories.
+**Important**: Only load files directly in the specified directory,
+NOT in any subdirectories.
 
 **Process**:
 1. Use glob to find all .md files in the target directory (non-recursive)

@@ -97,7 +97,8 @@ class ResponseStreamer:
             show_tokens: Whether to show token usage
             harmony_processor: Optional Harmony processor for OpenAI format
             status_bar: Optional status bar for real-time updates
-            suppress_agent_stdout: Whether to suppress agent library stdout during streaming
+            suppress_agent_stdout: Whether to suppress agent library stdout
+                during streaming
         """
         self.agent = agent
         self.agent_name = agent_name
@@ -188,12 +189,13 @@ class ResponseStreamer:
 
             # Check if agent supports streaming
             if hasattr(self.agent, "stream_async"):
-                # WORKAROUND: Suppress stdout during streaming to prevent agent libraries
-                # from printing accumulated response text as a side effect
-                # (Discovered in beta.8 diagnostics - text appears between event loop iterations)
-                # NOTE: Suppression is only active BETWEEN iterations (during yield back to
-                # stream_async). During our event processing, stdout is restored so tool calls
-                # and logging work normally.
+                # WORKAROUND: Suppress stdout during streaming to prevent
+                # agent libraries from printing accumulated response text as
+                # a side effect (discovered in beta.8 diagnostics - text
+                # appears between event loop iterations)
+                # NOTE: Suppression is only active BETWEEN iterations (during
+                # yield back to stream_async). During our event processing,
+                # stdout is restored so tool calls and logging work normally.
                 old_stdout = None
                 if self.suppress_agent_stdout:
                     old_stdout = sys.stdout

@@ -646,7 +646,10 @@ class ConfigWizard:
         self.config["behavior"]["suppress_agent_stdout"] = self._prompt_bool(
             "\nSuppress agent library streaming output?",
             default=current_suppress,
-            help_text="Prevents double-output from some agent libraries (recommended: yes)",
+            help_text=(
+                "Prevents double-output from some agent libraries "
+                "(recommended: yes)"
+            ),
         )
 
     def _configure_paths(self):

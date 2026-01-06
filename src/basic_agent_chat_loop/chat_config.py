@@ -54,7 +54,8 @@ class ChatConfig:
             "retry_delay": 2.0,
             "timeout": 120.0,
             "spinner_style": "dots",
-            "suppress_agent_stdout": True,  # Suppress agent library stdout during streaming
+            # Suppress agent library stdout during streaming
+            "suppress_agent_stdout": True,
         },
         "ui": {
             "show_banner": True,
