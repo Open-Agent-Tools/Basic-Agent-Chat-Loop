@@ -67,7 +67,6 @@ from .components import (
     DependencyManager,
     DisplayManager,
     ErrorMessages,
-    HarmonyProcessor,
     ResponseRenderer,
     ResponseStreamer,
     SessionManager,
@@ -431,9 +430,7 @@ class ChatLoop:
 
         # Log model detection for debugging
         detected_model = self.agent_metadata.get("model_id", "Unknown")
-        uses_harmony = self.agent_metadata.get("uses_harmony", False)
         logger.info(f"Model Detected: {detected_model}")
-        logger.info(f"Harmony Detected: {uses_harmony}")
 
         # Setup prompt templates directory
         self.prompts_dir = Path.home() / ".prompts"
@@ -540,98 +537,9 @@ class ChatLoop:
         self.usage_extractor = UsageExtractor()
 
         # Setup Harmony processor if agent uses Harmony format
-        self.harmony_processor = None
-
-        # Check if harmony should be enabled
-        # Priority: config override > auto-detection
-        harmony_enabled_config_raw = (
-            self.config.get("harmony.enabled", None) if self.config else None
-        )
-
-        # Auto-detect harmony support
-        # Detection already performed by extract_agent_metadata()
-        uses_harmony = self.agent_metadata.get("uses_harmony", False)
-
-        # Normalize config value to handle string values from YAML
-        # "auto"/None → None (auto-detect)
-        # "yes"/"true"/"force"/True → True (force enable)
-        # "no"/"false"/False → False (force disable)
-        harmony_enabled_config = self._normalize_harmony_config(
-            harmony_enabled_config_raw
-        )
-
-        logger.debug(f"Harmony config value (raw): {harmony_enabled_config_raw!r}")
-        logger.debug(f"Harmony config value (normalized): {harmony_enabled_config!r}")
-        logger.debug(f"Auto-detected harmony: {uses_harmony}")
-
-        # Determine if harmony should be enabled
-        # None = auto-detect, True = force enable, False = force disable
-        should_enable_harmony = (
-            harmony_enabled_config
-            if harmony_enabled_config is not None
-            else uses_harmony
-        )
-
-        logger.debug(f"Should enable harmony: {should_enable_harmony}")
-
-        if should_enable_harmony:
-            # Get detailed thinking config option
-            show_detailed = (
-                self.config.get("harmony.show_detailed_thinking", True)
-                if self.config
-                else True
-            )
-            self.harmony_processor = HarmonyProcessor(
-                show_detailed_thinking=show_detailed
-            )
-
-            # Log how harmony was enabled
-            if harmony_enabled_config is True:
-                logger.info(
-                    f"✓ Harmony ENABLED via config override "
-                    f"(detailed_thinking={show_detailed})"
-                )
-            elif harmony_enabled_config is False:
-                logger.info("✗ Harmony DISABLED via config override")
-            else:
-                logger.info(
-                    f"✓ Harmony AUTO-DETECTED and enabled "
-                    f"(detailed_thinking={show_detailed})"
-                )
-        else:
-            logger.info(
-                "✗ Harmony NOT enabled (agent not detected as harmony, config not set)"
-            )
-
-        # Setup response renderer for displaying agent responses
-        # OutputState is determined automatically from console and harmony_processor
-
-        # DEFENSIVE: Prevent both Rich and Harmony from being active simultaneously
-        # This handles legacy configs that may have both enabled
-        console_to_use = self.console
-        harmony_to_use = self.harmony_processor
-
-        if self.console is not None and self.harmony_processor is not None:
-            # Both are enabled - prioritize Harmony (more specific)
-            # Disable Rich console to prevent double-output
-            logger.warning(
-                "⚠️  Both Rich and Harmony are enabled in config. "
-                "Disabling Rich to prevent double-output. "
-                "Use 'chat --wizard' to update your config."
-            )
-            print(
-                Colors.system(
-                    "\n⚠️  Config Issue: Both Rich and Harmony are enabled.\n"
-                    "   Using Harmony only to prevent double-output.\n"
-                    "   Run 'chat --wizard' to update your config.\n"
-                )
-            )
-            console_to_use = None  # Disable Rich, keep Harmony
-
+        # Setup response renderer for displaying agent header
         self.response_renderer = ResponseRenderer(
             agent_name=self.agent_name,
-            console=console_to_use,
-            harmony_processor=harmony_to_use,
             colors_module=Colors,
         )
 
@@ -681,58 +589,6 @@ class ChatLoop:
 
         # Setup command router for parsing user input
         self.command_router = CommandRouter()
-
-    def _normalize_harmony_config(self, value: Any) -> Optional[bool]:
-        """
-        Normalize harmony config value from YAML to proper type.
-
-        Handles various string representations from YAML config files:
-        - "auto", None, "" → None (auto-detect)
-        - "yes", "true", "force", "on", True → True (force enable)
-        - "no", "false", "off", False → False (force disable)
-
-        Args:
-            value: Raw config value from YAML
-
-        Returns:
-            None for auto-detect, True to force enable, False to force disable
-        """
-        if value is None or value == "":
-            return None
-
-        # Handle boolean values
-        if isinstance(value, bool):
-            return value
-
-        # Handle string values (case-insensitive)
-        if isinstance(value, str):
-            value_lower = value.lower().strip()
-
-            # Auto-detect
-            if value_lower in ("auto", "detect"):
-                return None
-
-            # Force enable
-            if value_lower in ("yes", "true", "force", "on", "enable", "enabled"):
-                return True
-
-            # Force disable
-            if value_lower in ("no", "false", "off", "disable", "disabled"):
-                return False
-
-            # Unknown string - warn and default to auto-detect
-            logger.warning(
-                f"Unknown harmony.enabled value: {value!r} - "
-                f"using auto-detect (valid: auto/yes/no)"
-            )
-            return None
-
-        # Unknown type - warn and default to auto-detect
-        logger.warning(
-            f"Invalid harmony.enabled type: {type(value).__name__} - "
-            f"using auto-detect (expected: bool or string)"
-        )
-        return None
 
     def _extract_code_blocks(self, text: str) -> list:
         """

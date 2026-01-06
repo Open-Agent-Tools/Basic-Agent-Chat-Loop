@@ -66,12 +66,6 @@ class ChatConfig:
             "enabled": True,
             "notification_sound": None,  # Uses bundled notification.wav if None
         },
-        "harmony": {
-            # Enable harmony processing (auto-detects by default, set to True to force)
-            "enabled": None,  # None = auto-detect, True = force enable, False = disable
-            # Show reasoning/analysis/commentary channels
-            "show_detailed_thinking": True,
-        },
         "context": {
             # Warning thresholds for context usage (as percentages)
             # Show warnings when token usage exceeds these thresholds
@@ -391,21 +385,6 @@ ui:
 audio:
   enabled: true                # Play sound when agent completes a turn
   notification_sound: null     # Path to custom WAV file (uses bundled sound if null)
-
-# ============================================================================
-# HARMONY - OpenAI Harmony format settings (for gpt-oss models)
-# ============================================================================
-# IMPORTANT: Your agent must request logprobs=True in API calls for harmony
-# token parsing to work. Without logprobs, only text-based fallback is used.
-harmony:
-  enabled: auto                 # Enable harmony processing
-                                # auto (default) = Auto-detect harmony agents
-                                # yes/true/force/on = Force enable for all agents
-                                # no/false/off = Disable harmony processing
-  show_detailed_thinking: true  # Show reasoning/analysis/commentary with prefixes
-                                # When true (default), displays internal reasoning,
-                                # analysis, and commentary channels with labeled
-                                # prefixes. When false, only shows final response
 
 # ============================================================================
 # PER-AGENT OVERRIDES
