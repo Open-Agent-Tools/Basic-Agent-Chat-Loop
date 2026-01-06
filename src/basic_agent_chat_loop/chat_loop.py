@@ -1155,6 +1155,10 @@ class ChatLoop:
                         CommandType.TEMPLATE,
                         CommandType.MULTILINE,
                     ):
+                        # Skip empty queries
+                        if not user_input.strip():
+                            continue
+
                         # Process query through agent
                         logger.info(f"Processing query: {user_input[:100]}...")
 
