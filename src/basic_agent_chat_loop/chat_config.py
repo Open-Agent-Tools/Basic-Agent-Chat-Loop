@@ -54,10 +54,11 @@ class ChatConfig:
             "retry_delay": 2.0,
             "timeout": 120.0,
             "spinner_style": "dots",
-            # Suppress agent library stdout during streaming using smart filter
-            # Smart filter allows interactive tool prompts (Y/n) to pass through
-            # while suppressing accumulated agent output
-            "suppress_agent_stdout": True,
+            # Suppress agent library stdout during streaming
+            # WARNING: May hide interactive tool prompts (confirmations, etc)
+            # Only enable if you experience double-output and don't use
+            # interactive tools
+            "suppress_agent_stdout": False,
         },
         "ui": {
             "show_banner": True,
@@ -379,10 +380,10 @@ behavior:
   retry_delay: 2.0             # Seconds to wait between retries
   timeout: 120.0               # Request timeout in seconds
   spinner_style: dots          # Thinking indicator style (dots, line, arc, etc.)
-  suppress_agent_stdout: true  # Suppress agent library stdout during streaming
-                               # Uses smart filter to allow interactive prompts
-                               # (Y/n confirmations) through while suppressing
-                               # other output
+  suppress_agent_stdout: false # Suppress agent library stdout during streaming
+                               # WARNING: May hide interactive tool prompts!
+                               # Only enable if you experience double-output AND
+                               # your agent doesn't use interactive tools (CRUD confirmations)
 
 # ============================================================================
 # UI - User interface preferences

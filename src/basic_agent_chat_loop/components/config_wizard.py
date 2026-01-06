@@ -87,7 +87,7 @@ def reset_config_to_defaults() -> Optional[Path]:
                 "retry_delay": 2.0,
                 "timeout": 120.0,
                 "spinner_style": "dots",
-                "suppress_agent_stdout": True,
+                "suppress_agent_stdout": False,
             },
             "paths": {
                 "log_location": "~/.chat_loop_logs",
@@ -639,18 +639,18 @@ class ConfigWizard:
 
         # suppress_agent_stdout
         current_suppress = (
-            self.current_config.get("behavior.suppress_agent_stdout", True)
+            self.current_config.get("behavior.suppress_agent_stdout", False)
             if self.current_config
-            else True
+            else False
         )
         self.config["behavior"]["suppress_agent_stdout"] = self._prompt_bool(
             "\nSuppress agent library streaming output?",
             default=current_suppress,
             help_text=(
-                "Prevents double-output from agent libraries using smart filter. "
-                "The filter allows interactive tool prompts (Y/n confirmations) "
-                "to pass through while suppressing accumulated output. "
-                "Recommended: yes"
+                "Prevents double-output from some agent libraries. "
+                "WARNING: May hide interactive tool prompts (CRUD confirmations). "
+                "Recommended: no (unless you experience double-output and don't "
+                "use interactive tools)"
             ),
         )
 

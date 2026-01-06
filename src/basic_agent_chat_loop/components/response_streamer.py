@@ -12,6 +12,7 @@ Extracted from chat_loop.py to reduce file size and improve modularity.
 """
 
 import asyncio
+import io
 import logging
 import sys
 import time
@@ -19,7 +20,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
 from .response_renderer import ResponseRenderer
-from .smart_stdout_filter import SmartStdoutFilter
 from .streaming_event_parser import StreamingEventParser
 from .token_tracker import TokenTracker
 from .usage_extractor import UsageExtractor
@@ -189,21 +189,17 @@ class ResponseStreamer:
 
             # Check if agent supports streaming
             if hasattr(self.agent, "stream_async"):
-                # WORKAROUND: Use smart filter during streaming to prevent
-                # agent libraries from printing accumulated response text
-                # (discovered in beta.8 diagnostics - text appears between
-                # event loop iterations) while still allowing interactive tool
-                # prompts to display.
-                # NOTE: Filter is only active BETWEEN iterations (during
+                # WORKAROUND: Suppress stdout during streaming to prevent
+                # agent libraries from printing accumulated response text as
+                # a side effect (discovered in beta.8 diagnostics - text
+                # appears between event loop iterations)
+                # NOTE: Suppression is only active BETWEEN iterations (during
                 # yield back to stream_async). During our event processing,
-                # stdout is restored so our output and logging work normally.
+                # stdout is restored so tool calls and logging work normally.
                 old_stdout = None
-                stdout_filter = None
                 if self.suppress_agent_stdout:
                     old_stdout = sys.stdout
-                    # Use SmartStdoutFilter to allow prompts through
-                    stdout_filter = SmartStdoutFilter(old_stdout)
-                    sys.stdout = stdout_filter
+                    sys.stdout = io.StringIO()
 
                 try:
                     async for event in self.agent.stream_async(query):
@@ -234,20 +230,13 @@ class ResponseStreamer:
                             # Display streaming text (renderer handles skip logic)
                             self.response_renderer.render_streaming_text(text_to_add)
 
-                        # Re-enable smart filter before yielding back
+                        # Suppress stdout again before yielding back to stream_async
                         if self.suppress_agent_stdout:
-                            sys.stdout = stdout_filter
+                            sys.stdout = io.StringIO()
                 finally:
                     # Always restore stdout
                     if self.suppress_agent_stdout and old_stdout is not None:
                         sys.stdout = old_stdout
-                        # Log what was suppressed for debugging
-                        if stdout_filter:
-                            suppressed = stdout_filter.get_suppressed_output()
-                            if suppressed:
-                                logger.debug(
-                                    f"Suppressed output: {len(suppressed)} chars"
-                                )
             else:
                 # Fallback to non-streaming call if streaming not supported
                 response = await asyncio.get_event_loop().run_in_executor(
