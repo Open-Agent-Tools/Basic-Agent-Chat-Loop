@@ -344,7 +344,7 @@ class TestConfigureFeatures:
     @patch("builtins.input")
     def test_configure_features_all_defaults(self, mock_input, wizard):
         """Test configuring features with all defaults."""
-        # 3 boolean prompts, all accepting defaults
+        # 4 boolean prompts, all accepting defaults
         mock_input.return_value = ""
 
         wizard._configure_features()
@@ -354,22 +354,19 @@ class TestConfigureFeatures:
         assert "show_metadata" in wizard.config["features"]
         assert "readline_enabled" in wizard.config["features"]
         assert "claude_commands_enabled" in wizard.config["features"]
-        # claude_commands_enabled is always True
-        assert wizard.config["features"]["claude_commands_enabled"] is True
 
     @patch("builtins.input")
     def test_configure_features_custom_values(self, mock_input, wizard):
         """Test configuring features with custom values."""
-        # Prompts: tokens, metadata, readline
-        mock_input.side_effect = ["y", "n", "y"]
+        # Prompts: tokens, metadata, readline, claude_commands
+        mock_input.side_effect = ["y", "n", "y", "n"]
 
         wizard._configure_features()
 
         assert wizard.config["features"]["show_tokens"] is True
         assert wizard.config["features"]["show_metadata"] is False
         assert wizard.config["features"]["readline_enabled"] is True
-        # claude_commands_enabled is always True (not prompted)
-        assert wizard.config["features"]["claude_commands_enabled"] is True
+        assert wizard.config["features"]["claude_commands_enabled"] is False
 
 
 class TestConfigureUI:
