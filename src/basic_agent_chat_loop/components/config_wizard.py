@@ -387,7 +387,10 @@ class ConfigWizard:
         self.config["features"]["claude_commands_enabled"] = self._prompt_bool(
             "Enable Claude slash commands (/template_name)?",
             default=current_claude_commands,
-            help_text="Allows using prompt templates from ~/.prompts, ./.claude/commands, ~/.claude/commands",
+            help_text=(
+                "Allows using prompt templates from ~/.prompts, "
+                "./.claude/commands, ~/.claude/commands"
+            ),
         )
 
     def _configure_ui(self):

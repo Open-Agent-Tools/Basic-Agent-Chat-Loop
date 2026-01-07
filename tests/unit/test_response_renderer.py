@@ -4,7 +4,6 @@ Simplified for v1.8.0 - ResponseRenderer now only handles agent header display.
 Agent library handles all response rendering naturally.
 """
 
-
 from basic_agent_chat_loop.components.response_renderer import ResponseRenderer
 
 
