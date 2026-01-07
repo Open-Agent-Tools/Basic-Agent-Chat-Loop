@@ -5,7 +5,6 @@ Handles all display methods including banner, help, info, and session summary.
 """
 
 import time
-from pathlib import Path
 from typing import Any, Optional
 
 from .token_tracker import TokenTracker
@@ -293,7 +292,7 @@ class DisplayManager:
             print("  ~/.prompts/")
             print("  ./.claude/commands/")
             print("  ~/.claude/commands/")
-            print(f"Example: ~/.prompts/review.md")
+            print("Example: ~/.prompts/review.md")
             return
 
         # Count total templates across all sources
@@ -314,7 +313,9 @@ class DisplayManager:
             for name, desc in templates:
                 override_indicator = ""
                 if name in seen_templates:
-                    override_indicator = f" {Colors.DIM}(overrides previous){Colors.RESET}"
+                    override_indicator = (
+                        f" {Colors.DIM}(overrides previous){Colors.RESET}"
+                    )
                 else:
                     seen_templates.add(name)
 

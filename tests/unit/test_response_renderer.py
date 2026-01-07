@@ -4,7 +4,6 @@ Simplified for v1.8.0 - ResponseRenderer now only handles agent header display.
 Agent library handles all response rendering naturally.
 """
 
-import pytest
 
 from basic_agent_chat_loop.components.response_renderer import ResponseRenderer
 
@@ -28,7 +27,9 @@ class TestResponseRendererInitialization:
 
     def test_initialization_with_different_agent_name(self):
         """Test initialization with different agent names."""
-        renderer = ResponseRenderer(agent_name="MyCustomAgent", colors_module=MockColors)
+        renderer = ResponseRenderer(
+            agent_name="MyCustomAgent", colors_module=MockColors
+        )
         assert renderer.agent_name == "MyCustomAgent"
 
     def test_initialization_with_special_characters_in_name(self):

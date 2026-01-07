@@ -27,9 +27,9 @@ class TemplateManager:
         # Template directories in priority order (first = highest priority)
         # Priority: ~/.prompts > ./.claude/commands > ~/.claude/commands
         self.template_dirs = [
-            base_prompts_dir,                          # Legacy/base (highest priority)
-            Path.cwd() / ".claude" / "commands",       # Project-specific (medium)
-            Path.home() / ".claude" / "commands",      # User global (lowest priority)
+            base_prompts_dir,  # Legacy/base (highest priority)
+            Path.cwd() / ".claude" / "commands",  # Project-specific (medium)
+            Path.home() / ".claude" / "commands",  # User global (lowest priority)
         ]
 
         # Keep prompts_dir for backward compatibility (used for initialization)

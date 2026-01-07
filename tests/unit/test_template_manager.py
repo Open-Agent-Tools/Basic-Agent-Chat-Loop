@@ -320,9 +320,7 @@ class TestMultiDirectorySupport:
         assert "shared" in project_templates
 
         # Check user directory templates
-        user_group = next(
-            (g for g in grouped if g[0] == multi_dir_setup["user"]), None
-        )
+        user_group = next((g for g in grouped if g[0] == multi_dir_setup["user"]), None)
         assert user_group is not None
         user_templates = dict(user_group[1])
         assert "user_only" in user_templates

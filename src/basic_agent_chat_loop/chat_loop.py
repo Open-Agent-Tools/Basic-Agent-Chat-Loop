@@ -867,7 +867,9 @@ class ChatLoop:
                             continue
 
                         # List available prompt templates grouped by source
-                        templates_grouped = self.template_manager.list_templates_grouped()
+                        templates_grouped = (
+                            self.template_manager.list_templates_grouped()
+                        )
                         self.display_manager.display_templates(templates_grouped)
                         continue
 

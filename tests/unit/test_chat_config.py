@@ -352,6 +352,7 @@ class TestGetConfigFunction:
         """Test that get_config can reload configuration."""
         # Clear global config state first
         import basic_agent_chat_loop.chat_config as chat_config_module
+
         chat_config_module._global_config = None
 
         # Create isolated home and cwd directories
@@ -364,7 +365,9 @@ class TestGetConfigFunction:
         monkeypatch.setattr(Path, "home", lambda: home_dir)
         monkeypatch.setattr(Path, "cwd", lambda: cwd_dir)
 
-        config1 = get_config()
+        # Get initial config to initialize singleton
+        get_config()
+        # Reload with temp config file
         config2 = get_config(temp_config_file, reload=True)
 
         # Verify reload loaded the temp config file
