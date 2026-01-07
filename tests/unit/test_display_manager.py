@@ -339,14 +339,19 @@ class TestDisplayTemplates:
 
     def test_display_templates_with_descriptions(self, basic_display, capsys):
         """Test displaying templates with descriptions."""
-        templates = [
-            ("review", "Code Review"),
-            ("explain", "Explain Code"),
-            ("test", "Write Tests"),
-        ]
         prompts_dir = Path.home() / ".prompts"
+        templates_grouped = [
+            (
+                prompts_dir,
+                [
+                    ("review", "Code Review"),
+                    ("explain", "Explain Code"),
+                    ("test", "Write Tests"),
+                ],
+            )
+        ]
 
-        basic_display.display_templates(templates, prompts_dir)
+        basic_display.display_templates(templates_grouped)
         captured = capsys.readouterr()
 
         assert "Available Prompt Templates" in captured.out
@@ -355,29 +360,34 @@ class TestDisplayTemplates:
         assert "Code Review" in captured.out
         assert "/explain" in captured.out
         assert "Usage:" in captured.out
+        assert "Priority:" in captured.out
 
     def test_display_templates_without_descriptions(self, basic_display, capsys):
-        """Test displaying templates as simple list."""
-        templates = ["template1", "template2"]
-        prompts_dir = Path("/test/prompts")
+        """Test displaying templates from multiple sources."""
+        prompts_dir1 = Path("/test/prompts")
+        prompts_dir2 = Path("/test/other")
+        templates_grouped = [
+            (prompts_dir1, [("template1", "template1")]),
+            (prompts_dir2, [("template2", "template2")]),
+        ]
 
-        basic_display.display_templates(templates, prompts_dir)
+        basic_display.display_templates(templates_grouped)
         captured = capsys.readouterr()
 
         assert "/template1" in captured.out
         assert "/template2" in captured.out
+        assert str(prompts_dir1) in captured.out
+        assert str(prompts_dir2) in captured.out
 
     def test_display_templates_empty(self, basic_display, capsys):
         """Test displaying empty template list."""
-        templates = []
-        prompts_dir = Path("/test/prompts")
+        templates_grouped = []
 
-        basic_display.display_templates(templates, prompts_dir)
+        basic_display.display_templates(templates_grouped)
         captured = capsys.readouterr()
 
         assert "No prompt templates found" in captured.out
-        assert "Create templates in:" in captured.out
-        assert str(prompts_dir) in captured.out
+        assert "Create templates in one of these locations:" in captured.out
 
 
 class TestEdgeCases:

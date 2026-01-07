@@ -71,6 +71,7 @@ def reset_config_to_defaults() -> Optional[Path]:
                 "show_metadata": True,
                 "rich_enabled": True,
                 "readline_enabled": True,
+                "claude_commands_enabled": True,
             },
             "ui": {
                 "show_banner": True,
@@ -428,6 +429,18 @@ class ConfigWizard:
             "Enable command history with readline?",
             default=current_readline_enabled,
             help_text="Allows using arrow keys to navigate command history",
+        )
+
+        # claude_commands_enabled
+        current_claude_commands = (
+            self.current_config.get("features.claude_commands_enabled", True)
+            if self.current_config
+            else True
+        )
+        self.config["features"]["claude_commands_enabled"] = self._prompt_bool(
+            "Enable Claude slash commands (/template_name)?",
+            default=current_claude_commands,
+            help_text="Allows using prompt templates from ~/.prompts, ./.claude/commands, ~/.claude/commands",
         )
 
     def _configure_ui(self):

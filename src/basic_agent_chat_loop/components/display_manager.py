@@ -99,7 +99,7 @@ class DisplayManager:
         print("  #help       - Show this help message")
         print("  #info       - Show detailed agent information")
         print("  #context    - Show token usage and context statistics")
-        print("  #templates  - List available prompt templates")
+        print("  #templates  - List available prompt templates (#prompts, #commands)")
         print("  #sessions   - List saved conversation sessions")
         print("  /name       - Use prompt template from ~/.prompts/name.md")
         print("  #resume <#> - Resume a previous session by number or ID")
@@ -139,7 +139,7 @@ class DisplayManager:
         print("  #help       - Show this help message")
         print("  #info       - Show detailed agent information")
         print("  #context    - Show token usage and context statistics")
-        print("  #templates  - List available prompt templates")
+        print("  #templates  - List available prompt templates (#prompts, #commands)")
         print("  #sessions   - List saved conversation sessions")
         print("  /name       - Use prompt template from ~/.prompts/name.md")
         print("  #resume <#> - Resume a previous session by number or ID")
@@ -279,32 +279,54 @@ class DisplayManager:
 
         print(f"{Colors.DIM}{'=' * 60}{Colors.RESET}")
 
-    def display_templates(self, templates: list, prompts_dir: Path):
+    def display_templates(self, templates_grouped: list):
         """
-        Display available templates.
+        Display available templates grouped by source.
 
         Args:
-            templates: List of (name, description) tuples or list of names
-            prompts_dir: Path to prompts directory
+            templates_grouped: List of (directory_path, templates) tuples where
+                             templates is a list of (name, description) tuples
         """
-        if templates:
-            print(
-                f"\n{Colors.system('Available Prompt Templates')} ({len(templates)}):"
-            )
-            print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
-            for item in templates:
-                if isinstance(item, tuple):
-                    name, desc = item
-                    print(f"  {Colors.success('/' + name)} - {desc}")
-                else:
-                    print(f"  {Colors.success('/' + item)}")
-            print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
-            print(Colors.system("Usage: /template_name <optional context>"))
-            print(Colors.system(f"Location: {prompts_dir}"))
-        else:
+        if not templates_grouped:
             print(f"\n{Colors.system('No prompt templates found')}")
-            print(f"Create templates in: {prompts_dir}")
-            print(f"Example: {prompts_dir}/review.md")
+            print("Create templates in one of these locations:")
+            print("  ~/.prompts/")
+            print("  ./.claude/commands/")
+            print("  ~/.claude/commands/")
+            print(f"Example: ~/.prompts/review.md")
+            return
+
+        # Count total templates across all sources
+        total_count = sum(len(templates) for _, templates in templates_grouped)
+
+        print(f"\n{Colors.system('Available Prompt Templates')} ({total_count}):")
+        print(f"{Colors.DIM}{'=' * 60}{Colors.RESET}")
+
+        # Track which templates we've seen to detect overrides
+        seen_templates = set()
+
+        # Display in reverse order so lowest priority shows first
+        # This makes overrides appear later and be more obvious
+        for directory, templates in reversed(templates_grouped):
+            print(f"\n{Colors.system(f'Templates from {directory}:')}")
+            print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
+
+            for name, desc in templates:
+                override_indicator = ""
+                if name in seen_templates:
+                    override_indicator = f" {Colors.DIM}(overrides previous){Colors.RESET}"
+                else:
+                    seen_templates.add(name)
+
+                print(f"  {Colors.success('/' + name)} - {desc}{override_indicator}")
+
+        print(f"\n{Colors.DIM}{'=' * 60}{Colors.RESET}")
+        print(Colors.system("Usage: /template_name <optional context>"))
+        print(
+            Colors.system(
+                "Priority: ~/.prompts > ./.claude/commands > ~/.claude/commands"
+            )
+        )
 
     def display_sessions(self, sessions: list, agent_name: Optional[str] = None):
         """

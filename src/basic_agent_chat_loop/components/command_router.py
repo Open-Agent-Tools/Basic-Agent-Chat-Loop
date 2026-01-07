@@ -161,7 +161,7 @@ class CommandRouter:
                 original_input=original_input,
                 is_command=True,
             )
-        elif base_cmd == "templates":
+        elif base_cmd in ("templates", "prompts", "commands"):
             return CommandResult(
                 command_type=CommandType.TEMPLATES,
                 original_input=original_input,

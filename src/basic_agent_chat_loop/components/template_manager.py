@@ -12,16 +12,28 @@ logger = logging.getLogger(__name__)
 
 
 class TemplateManager:
-    """Manage prompt templates from ~/.prompts/ directory."""
+    """Manage prompt templates from multiple directories with priority."""
 
     def __init__(self, prompts_dir: Optional[Path] = None):
         """
         Initialize template manager.
 
         Args:
-            prompts_dir: Directory containing templates (defaults to ~/.prompts/)
+            prompts_dir: Base prompts directory (defaults to ~/.prompts/)
+                        This is used for backward compatibility and initialization.
         """
-        self.prompts_dir = prompts_dir or Path.home() / ".prompts"
+        base_prompts_dir = prompts_dir or Path.home() / ".prompts"
+
+        # Template directories in priority order (first = highest priority)
+        # Priority: ~/.prompts > ./.claude/commands > ~/.claude/commands
+        self.template_dirs = [
+            base_prompts_dir,                          # Legacy/base (highest priority)
+            Path.cwd() / ".claude" / "commands",       # Project-specific (medium)
+            Path.home() / ".claude" / "commands",      # User global (lowest priority)
+        ]
+
+        # Keep prompts_dir for backward compatibility (used for initialization)
+        self.prompts_dir = base_prompts_dir
         self._initialize_templates()
 
     def _initialize_templates(self):
@@ -173,7 +185,10 @@ Begin loading files now.
 
     def load_template(self, template_name: str, input_text: str = "") -> Optional[str]:
         """
-        Load a prompt template from ~/.prompts/{template_name}.md
+        Load a prompt template, checking directories in priority order.
+
+        Checks in order: ~/.prompts, ./.claude/commands, ~/.claude/commands
+        Returns the first match found (highest priority wins).
 
         Args:
             template_name: Name of the template (without .md extension)
@@ -182,70 +197,85 @@ Begin loading files now.
         Returns:
             Processed template text, or None if template not found
         """
-        template_path = self.prompts_dir / f"{template_name}.md"
+        # Check directories in priority order (highest priority first)
+        for template_dir in self.template_dirs:
+            template_path = template_dir / f"{template_name}.md"
 
-        if not template_path.exists():
-            return None
+            if not template_path.exists():
+                continue
 
-        try:
-            with open(template_path, encoding="utf-8") as f:
-                template = f.read()
+            try:
+                with open(template_path, encoding="utf-8") as f:
+                    template = f.read()
 
-            # Replace {input} placeholder with provided text
-            if "{input}" in template:
-                template = template.replace("{input}", input_text)
-            elif input_text:
-                # If no {input} placeholder but input provided, append it
-                template = f"{template}\n\n{input_text}"
+                # Replace {input} placeholder with provided text
+                if "{input}" in template:
+                    template = template.replace("{input}", input_text)
+                elif input_text:
+                    # If no {input} placeholder but input provided, append it
+                    template = f"{template}\n\n{input_text}"
 
-            return template
+                return template
 
-        except Exception as e:
-            logger.error(f"Error loading template {template_name}: {e}")
-            return None
+            except Exception as e:
+                logger.error(f"Error loading template {template_name}: {e}")
+                continue
+
+        return None
 
     def list_templates(self) -> list[str]:
         """
-        List available prompt templates from ~/.prompts/
+        List all available templates from all directories (deduplicated).
 
         Returns:
-            List of template names (without .md extension)
+            Sorted list of unique template names (without .md extension)
         """
-        if not self.prompts_dir.exists():
-            return []
+        templates = set()
 
-        templates = []
-        for file in self.prompts_dir.glob("*.md"):
-            templates.append(file.stem)
+        for template_dir in self.template_dirs:
+            if not template_dir.exists():
+                continue
+
+            for file in template_dir.glob("*.md"):
+                templates.add(file.stem)
 
         return sorted(templates)
 
-    def get_template_info(self, template_name: str) -> Optional[tuple[str, str]]:
+    def get_template_info(
+        self, template_name: str, template_dir: Optional[Path] = None
+    ) -> Optional[tuple[str, str]]:
         """
         Get template description from first line.
 
         Args:
             template_name: Name of the template
+            template_dir: Specific directory to check (if None, uses priority order)
 
         Returns:
             Tuple of (name, description) or None if not found
         """
-        template_path = self.prompts_dir / f"{template_name}.md"
+        # If specific directory provided, check only that one
+        dirs_to_check = [template_dir] if template_dir else self.template_dirs
 
-        if not template_path.exists():
-            return None
+        for dir_path in dirs_to_check:
+            template_path = dir_path / f"{template_name}.md"
 
-        try:
-            with open(template_path, encoding="utf-8") as f:
-                first_line = f.readline().strip()
-                # Extract description from markdown heading
-                if first_line.startswith("# "):
-                    description = first_line[2:].strip()
-                else:
-                    description = template_name
-                return (template_name, description)
-        except Exception:
-            return (template_name, template_name)
+            if not template_path.exists():
+                continue
+
+            try:
+                with open(template_path, encoding="utf-8") as f:
+                    first_line = f.readline().strip()
+                    # Extract description from markdown heading
+                    if first_line.startswith("# "):
+                        description = first_line[2:].strip()
+                    else:
+                        description = template_name
+                    return (template_name, description)
+            except Exception:
+                return (template_name, template_name)
+
+        return None
 
     def list_templates_with_descriptions(self) -> list[tuple[str, str]]:
         """
@@ -260,3 +290,29 @@ Begin loading files now.
             if info:
                 templates.append(info)
         return templates
+
+    def list_templates_grouped(self) -> list[tuple[Path, list[tuple[str, str]]]]:
+        """
+        List templates grouped by source directory.
+
+        Returns:
+            List of (directory_path, templates) tuples where templates is a list
+            of (name, description) tuples. Directories are returned in priority order.
+        """
+        grouped = []
+
+        for template_dir in self.template_dirs:
+            if not template_dir.exists():
+                continue
+
+            templates_in_dir = []
+            for file in template_dir.glob("*.md"):
+                template_name = file.stem
+                info = self.get_template_info(template_name, template_dir)
+                if info:
+                    templates_in_dir.append(info)
+
+            if templates_in_dir:
+                grouped.append((template_dir, sorted(templates_in_dir)))
+
+        return grouped

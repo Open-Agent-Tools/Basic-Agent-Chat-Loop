@@ -358,8 +358,8 @@ class TestConfigureFeatures:
     @patch("builtins.input")
     def test_configure_features_custom_values(self, mock_input, wizard):
         """Test configuring features with custom values."""
-        # Updated for new display_mode: tokens, metadata, mode, readline
-        mock_input.side_effect = ["y", "n", "streaming", "y"]
+        # Updated for new display_mode: tokens, metadata, mode, readline, claude_commands
+        mock_input.side_effect = ["y", "n", "streaming", "y", "n"]
 
         wizard._configure_features()
 
@@ -367,6 +367,7 @@ class TestConfigureFeatures:
         assert wizard.config["features"]["show_metadata"] is False
         assert wizard.config["features"]["rich_enabled"] is False
         assert wizard.config["features"]["readline_enabled"] is True
+        assert wizard.config["features"]["claude_commands_enabled"] is False
 
 
 class TestConfigureUI:

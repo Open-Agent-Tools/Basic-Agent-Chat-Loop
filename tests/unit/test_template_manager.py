@@ -16,7 +16,10 @@ def prompts_dir(tmp_path):
 @pytest.fixture
 def template_manager(prompts_dir):
     """Create TemplateManager with temporary prompts directory."""
-    return TemplateManager(prompts_dir)
+    manager = TemplateManager(prompts_dir)
+    # Override template_dirs to only use test directory
+    manager.template_dirs = [prompts_dir]
+    return manager
 
 
 @pytest.fixture
@@ -51,6 +54,7 @@ class TestTemplateManagerInitialization:
         assert not prompts_dir.exists()
 
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         assert manager.prompts_dir == prompts_dir
         # Directory is not created until templates are loaded
 
@@ -66,6 +70,7 @@ class TestListTemplates:
     def test_list_templates_populated(self, prompts_dir, populated_prompts_dir):
         """Test listing templates with existing files."""
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         templates = manager.list_templates()
 
         assert len(templates) == 3
@@ -80,6 +85,7 @@ class TestListTemplates:
         (prompts_dir / "notes.doc").write_text("Also not a template")
 
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         templates = manager.list_templates()
 
         assert len(templates) == 1
@@ -94,6 +100,7 @@ class TestListTemplatesWithDescriptions:
         (prompts_dir / "simple.md").write_text("No heading here")
 
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         templates = manager.list_templates_with_descriptions()
 
         assert len(templates) == 1
@@ -104,6 +111,7 @@ class TestListTemplatesWithDescriptions:
     ):
         """Test listing templates with markdown headings."""
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         templates = manager.list_templates_with_descriptions()
 
         # Find the complex template
@@ -114,6 +122,7 @@ class TestListTemplatesWithDescriptions:
     def test_list_with_descriptions_mixed(self, prompts_dir, populated_prompts_dir):
         """Test listing mix of templates with and without headings."""
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         templates = manager.list_templates_with_descriptions()
 
         assert len(templates) == 3
@@ -136,6 +145,7 @@ class TestLoadTemplate:
     def test_load_simple_template(self, prompts_dir, populated_prompts_dir):
         """Test loading a simple template without variables."""
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         content = manager.load_template("simple")
 
         assert content == "This is a simple template."
@@ -145,6 +155,7 @@ class TestLoadTemplate:
     ):
         """Test loading template and substituting variables."""
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         content = manager.load_template("review", "my_code.py")
 
         assert "# Code Review" in content
@@ -154,6 +165,7 @@ class TestLoadTemplate:
     def test_load_template_without_input(self, prompts_dir, populated_prompts_dir):
         """Test loading template with {input} placeholder but no input provided."""
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         content = manager.load_template("review")
 
         # {input} should be replaced with empty string
@@ -162,6 +174,7 @@ class TestLoadTemplate:
     def test_load_template_with_heading(self, prompts_dir, populated_prompts_dir):
         """Test loading template with markdown heading."""
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         content = manager.load_template("complex", "test input")
 
         assert "# Complex Template" in content
@@ -174,6 +187,7 @@ class TestLoadTemplate:
         )
 
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         content = manager.load_template("multi", "user input here")
 
         assert "user input here" in content
@@ -191,6 +205,7 @@ class TestEdgeCases:
         (prompts_dir / "empty.md").write_text("")
 
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         content = manager.load_template("empty")
 
         assert content == ""
@@ -202,6 +217,7 @@ class TestEdgeCases:
         )
 
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         content = manager.load_template("no_placeholder", "extra text")
 
         # Input should be appended
@@ -215,6 +231,7 @@ class TestEdgeCases:
         )
 
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         content = manager.load_template("unicode", "test 测试")
 
         assert "émojis 🎉" in content
@@ -225,7 +242,172 @@ class TestEdgeCases:
         long_input = "x" * 10000
 
         manager = TemplateManager(prompts_dir)
+        manager.template_dirs = [prompts_dir]
         content = manager.load_template("review", long_input)
 
         assert long_input in content
         assert len(content) > 10000
+
+
+class TestMultiDirectorySupport:
+    """Test multi-directory template loading with priority."""
+
+    @pytest.fixture
+    def multi_dir_setup(self, tmp_path):
+        """Create multiple template directories with overlapping templates."""
+        # Create three directories
+        base_dir = tmp_path / "prompts"
+        project_dir = tmp_path / "project_claude" / "commands"
+        user_dir = tmp_path / "user_claude" / "commands"
+
+        base_dir.mkdir(parents=True)
+        project_dir.mkdir(parents=True)
+        user_dir.mkdir(parents=True)
+
+        # Base directory templates (highest priority)
+        (base_dir / "base_only.md").write_text("# Base Only\nTemplate from base")
+        (base_dir / "shared.md").write_text("# Shared Base\nFrom base directory")
+
+        # Project directory templates (medium priority)
+        (project_dir / "project_only.md").write_text(
+            "# Project Only\nTemplate from project"
+        )
+        (project_dir / "shared.md").write_text(
+            "# Shared Project\nFrom project directory (overridden by base)"
+        )
+
+        # User directory templates (lowest priority)
+        (user_dir / "user_only.md").write_text("# User Only\nTemplate from user")
+        (user_dir / "shared.md").write_text(
+            "# Shared User\nFrom user directory (overridden by base and project)"
+        )
+
+        return {
+            "base": base_dir,
+            "project": project_dir,
+            "user": user_dir,
+        }
+
+    def test_list_templates_grouped(self, multi_dir_setup):
+        """Test listing templates grouped by source directory."""
+        manager = TemplateManager(multi_dir_setup["base"])
+        # Manually set template_dirs to use test directories
+        manager.template_dirs = [
+            multi_dir_setup["base"],
+            multi_dir_setup["project"],
+            multi_dir_setup["user"],
+        ]
+
+        grouped = manager.list_templates_grouped()
+
+        # Should have 3 groups
+        assert len(grouped) == 3
+
+        # Check base directory templates
+        base_group = next((g for g in grouped if g[0] == multi_dir_setup["base"]), None)
+        assert base_group is not None
+        base_templates = dict(base_group[1])
+        assert "base_only" in base_templates
+        assert "shared" in base_templates
+
+        # Check project directory templates
+        project_group = next(
+            (g for g in grouped if g[0] == multi_dir_setup["project"]), None
+        )
+        assert project_group is not None
+        project_templates = dict(project_group[1])
+        assert "project_only" in project_templates
+        assert "shared" in project_templates
+
+        # Check user directory templates
+        user_group = next(
+            (g for g in grouped if g[0] == multi_dir_setup["user"]), None
+        )
+        assert user_group is not None
+        user_templates = dict(user_group[1])
+        assert "user_only" in user_templates
+        assert "shared" in user_templates
+
+    def test_list_templates_deduplicates(self, multi_dir_setup):
+        """Test that list_templates returns deduplicated list of all templates."""
+        manager = TemplateManager(multi_dir_setup["base"])
+        manager.template_dirs = [
+            multi_dir_setup["base"],
+            multi_dir_setup["project"],
+            multi_dir_setup["user"],
+        ]
+
+        templates = manager.list_templates()
+
+        # Should have 4 unique templates (base_only, project_only, user_only, shared)
+        assert len(templates) == 4
+        assert "base_only" in templates
+        assert "project_only" in templates
+        assert "user_only" in templates
+        assert "shared" in templates
+
+    def test_load_template_priority_order(self, multi_dir_setup):
+        """Test that templates are loaded from highest priority directory."""
+        manager = TemplateManager(multi_dir_setup["base"])
+        manager.template_dirs = [
+            multi_dir_setup["base"],
+            multi_dir_setup["project"],
+            multi_dir_setup["user"],
+        ]
+
+        # Load shared template - should come from base dir (highest priority)
+        content = manager.load_template("shared")
+        assert "From base directory" in content
+        assert "From project directory" not in content
+        assert "From user directory" not in content
+
+    def test_load_template_fallback_to_lower_priority(self, multi_dir_setup):
+        """Test that templates fall back to lower priority if not found in higher."""
+        manager = TemplateManager(multi_dir_setup["base"])
+        manager.template_dirs = [
+            multi_dir_setup["base"],
+            multi_dir_setup["project"],
+            multi_dir_setup["user"],
+        ]
+
+        # Load project_only - should come from project dir
+        content = manager.load_template("project_only")
+        assert "Template from project" in content
+
+        # Load base_only - should come from base dir
+        content = manager.load_template("base_only")
+        assert "Template from base" in content
+
+    def test_empty_directories_handled(self, tmp_path):
+        """Test that empty directories don't break template loading."""
+        base_dir = tmp_path / "prompts"
+        empty_dir1 = tmp_path / "empty1"
+        empty_dir2 = tmp_path / "empty2"
+
+        base_dir.mkdir()
+        (base_dir / "test.md").write_text("# Test\nContent")
+
+        manager = TemplateManager(base_dir)
+        manager.template_dirs = [base_dir, empty_dir1, empty_dir2]
+
+        # Should work even with non-existent directories
+        templates = manager.list_templates()
+        assert "test" in templates
+
+        grouped = manager.list_templates_grouped()
+        assert len(grouped) == 1  # Only base_dir exists
+
+    def test_get_template_info_from_specific_directory(self, multi_dir_setup):
+        """Test getting template info from a specific directory."""
+        manager = TemplateManager(multi_dir_setup["base"])
+        manager.template_dirs = [
+            multi_dir_setup["base"],
+            multi_dir_setup["project"],
+            multi_dir_setup["user"],
+        ]
+
+        # Get info from specific directory
+        info = manager.get_template_info("shared", multi_dir_setup["project"])
+        assert info is not None
+        assert info[0] == "shared"
+        assert "Shared Project" in info[1]

@@ -848,13 +848,27 @@ class ChatLoop:
                         continue
 
                     elif command_result.command_type == CommandType.TEMPLATES:
-                        # List available prompt templates
-                        templates = (
-                            self.template_manager.list_templates_with_descriptions()
+                        # Check if Claude commands are enabled
+                        claude_commands_enabled = (
+                            self.config.get(
+                                "features.claude_commands_enabled",
+                                True,
+                                agent_name=self.agent_name,
+                            )
+                            if self.config
+                            else True
                         )
-                        self.display_manager.display_templates(
-                            templates, self.prompts_dir
-                        )
+                        if not claude_commands_enabled:
+                            print(
+                                Colors.system(
+                                    "Claude slash commands are disabled in config"
+                                )
+                            )
+                            continue
+
+                        # List available prompt templates grouped by source
+                        templates_grouped = self.template_manager.list_templates_grouped()
+                        self.display_manager.display_templates(templates_grouped)
                         continue
 
                     elif command_result.command_type == CommandType.SESSIONS:
@@ -1119,6 +1133,24 @@ class ChatLoop:
                         continue
 
                     elif command_result.command_type == CommandType.TEMPLATE:
+                        # Check if Claude commands are enabled
+                        claude_commands_enabled = (
+                            self.config.get(
+                                "features.claude_commands_enabled",
+                                True,
+                                agent_name=self.agent_name,
+                            )
+                            if self.config
+                            else True
+                        )
+                        if not claude_commands_enabled:
+                            print(
+                                Colors.system(
+                                    "Claude slash commands are disabled in config"
+                                )
+                            )
+                            continue
+
                         # Template command: /template_name <optional input>
                         # Extract template name and input using the router's helper
                         template_name, input_text = (

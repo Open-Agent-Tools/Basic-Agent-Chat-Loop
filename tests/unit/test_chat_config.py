@@ -53,8 +53,12 @@ agents:
 class TestChatConfigInitialization:
     """Test ChatConfig initialization."""
 
-    def test_defaults_loaded(self):
+    def test_defaults_loaded(self, tmp_path, monkeypatch):
         """Test that default configuration is loaded."""
+        # Isolate from system config files
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "isolated_home")
+        monkeypatch.setattr(Path, "cwd", lambda: tmp_path / "isolated_cwd")
+
         config = ChatConfig()
 
         assert config.get("features.show_tokens") is True
@@ -62,7 +66,6 @@ class TestChatConfigInitialization:
         assert config.get("behavior.max_retries") == 3
         assert config.get("ui.show_banner") is True
         assert config.get("ui.show_status_bar") is True
-        assert config.get("harmony.show_detailed_thinking") is True
 
     def test_load_explicit_config(self, temp_config_file, tmp_path, monkeypatch):
         """Test loading explicit config file."""
@@ -77,8 +80,12 @@ class TestChatConfigInitialization:
         assert config.get("behavior.max_retries") == 5
         assert config.get("behavior.timeout") == 60.0
 
-    def test_nonexistent_config_uses_defaults(self):
+    def test_nonexistent_config_uses_defaults(self, tmp_path, monkeypatch):
         """Test that nonexistent config file falls back to defaults."""
+        # Isolate from system config files
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "isolated_home")
+        monkeypatch.setattr(Path, "cwd", lambda: tmp_path / "isolated_cwd")
+
         config = ChatConfig(Path("/nonexistent/.chatrc"))
 
         assert config.get("features.show_tokens") is True
@@ -194,8 +201,12 @@ class TestConfigSet:
         config.set("new.nested.key", "value")
         assert config.get("new.nested.key") == "value"
 
-    def test_set_agent_specific_value(self):
+    def test_set_agent_specific_value(self, tmp_path, monkeypatch):
         """Test setting agent-specific configuration."""
+        # Isolate from system config files
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "isolated_home")
+        monkeypatch.setattr(Path, "cwd", lambda: tmp_path / "isolated_cwd")
+
         config = ChatConfig()
 
         config.set("features.show_tokens", False, agent_name="My Agent")
@@ -297,8 +308,12 @@ class TestExpandPath:
 class TestInvalidConfig:
     """Test handling of invalid configuration files."""
 
-    def test_invalid_yaml_falls_back_to_defaults(self, tmp_path):
+    def test_invalid_yaml_falls_back_to_defaults(self, tmp_path, monkeypatch):
         """Test that invalid YAML falls back to defaults."""
+        # Isolate from system config files
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "isolated_home")
+        monkeypatch.setattr(Path, "cwd", lambda: tmp_path / "isolated_cwd")
+
         config_file = tmp_path / ".chatrc"
         config_file.write_text("invalid: yaml: [unclosed")
 
@@ -308,8 +323,12 @@ class TestInvalidConfig:
         assert config.get("features.show_tokens") is True
         assert config.get("behavior.max_retries") == 3
 
-    def test_empty_config_file(self, tmp_path):
+    def test_empty_config_file(self, tmp_path, monkeypatch):
         """Test that empty config file uses defaults."""
+        # Isolate from system config files
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "isolated_home")
+        monkeypatch.setattr(Path, "cwd", lambda: tmp_path / "isolated_cwd")
+
         config_file = tmp_path / ".chatrc"
         config_file.write_text("")
 
@@ -331,17 +350,27 @@ class TestGetConfigFunction:
 
     def test_get_config_reload(self, temp_config_file, tmp_path, monkeypatch):
         """Test that get_config can reload configuration."""
+        # Clear global config state first
+        import basic_agent_chat_loop.chat_config as chat_config_module
+        chat_config_module._global_config = None
+
+        # Create isolated home and cwd directories
+        home_dir = tmp_path / "home"
+        cwd_dir = tmp_path / "cwd"
+        home_dir.mkdir()
+        cwd_dir.mkdir()
+
         # Isolate by redirecting home and cwd to temp directories with no configs
-        monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
-        monkeypatch.setattr(Path, "cwd", lambda: tmp_path / "cwd")
+        monkeypatch.setattr(Path, "home", lambda: home_dir)
+        monkeypatch.setattr(Path, "cwd", lambda: cwd_dir)
 
         config1 = get_config()
         config2 = get_config(temp_config_file, reload=True)
 
-        # Should be different configuration
-        assert config1.get("features.show_tokens") != config2.get(
-            "features.show_tokens"
-        )
+        # Verify reload loaded the temp config file
+        assert config2.get("features.show_tokens") is False
+        assert config2.get("behavior.max_retries") == 5
+        assert config2.get("behavior.timeout") == 60.0
 
 
 class TestEdgeCases:

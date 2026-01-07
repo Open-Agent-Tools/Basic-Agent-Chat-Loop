@@ -45,6 +45,7 @@ class ChatConfig:
             "show_tokens": True,
             "show_metadata": True,
             "readline_enabled": True,
+            "claude_commands_enabled": True,
         },
         "paths": {
             "log_location": "~/.chat_loop_logs",
