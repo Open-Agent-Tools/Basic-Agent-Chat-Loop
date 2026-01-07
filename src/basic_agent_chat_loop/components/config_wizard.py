@@ -265,7 +265,6 @@ class ConfigWizard:
             self._configure_features()
             self._configure_ui()
             self._configure_audio()
-            self._configure_harmony()
             self._configure_behavior()
             self._configure_paths()
             self._configure_colors()
@@ -367,58 +366,6 @@ class ConfigWizard:
             help_text="Displays agent model, tools, and capabilities",
         )
 
-        # display_mode - unified choice for output formatting
-        current_rich = (
-            self.current_config.get("features.rich_enabled", True)
-            if self.current_config
-            else True
-        )
-        current_harmony = (
-            self.current_config.get("harmony.enabled", None)
-            if self.current_config
-            else None
-        )
-
-        # Determine current mode from existing settings
-        if not current_rich and current_harmony is False:
-            current_mode = "streaming"
-        elif current_harmony is not False:  # True or None (auto)
-            current_mode = "auto"
-        else:
-            current_mode = "rich"
-
-        print("\nDisplay Mode:")
-        print("  streaming = Plain text output, no formatting (fastest)")
-        print("  rich      = Rich markdown formatting with syntax highlighting")
-        print(
-            "  auto      = Auto-detect Harmony agents, otherwise use Rich (recommended)"
-        )
-        mode = (
-            input(f"Display mode? [streaming/rich/auto] [{current_mode}]: ")
-            .strip()
-            .lower()
-        )
-
-        if not mode:
-            mode = current_mode
-        elif mode not in ["streaming", "rich", "auto"]:
-            print(f"Invalid mode '{mode}', using '{current_mode}'")
-            mode = current_mode
-
-        # Set rich_enabled and harmony.enabled based on mode
-        if mode == "streaming":
-            self.config["features"]["rich_enabled"] = False
-            # Don't set harmony here, will be set in _configure_harmony_from_mode
-        elif mode == "rich":
-            self.config["features"]["rich_enabled"] = True
-            # Don't set harmony here, will be set in _configure_harmony_from_mode
-        else:  # auto
-            self.config["features"]["rich_enabled"] = True
-            # Don't set harmony here, will be set in _configure_harmony_from_mode
-
-        # Store mode for use in _configure_harmony_from_mode
-        self._selected_display_mode = mode
-
         # readline_enabled
         current_readline_enabled = (
             self.current_config.get("features.readline_enabled", True)
@@ -431,17 +378,8 @@ class ConfigWizard:
             help_text="Allows using arrow keys to navigate command history",
         )
 
-        # claude_commands_enabled
-        current_claude_commands = (
-            self.current_config.get("features.claude_commands_enabled", True)
-            if self.current_config
-            else True
-        )
-        self.config["features"]["claude_commands_enabled"] = self._prompt_bool(
-            "Enable Claude slash commands (/template_name)?",
-            default=current_claude_commands,
-            help_text="Allows using prompt templates from ~/.prompts, ./.claude/commands, ~/.claude/commands",
-        )
+        # claude_commands_enabled - always enabled, not exposed in wizard
+        self.config["features"]["claude_commands_enabled"] = True
 
     def _configure_ui(self):
         """Configure UI section."""
@@ -549,39 +487,6 @@ class ConfigWizard:
                 self.config["audio"]["notification_sound"] = custom_sound
         else:
             self.config["audio"]["notification_sound"] = None
-
-    def _configure_harmony(self):
-        """Configure harmony section based on display mode selection."""
-        self.config["harmony"] = {}
-
-        # Set harmony.enabled based on the display mode selected in _configure_features
-        mode = getattr(self, "_selected_display_mode", "auto")
-
-        if mode == "streaming":
-            # Streaming mode - disable harmony completely
-            self.config["harmony"]["enabled"] = False
-        elif mode == "rich":
-            # Rich mode - disable harmony (use Rich only)
-            self.config["harmony"]["enabled"] = False
-        else:  # auto
-            # Auto mode - enable harmony auto-detection
-            self.config["harmony"]["enabled"] = None
-
-        # show_detailed_thinking (only relevant for harmony mode)
-        if mode == "auto":
-            current_show_detailed = (
-                self.current_config.get("harmony.show_detailed_thinking", False)
-                if self.current_config
-                else False
-            )
-            self.config["harmony"]["show_detailed_thinking"] = self._prompt_bool(
-                "\nShow detailed Harmony thinking? (reasoning, analysis, commentary)",
-                default=current_show_detailed,
-                help_text="Displays internal reasoning channels with labeled prefixes",
-            )
-        else:
-            # Not using harmony, set to default
-            self.config["harmony"]["show_detailed_thinking"] = False
 
     def _configure_behavior(self):
         """Configure behavior section."""
