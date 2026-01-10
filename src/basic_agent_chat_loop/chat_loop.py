@@ -216,6 +216,45 @@ def set_terminal_title(title: str) -> None:
         pass
 
 
+def enable_windows_vt_mode() -> bool:
+    """
+    Enable Virtual Terminal Processing on Windows.
+
+    This allows ANSI escape codes to work in standard cmd.exe and PowerShell
+    without needing an external library like colorama for every print.
+    """
+    if sys.platform != "win32":
+        return True
+
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+
+        # Get handle to stdout
+        # STD_OUTPUT_HANDLE = -11
+        handle = kernel32.GetStdHandle(-11)
+
+        # Get current mode
+        mode = ctypes.c_ulong()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+
+        # Add ENABLE_VIRTUAL_TERMINAL_PROCESSING (0x0004)
+        enable_virtual_terminal_processing = 0x0004
+        if not (mode.value & enable_virtual_terminal_processing):
+            if kernel32.SetConsoleMode(
+                handle, mode.value | enable_virtual_terminal_processing
+            ):
+                return True
+            return False
+
+        return True
+    except Exception:
+        # If we can't enable it, functionality degrades gracefully
+        return False
+
+
 def setup_readline_history() -> Optional[Path]:
     """
     Setup readline command history with persistence.
@@ -1282,6 +1321,9 @@ class ChatLoop:
 
 def main():
     """Main entry point for the chat loop."""
+    # Ensure Windows console supports ANSI colors
+    enable_windows_vt_mode()
+
     parser = argparse.ArgumentParser(
         description=(
             "Interactive CLI for AI Agents with token tracking and rich features"
