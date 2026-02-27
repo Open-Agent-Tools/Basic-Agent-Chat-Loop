@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-02-27
+
+### Changed
+- **Dependency Maintenance** - Updated all dependencies to latest compatible versions
+  - `rich` bumped minimum to `>=14.3.3`
+  - `black` bumped minimum to `>=26.1.0`
+  - `ruff` bumped minimum to `>=0.15.4`
+  - `pytest-asyncio>=0.24` added as an explicit dev dependency (was previously relied upon as a transitive/global install)
+  - `uv.lock` refreshed with latest compatible transitive dependency versions
+
+### Fixed
+- **Async Test Configuration** - Added `pytest-asyncio` to dev dependencies and configured `asyncio_mode = "auto"` in `[tool.pytest.ini_options]`, ensuring the 13 async tests in `test_multiline_input.py` are properly discovered and executed in isolated environments
+
 ## [1.8.0-beta.1] - 2026-01-06
 
 ### Changed - Major Architectural Simplification

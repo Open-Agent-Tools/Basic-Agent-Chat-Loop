@@ -35,7 +35,7 @@ keywords = ["agent", "chat", "loop", "cli"]
 
 dependencies = [
     "pyyaml>=6.0.3",
-    "rich>=14.2.0",
+    "rich>=14.3.3",
     "pyreadline3>=3.5.4; platform_system=='Windows'",  # Command history on Windows
     "pyperclip>=1.11.0",  # Clipboard support for copy command
     "openai-harmony>=0.0.8",  # OpenAI Harmony format support for gpt-oss models
@@ -45,8 +45,9 @@ dependencies = [
 dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
-    "black>=25.12.0",
-    "ruff>=0.14.10",
+    "pytest-asyncio>=0.24",
+    "black>=26.1.0",
+    "ruff>=0.15.4",
     "mypy>=1.19.1",
 ]
 windows = [
@@ -75,6 +76,7 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
+asyncio_mode = "auto"
 
 [tool.black]
 line-length = 88

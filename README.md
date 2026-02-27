@@ -1,7 +1,7 @@
 # Basic Agent Chat Loop
 
 [![PyPI version](https://img.shields.io/pypi/v/basic-agent-chat-loop.svg)](https://pypi.org/project/basic-agent-chat-loop/)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/actions/workflows/ci.yml/badge.svg)](https://github.com/Open-Agent-Tools/Basic-Agent-Chat-Loop/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Open-Agent-Tools/Basic-Agent-Chat-Loop/branch/main/graph/badge.svg)](https://codecov.io/gh/Open-Agent-Tools/Basic-Agent-Chat-Loop)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
