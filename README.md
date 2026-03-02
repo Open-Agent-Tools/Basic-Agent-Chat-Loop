@@ -1,4 +1,4 @@
-# Basic Agent Chat Loop
+# Basic Agent Chat Loop (Strands)
 
 [![PyPI version](https://img.shields.io/pypi/v/basic-agent-chat-loop.svg)](https://pypi.org/project/basic-agent-chat-loop/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
