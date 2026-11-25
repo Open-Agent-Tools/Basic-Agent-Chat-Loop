@@ -3,10 +3,10 @@
 Test script for Windows VT mode compatibility.
 This tests the enable_windows_vt_mode() function across platforms.
 """
+
 import sys
 from pathlib import Path
 
-# Add the src directory to the path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from basic_agent_chat_loop.chat_loop import enable_windows_vt_mode
@@ -18,11 +18,9 @@ def test_windows_vt_mode():
     print(f"Python version: {sys.version}")
     print("-" * 60)
 
-    # Test the function
     result = enable_windows_vt_mode()
     print(f"\nenable_windows_vt_mode() returned: {result}")
 
-    # On non-Windows platforms, it should return True immediately
     if sys.platform != "win32":
         expected = True
         if result == expected:
@@ -30,7 +28,6 @@ def test_windows_vt_mode():
         else:
             print(f"✗ FAIL: Expected {expected}, got {result}")
     else:
-        # On Windows, it should attempt to enable VT mode
         print(f"Windows platform detected - VT mode enablement attempted")
         if result:
             print("✓ PASS: VT mode enabled successfully")
@@ -41,7 +38,6 @@ def test_windows_vt_mode():
     print("Testing ANSI color codes:")
     print("=" * 60)
 
-    # Test ANSI color codes
     colors = {
         "red": "\033[31m",
         "green": "\033[32m",
@@ -63,6 +59,7 @@ def test_windows_vt_mode():
 
     try:
         from rich.console import Console
+
         console = Console()
         console.print("[bold green]Rich library works correctly![/bold green]")
         console.print("[yellow]Yellow text[/yellow]")

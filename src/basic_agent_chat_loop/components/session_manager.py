@@ -14,8 +14,6 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# File permission constants
-# Owner read/write only - ensures session data remains private
 SECURE_FILE_PERMISSIONS = 0o600
 
 
@@ -30,7 +28,7 @@ class SessionInfo:
     last_updated: datetime
     query_count: int
     total_tokens: int
-    preview: str  # First query text
+    preview: str
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -129,10 +127,8 @@ class SessionManager:
             return False
 
         try:
-            # Update timestamp
             index["last_updated"] = datetime.now().isoformat()
 
-            # Write with pretty formatting
             with open(self.index_file, "w", encoding="utf-8") as f:
                 json.dump(index, f, indent=2)
 
@@ -154,12 +150,10 @@ class SessionManager:
         """
         index = self._load_index()
 
-        # Remove existing entry if present
         index["sessions"] = [
             s for s in index["sessions"] if s["session_id"] != session_info.session_id
         ]
 
-        # Add new entry at the beginning (most recent first)
         index["sessions"].insert(0, session_info.to_dict())
 
         return self._save_index(index)
@@ -212,7 +206,6 @@ class SessionManager:
         """
         index = self._load_index()
 
-        # Remove entry
         index["sessions"] = [
             s for s in index["sessions"] if s["session_id"] != session_id
         ]
@@ -252,14 +245,12 @@ class SessionManager:
             json_path = self.sessions_dir / f"{session_id}.json"
             md_path = self.sessions_dir / f"{session_id}.md"
 
-            # Calculate metadata
             total_tokens = sum(
                 (entry.get("usage") or {}).get("input_tokens", 0)
                 + (entry.get("usage") or {}).get("output_tokens", 0)
                 for entry in conversation
             )
 
-            # Get first query for preview (truncate to 100 chars)
             preview = conversation[0]["query"][:100] if conversation else ""
             if len(conversation[0]["query"]) > 100:
                 preview += "..."
@@ -267,7 +258,6 @@ class SessionManager:
             created = datetime.fromtimestamp(conversation[0]["timestamp"])
             last_updated = datetime.fromtimestamp(conversation[-1]["timestamp"])
 
-            # Prepare JSON data
             json_data = {
                 "session_id": session_id,
                 "agent_name": agent_name,
@@ -283,17 +273,13 @@ class SessionManager:
                 "conversation": conversation,
             }
 
-            # Save JSON
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(json_data, f, indent=2)
 
-            # Set secure permissions (owner read/write only)
             json_path.chmod(SECURE_FILE_PERMISSIONS)
 
-            # Save markdown (for human readability)
             self._save_markdown(md_path, session_id, json_data)
 
-            # Update index
             session_info = SessionInfo(
                 session_id=session_id,
                 agent_name=agent_name,
@@ -335,25 +321,20 @@ class SessionManager:
             "\n---\n",
         ]
 
-        # Add each conversation entry
         for i, entry in enumerate(json_data["conversation"], 1):
             ts = entry["timestamp"]
             entry_timestamp = datetime.fromtimestamp(ts).strftime("%H:%M:%S")
             duration = entry.get("duration", 0)
 
-            # Add query
             content_lines.append(f"\n## Query {i} ({entry_timestamp})\n")
             content_lines.append(f"**You:** {entry['query']}\n")
 
-            # Add response
             content_lines.append(
                 f"\n**{json_data['agent_name']}:** {entry['response']}\n"
             )
 
-            # Add metadata
             metadata_parts = [f"Time: {duration:.1f}s"]
 
-            # Add token info if available
             usage = entry.get("usage")
             if usage:
                 input_tok = usage.get("input_tokens", 0)
@@ -369,11 +350,9 @@ class SessionManager:
 
             content_lines.append("\n---\n")
 
-        # Write to file
         with open(md_path, "w", encoding="utf-8") as f:
             f.writelines(content_lines)
 
-        # Set secure permissions
         md_path.chmod(SECURE_FILE_PERMISSIONS)
 
     def load_session(self, session_id: str) -> Optional[dict[str, Any]]:
@@ -423,7 +402,6 @@ class SessionManager:
         sessions = []
 
         for session_data in index["sessions"][:limit]:
-            # Filter by agent name if specified
             if agent_name and session_data.get("agent_name") != agent_name:
                 continue
 
@@ -452,12 +430,10 @@ class SessionManager:
             return False, f"Session not found: {session_id}"
 
         try:
-            # Delete files
             json_path.unlink()
             if md_path.exists():
                 md_path.unlink()
 
-            # Remove from index
             self._remove_from_index(session_id)
 
             logger.info(f"Deleted session: {session_id}")
@@ -482,7 +458,6 @@ class SessionManager:
         query_lower = query.lower()
 
         for session_data in index["sessions"]:
-            # Search in preview and agent name
             preview = session_data.get("preview", "").lower()
             agent_name = session_data.get("agent_name", "").lower()
 
@@ -532,7 +507,7 @@ class SessionManager:
         cutoff = datetime.now() - timedelta(days=max_age_days)
         deleted_count = 0
 
-        sessions = self.list_sessions(limit=1000)  # Get all sessions
+        sessions = self.list_sessions(limit=1000)
 
         for session in sessions:
             if session.last_updated < cutoff:

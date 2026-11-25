@@ -13,7 +13,6 @@ class TestSetupLogging:
 
     def test_setup_logging_creates_log_file(self, tmp_path, monkeypatch):
         """Test that setup_logging creates log file."""
-        # Mock log_dir to use temp directory
         import basic_agent_chat_loop.chat_loop as chat_loop_module
 
         original_log_dir = chat_loop_module.log_dir
@@ -22,9 +21,7 @@ class TestSetupLogging:
         try:
             setup_logging("test_agent")
 
-            # Check that log file was created (or would be created on first log)
             tmp_path / "test_agent_chat.log"
-            # The file won't exist yet, but the directory should
             assert tmp_path.exists()
 
         finally:
@@ -40,9 +37,7 @@ class TestSetupLogging:
         try:
             setup_logging("My Test Agent")
 
-            # Should create log file with underscores
             tmp_path / "my_test_agent_chat.log"
-            # Directory should exist
             assert tmp_path.exists()
 
         finally:
@@ -77,7 +72,6 @@ class TestChatLoopInitialization:
 
     def test_initialization_with_defaults(self, mock_agent):
         """Test that default configuration values are set."""
-        # Patch get_config to return None, ensuring defaults are used
         with patch("basic_agent_chat_loop.chat_loop.get_config") as mock_get_config:
             mock_get_config.return_value = None
 
@@ -88,7 +82,6 @@ class TestChatLoopInitialization:
                 config=None,
             )
 
-            # Check defaults
             assert chat_loop.max_retries == 3
             assert chat_loop.retry_delay == 2.0
             assert chat_loop.timeout == 120.0
@@ -114,7 +107,6 @@ class TestChatLoopInitialization:
             "ui.show_banner": False,
             "ui.show_status_bar": False,
         }.get(key, default)
-        # Mock expand_path to return a real Path
         config.expand_path = Mock(return_value=tmp_path / "sessions")
 
         chat_loop = ChatLoop(
@@ -130,7 +122,7 @@ class TestChatLoopInitialization:
         assert chat_loop.spinner_style == "bouncingBall"
         assert chat_loop.show_metadata is False
         assert chat_loop.show_tokens is True
-        assert chat_loop.use_rich is False  # Rich disabled by config
+        assert chat_loop.use_rich is False
         assert chat_loop.show_thinking is False
         assert chat_loop.show_duration is False
         assert chat_loop.show_banner is False
@@ -143,14 +135,11 @@ class TestChatLoopInitialization:
             agent_description="Desc",
         )
 
-        # Should create template manager
         assert chat_loop.template_manager is not None
         assert isinstance(chat_loop.prompts_dir, Path)
 
-        # Should create token tracker
         assert chat_loop.token_tracker is not None
 
-        # Should create display manager
         assert chat_loop.display_manager is not None
 
     def test_initialization_with_agent_factory(self, mock_agent):
@@ -201,10 +190,8 @@ class TestReadlineHistory:
 
         history_file = Path.home() / ".chat_history"
 
-        # Should not raise
         save_readline_history(history_file)
 
-        # Should have called write_history_file
         mock_readline.write_history_file.assert_called_once()
 
     @patch("basic_agent_chat_loop.chat_loop.READLINE_AVAILABLE", False)
@@ -214,12 +201,10 @@ class TestReadlineHistory:
 
         history_file = Path.home() / ".chat_history"
 
-        # Should not raise
         save_readline_history(history_file)
 
     def test_save_readline_history_none_file(self):
         """Test save with None history file."""
         from basic_agent_chat_loop.chat_loop import save_readline_history
 
-        # Should not raise
         save_readline_history(None)

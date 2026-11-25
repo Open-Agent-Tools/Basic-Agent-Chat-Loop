@@ -7,7 +7,6 @@ Contains terminal color codes and status bar rendering.
 import time
 from typing import Optional
 
-# Named color palette - maps color names to ANSI escape codes
 COLOR_PALETTE = {
     "black": "\033[30m",
     "red": "\033[31m",
@@ -27,17 +26,15 @@ COLOR_PALETTE = {
 class Colors:
     """ANSI color codes for terminal output."""
 
-    # Default colors (can be overridden by config)
     RESET = "\033[0m"
     BOLD = "\033[1m"
     DIM = "\033[2m"
 
-    # Text colors - these will be updated from config
-    USER = "\033[97m"  # Bright white for user input (maximum contrast)
-    AGENT = "\033[94m"  # Bright blue for agent
-    SYSTEM = "\033[33m"  # Yellow for system messages
-    ERROR = "\033[91m"  # Bright red for errors
-    SUCCESS = "\033[92m"  # Bright green for success
+    USER = "\033[97m"
+    AGENT = "\033[94m"
+    SYSTEM = "\033[33m"
+    ERROR = "\033[91m"
+    SUCCESS = "\033[92m"
 
     @classmethod
     def _resolve_color(cls, color_value: str) -> str:
@@ -51,10 +48,8 @@ class Colors:
         Returns:
             ANSI escape sequence
         """
-        # If it's a named color, look it up in the palette
         if color_value in COLOR_PALETTE:
             return COLOR_PALETTE[color_value]
-        # Otherwise, assume it's already an ANSI code (backward compatibility)
         return color_value
 
     @classmethod
@@ -116,14 +111,11 @@ class Colors:
         formatted_lines = []
 
         for line in lines:
-            # Check if line starts with '[' or 'Tool #'
             if line.startswith("[") or line.startswith("Tool #"):
-                # Use bright_green for tool/thinking messages
                 formatted_lines.append(
                     f"{COLOR_PALETTE['bright_green']}{line}{Colors.RESET}"
                 )
             else:
-                # Use standard agent color
                 formatted_lines.append(f"{Colors.AGENT}{line}{Colors.RESET}")
 
         return "\n".join(formatted_lines)
@@ -132,7 +124,6 @@ class Colors:
 class StatusBar:
     """Simple status bar for chat loop."""
 
-    # Token display formatting thresholds
     TOKEN_THOUSANDS_THRESHOLD = 1_000
     TOKEN_MILLIONS_THRESHOLD = 1_000_000
 
@@ -187,13 +178,11 @@ class StatusBar:
         session_time = self.get_session_time()
         queries_text = "query" if self.query_count == 1 else "queries"
 
-        # Build status line
         parts = [
             self.agent_name,
             self.model_info,
         ]
 
-        # Add tokens if enabled and available
         if self.show_tokens and self.total_tokens > 0:
             if self.total_tokens >= self.TOKEN_MILLIONS_THRESHOLD:
                 token_str = (
@@ -206,7 +195,6 @@ class StatusBar:
             else:
                 token_str = f"{self.total_tokens} tokens"
 
-            # Add percentage if max_tokens is known
             if (
                 self.max_tokens
                 and self.max_tokens != "Unknown"
@@ -221,9 +209,8 @@ class StatusBar:
         parts.extend([f"{self.query_count} {queries_text}", session_time])
 
         status_line = " │ ".join(parts)
-        width = len(status_line) + 4  # Padding
+        width = len(status_line) + 4
 
-        # Create bordered status bar
         top = "┌" + "─" * (width - 2) + "┐"
         middle = f"│ {status_line} │"
         bottom = "└" + "─" * (width - 2) + "┘"

@@ -1,8 +1,4 @@
-"""Basic Agent Chat Loop - Feature-rich interactive CLI for AI agents.
-
-A powerful chat interface for AI agents with token tracking, prompt templates,
-agent aliases, and extensive configuration options.
-"""
+"""Interactive CLI for AI agents with token tracking, templates, and aliases."""
 
 __version__ = "1.10.0"
 

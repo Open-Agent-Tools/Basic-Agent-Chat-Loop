@@ -24,15 +24,12 @@ class TemplateManager:
         """
         base_prompts_dir = prompts_dir or Path.home() / ".prompts"
 
-        # Template directories in priority order (first = highest priority)
-        # Priority: ~/.prompts > ./.claude/commands > ~/.claude/commands
         self.template_dirs = [
-            base_prompts_dir,  # Legacy/base (highest priority)
-            Path.cwd() / ".claude" / "commands",  # Project-specific (medium)
-            Path.home() / ".claude" / "commands",  # User global (lowest priority)
+            base_prompts_dir,
+            Path.cwd() / ".claude" / "commands",
+            Path.home() / ".claude" / "commands",
         ]
 
-        # Keep prompts_dir for backward compatibility (used for initialization)
         self.prompts_dir = base_prompts_dir
         self._initialize_templates()
 
@@ -44,7 +41,6 @@ class TemplateManager:
         try:
             self.prompts_dir.mkdir(parents=True, exist_ok=True)
 
-            # Create sample templates
             self._create_sample_template(
                 "explain",
                 """# Explain this code
@@ -197,7 +193,6 @@ Begin loading files now.
         Returns:
             Processed template text, or None if template not found
         """
-        # Check directories in priority order (highest priority first)
         for template_dir in self.template_dirs:
             template_path = template_dir / f"{template_name}.md"
 
@@ -208,11 +203,9 @@ Begin loading files now.
                 with open(template_path, encoding="utf-8") as f:
                     template = f.read()
 
-                # Replace {input} placeholder with provided text
                 if "{input}" in template:
                     template = template.replace("{input}", input_text)
                 elif input_text:
-                    # If no {input} placeholder but input provided, append it
                     template = f"{template}\n\n{input_text}"
 
                 return template
@@ -254,7 +247,6 @@ Begin loading files now.
         Returns:
             Tuple of (name, description) or None if not found
         """
-        # If specific directory provided, check only that one
         dirs_to_check = [template_dir] if template_dir else self.template_dirs
 
         for dir_path in dirs_to_check:
@@ -266,7 +258,6 @@ Begin loading files now.
             try:
                 with open(template_path, encoding="utf-8") as f:
                     first_line = f.readline().strip()
-                    # Extract description from markdown heading
                     if first_line.startswith("# "):
                         description = first_line[2:].strip()
                     else:

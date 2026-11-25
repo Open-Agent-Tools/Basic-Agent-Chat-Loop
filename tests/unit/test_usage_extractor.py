@@ -235,7 +235,6 @@ class TestTokenFieldVariations:
         """Test extraction with mixed field names (inputTokens vs output_tokens)."""
         extractor = UsageExtractor()
 
-        # Bedrock uses camelCase, others use snake_case
         response = {"usage": {"inputTokens": 100, "output_tokens": 50}}
 
         result = extractor.extract_token_usage(response)
@@ -251,7 +250,6 @@ class TestTokenFieldVariations:
         response = {"usage": {"input_tokens": 0, "output_tokens": 0}}
 
         result = extractor.extract_token_usage(response)
-        # Should return None when all tokens are zero
         assert result is None
 
     def test_extract_with_only_input_tokens(self):
@@ -394,7 +392,7 @@ class TestToolCountExtraction:
         response = {"result": Result()}
 
         tool_count = extractor.extract_tool_count(response)
-        assert tool_count == 6  # 3 + 1 + 2
+        assert tool_count == 6
 
     def test_extract_tool_count_list_format(self):
         """Test extraction from list format tool_metrics."""
@@ -429,7 +427,7 @@ class TestToolCountExtraction:
         response = {"result": Result()}
 
         tool_count = extractor.extract_tool_count(response)
-        assert tool_count == 2  # Only non-private attributes
+        assert tool_count == 2
 
     def test_extract_tool_count_empty_dict(self):
         """Test extraction when tool_metrics is empty dict."""
@@ -444,7 +442,7 @@ class TestToolCountExtraction:
         response = {"result": Result()}
 
         tool_count = extractor.extract_tool_count(response)
-        assert tool_count is None  # Empty tool_metrics returns None
+        assert tool_count is None
 
     def test_extract_tool_count_none(self):
         """Test extraction when tool_metrics is None."""
@@ -525,7 +523,6 @@ class TestExtractorPriority:
         class Result:
             metrics = Metrics()
 
-        # Response has both Bedrock and standard usage
         response = {
             "result": Result(),
             "usage": {"input_tokens": 999, "output_tokens": 999},
@@ -534,7 +531,6 @@ class TestExtractorPriority:
         result = extractor.extract_token_usage(response)
         assert result is not None
         usage_dict, is_accumulated = result
-        # Should use Bedrock values, not standard
         assert usage_dict == {"input_tokens": 100, "output_tokens": 50}
         assert is_accumulated is True
 
@@ -551,7 +547,6 @@ class TestEdgeCases:
         result = extractor.extract_token_usage(response)
         assert result is not None
         usage_dict, is_accumulated = result
-        # Should convert floats to ints
         assert usage_dict == {"input_tokens": 100, "output_tokens": 50}
 
     def test_extract_with_large_token_counts(self):

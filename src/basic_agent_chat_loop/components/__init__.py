@@ -1,9 +1,4 @@
-"""
-Components for Basic Agent Chat Loop.
-
-This package contains modular components extracted from the main chat loop
-for better maintainability and testability.
-"""
+"""Components for Basic Agent Chat Loop."""
 
 from .agent_loader import (
     extract_agent_metadata,

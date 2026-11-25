@@ -30,7 +30,6 @@ def reset_config_to_defaults() -> Optional[Path]:
     print("\nPress Ctrl+C at any time to cancel.\n")
 
     try:
-        # Ask which config to reset
         print("Which configuration would you like to reset?")
         print("  1. Global (~/.chatrc)")
         print("  2. Project (./.chatrc)")
@@ -47,17 +46,14 @@ def reset_config_to_defaults() -> Optional[Path]:
             else:
                 print("Invalid choice. Please enter 1 or 2.")
 
-        # Show what will be reset
         print(f"\nThis will reset: {config_path}")
 
-        # Confirm
         confirm = input("\nAre you sure you want to continue? [y/N]: ").strip().lower()
 
         if confirm not in ["y", "yes"]:
             print("\nReset cancelled. No changes were made.")
             return None
 
-        # Create default config
         default_config: dict[str, Any] = {
             "colors": {
                 "user": "bright_white",
@@ -94,7 +90,6 @@ def reset_config_to_defaults() -> Optional[Path]:
             },
         }
 
-        # Generate YAML content
         yaml_lines = [
             "# Basic Agent Chat Loop Configuration",
             "#",
@@ -195,12 +190,10 @@ def reset_config_to_defaults() -> Optional[Path]:
 
         yaml_content = "\n".join(yaml_lines) + "\n"
 
-        # Write the file
         try:
             with open(config_path, "w") as f:
                 f.write(yaml_content)
 
-            # Set secure permissions
             config_path.chmod(0o600)
 
             print("\n" + "=" * 70)
@@ -241,15 +234,12 @@ class ConfigWizard:
         print("Press Ctrl+C at any time to cancel.\n")
 
         try:
-            # Choose scope
             scope = self._prompt_scope()
             if scope is None:
                 return None
 
-            # Load existing config if it exists
             self._load_existing_config(scope)
 
-            # Configure each section
             print("\n" + "-" * 70)
             print("Let's configure your settings section by section.")
             if self.current_config:
@@ -269,7 +259,6 @@ class ConfigWizard:
             self._configure_paths()
             self._configure_colors()
 
-            # Write config file
             config_path = self._write_config(scope)
 
             if config_path:
@@ -313,13 +302,11 @@ class ConfigWizard:
         Args:
             scope: 'global' or 'project'
         """
-        # Determine config path
         if scope == "global":
             config_path = Path.home() / ".chatrc"
         else:
             config_path = Path.cwd() / ".chatrc"
 
-        # Load config if it exists
         if config_path.exists():
             print(f"\nFound existing config at: {config_path}")
             print("Loading current settings...\n")
@@ -342,7 +329,6 @@ class ConfigWizard:
 
         self.config["features"] = {}
 
-        # show_tokens
         current_show_tokens = (
             self.current_config.get("features.show_tokens", False)
             if self.current_config
@@ -354,7 +340,6 @@ class ConfigWizard:
             help_text="Shows input/output tokens per query",
         )
 
-        # show_metadata
         current_show_metadata = (
             self.current_config.get("features.show_metadata", True)
             if self.current_config
@@ -366,7 +351,6 @@ class ConfigWizard:
             help_text="Displays agent model, tools, and capabilities",
         )
 
-        # readline_enabled
         current_readline_enabled = (
             self.current_config.get("features.readline_enabled", True)
             if self.current_config
@@ -378,7 +362,6 @@ class ConfigWizard:
             help_text="Allows using arrow keys to navigate command history",
         )
 
-        # claude_commands_enabled
         current_claude_commands = (
             self.current_config.get("features.claude_commands_enabled", True)
             if self.current_config
@@ -401,7 +384,6 @@ class ConfigWizard:
 
         self.config["ui"] = {}
 
-        # show_banner
         current_show_banner = (
             self.current_config.get("ui.show_banner", True)
             if self.current_config
@@ -413,7 +395,6 @@ class ConfigWizard:
             help_text="Displays agent name and description",
         )
 
-        # show_thinking_indicator
         current_show_thinking = (
             self.current_config.get("ui.show_thinking_indicator", True)
             if self.current_config
@@ -425,7 +406,6 @@ class ConfigWizard:
             help_text="Visual indicator while agent processes your query",
         )
 
-        # show_duration
         current_show_duration = (
             self.current_config.get("ui.show_duration", True)
             if self.current_config
@@ -437,7 +417,6 @@ class ConfigWizard:
             help_text="Displays how long each query took to complete",
         )
 
-        # show_status_bar
         current_show_status_bar = (
             self.current_config.get("ui.show_status_bar", False)
             if self.current_config
@@ -449,7 +428,6 @@ class ConfigWizard:
             help_text="Displays agent, model, query count, and session time",
         )
 
-        # update_terminal_title
         current_update_terminal_title = (
             self.current_config.get("ui.update_terminal_title", True)
             if self.current_config
@@ -469,7 +447,6 @@ class ConfigWizard:
 
         self.config["audio"] = {}
 
-        # enabled
         current_audio_enabled = (
             self.current_config.get("audio.enabled", True)
             if self.current_config
@@ -481,7 +458,6 @@ class ConfigWizard:
             help_text="Uses bundled notification.wav by default",
         )
 
-        # notification_sound
         if self.config["audio"]["enabled"]:
             current_sound = (
                 self.current_config.get("audio.notification_sound", None)
@@ -492,7 +468,6 @@ class ConfigWizard:
             custom_sound = input(
                 f"Custom WAV file path (leave blank for {default_text}): "
             ).strip()
-            # If user presses enter, keep current value or None
             if not custom_sound:
                 self.config["audio"]["notification_sound"] = current_sound
             else:
@@ -508,7 +483,6 @@ class ConfigWizard:
 
         self.config["behavior"] = {}
 
-        # max_retries
         current_max_retries = (
             self.current_config.get("behavior.max_retries", 3)
             if self.current_config
@@ -522,7 +496,6 @@ class ConfigWizard:
             help_text="Number of times to retry failed requests",
         )
 
-        # retry_delay
         current_retry_delay = (
             self.current_config.get("behavior.retry_delay", 2.0)
             if self.current_config
@@ -536,7 +509,6 @@ class ConfigWizard:
             help_text="Delay before retrying after an error",
         )
 
-        # timeout
         current_timeout = (
             self.current_config.get("behavior.timeout", 120.0)
             if self.current_config
@@ -550,7 +522,6 @@ class ConfigWizard:
             help_text="Maximum time to wait for agent response",
         )
 
-        # spinner_style
         current_spinner_style = (
             self.current_config.get("behavior.spinner_style", "dots")
             if self.current_config
@@ -574,10 +545,6 @@ class ConfigWizard:
 
         self.config["paths"] = {}
 
-        # Conversations are now saved to ./.chat-sessions (project-local)
-        # No configuration needed
-
-        # log_location
         current_log_location = (
             self.current_config.get("paths.log_location", "~/.chat_loop_logs")
             if self.current_config
@@ -593,7 +560,6 @@ class ConfigWizard:
         print("COLORS - Terminal color customization")
         print("=" * 70 + "\n")
 
-        # Default color names (not ANSI codes)
         default_colors = {
             "user": "bright_white",
             "agent": "bright_blue",
@@ -602,16 +568,12 @@ class ConfigWizard:
             "success": "bright_green",
         }
 
-        # Get current colors from config
         if self.current_config:
             current_colors = self.current_config.get_section("colors")
-            # Convert ANSI codes to color names if needed (backward compatibility)
             for key in default_colors:
                 if key in current_colors:
                     val = current_colors[key]
-                    # Check if it's already a color name
                     if val not in COLOR_PALETTE:
-                        # It's an ANSI code, use default color name
                         current_colors[key] = default_colors[key]
         else:
             current_colors = default_colors.copy()
@@ -623,7 +585,6 @@ class ConfigWizard:
             print("  (Default colors work well for most terminals)")
 
         if not self._prompt_bool("Customize colors?", default=False):
-            # Keep current/default colors
             self.config["colors"] = current_colors
             return
 
@@ -659,22 +620,18 @@ class ConfigWizard:
         Returns:
             Path to created config file, or None on failure
         """
-        # Determine config path
         if scope == "global":
             config_path = Path.home() / ".chatrc"
         else:
             config_path = Path.cwd() / ".chatrc"
 
-        # Check if file exists
         if config_path.exists():
             if self.current_config:
-                # We loaded this config, so it's an update
                 print(f"\nReady to save changes to: {config_path}")
                 overwrite = self._prompt_bool(
                     "Save changes to existing file?", default=True
                 )
             else:
-                # File exists but couldn't be loaded
                 print(f"\nWarning: {config_path} already exists.")
                 overwrite = self._prompt_bool("Overwrite existing file?", default=False)
 
@@ -682,17 +639,14 @@ class ConfigWizard:
                 print("Configuration not saved.")
                 return None
 
-        # Add agents placeholder
         self.config["agents"] = {}
 
-        # Generate YAML with comments
         yaml_content = self._generate_yaml_with_comments()
 
         try:
             with open(config_path, "w") as f:
                 f.write(yaml_content)
 
-            # Set secure permissions
             config_path.chmod(0o600)
 
             return config_path
@@ -725,9 +679,7 @@ class ConfigWizard:
         ]
 
         for key, value in self.config["colors"].items():
-            # Escape ANSI codes for YAML (e.g., \033 -> \\033)
             if isinstance(value, str) and "\033" in value:
-                # Escape backslashes for YAML: \033 becomes \\033
                 escaped_value = value.replace("\\", "\\\\")
                 lines.append(f"  {key}: '{escaped_value}'")
             else:
@@ -961,7 +913,6 @@ class ConfigWizard:
         Returns:
             Color name from palette
         """
-        # Get list of available colors
         colors = sorted(COLOR_PALETTE.keys())
 
         print(f"\n{prompt}")

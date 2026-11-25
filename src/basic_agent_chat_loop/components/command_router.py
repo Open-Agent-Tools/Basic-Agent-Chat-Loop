@@ -15,10 +15,8 @@ from typing import Optional
 class CommandType(Enum):
     """Types of commands recognized by the chat loop."""
 
-    # Exit commands
     EXIT = "exit"
 
-    # Built-in # commands
     HELP = "help"
     INFO = "info"
     TEMPLATES = "templates"
@@ -29,11 +27,9 @@ class CommandType(Enum):
     CONTEXT = "context"
     CLEAR = "clear"
 
-    # Special input modes
     TEMPLATE = "template"
     MULTILINE = "multiline"
 
-    # Not a command
     QUERY = "query"
     UNKNOWN_COMMAND = "unknown_command"
 
@@ -62,10 +58,8 @@ class CommandRouter:
     requiring access to chat loop state or dependencies.
     """
 
-    # Commands that can be invoked with or without prefix
     EXIT_COMMANDS = {"exit", "quit", "bye"}
 
-    # Built-in # commands
     BUILTIN_COMMANDS = {
         "help",
         "info",
@@ -89,7 +83,6 @@ class CommandRouter:
         """
         stripped = user_input.strip()
 
-        # Check for exit commands (with or without prefix)
         normalized = stripped.lstrip("#/").lower()
         if normalized in self.EXIT_COMMANDS:
             return CommandResult(
@@ -98,7 +91,6 @@ class CommandRouter:
                 is_command=True,
             )
 
-        # Check for multi-line input trigger
         if stripped == "\\\\":
             return CommandResult(
                 command_type=CommandType.MULTILINE,
@@ -106,15 +98,12 @@ class CommandRouter:
                 is_command=True,
             )
 
-        # Check for # commands
         if stripped.startswith("#"):
             return self._parse_hash_command(stripped, user_input)
 
-        # Check for template commands (/ prefix)
         if stripped.startswith("/") and len(stripped) > 1:
             return self._parse_template_command(stripped, user_input)
 
-        # Regular query (not a command)
         return CommandResult(
             command_type=CommandType.QUERY,
             original_input=user_input,
@@ -131,11 +120,9 @@ class CommandRouter:
         Returns:
             CommandResult for the # command
         """
-        # Strip # and get command
         cmd_input = stripped[1:].strip()
         cmd_lower = cmd_input.lower()
 
-        # Check for exit commands
         if cmd_lower in self.EXIT_COMMANDS:
             return CommandResult(
                 command_type=CommandType.EXIT,
@@ -143,12 +130,10 @@ class CommandRouter:
                 is_command=True,
             )
 
-        # Parse command with potential arguments
         parts = cmd_lower.split(maxsplit=1)
         base_cmd = parts[0] if parts else ""
         args = parts[1] if len(parts) > 1 else None
 
-        # Map to command types
         if base_cmd == "help":
             return CommandResult(
                 command_type=CommandType.HELP,
@@ -180,18 +165,16 @@ class CommandRouter:
                 is_command=True,
             )
         elif base_cmd == "copy":
-            # Copy command with optional mode (query, all, code)
             return CommandResult(
                 command_type=CommandType.COPY,
-                args=args,  # copy mode (query, all, code, or None)
+                args=args,
                 original_input=original_input,
                 is_command=True,
             )
         elif base_cmd == "resume":
-            # Resume command with optional session reference
             return CommandResult(
                 command_type=CommandType.RESUME,
-                args=args,  # session ID or number
+                args=args,
                 original_input=original_input,
                 is_command=True,
             )
@@ -208,10 +191,9 @@ class CommandRouter:
                 is_command=True,
             )
         else:
-            # Unknown # command
             return CommandResult(
                 command_type=CommandType.UNKNOWN_COMMAND,
-                args=cmd_input,  # Full command string for error message
+                args=cmd_input,
                 original_input=original_input,
                 is_command=True,
             )
@@ -228,12 +210,10 @@ class CommandRouter:
         Returns:
             CommandResult for the template command with template name and input
         """
-        # Strip / and parse template name and input
         parts = stripped[1:].split(maxsplit=1)
         template_name = parts[0] if parts else ""
         template_input = parts[1] if len(parts) > 1 else ""
 
-        # Store both template name and input in args as "name|input"
         args = f"{template_name}|{template_input}"
 
         return CommandResult(

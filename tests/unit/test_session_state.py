@@ -23,11 +23,10 @@ class TestSessionStateInitialization:
         """Test session ID is generated correctly."""
         state = SessionState("MyAgent")
         assert state.session_id.startswith("myagent_")
-        # Should contain timestamp in format YYYYMMDD_HHMMSS
         parts = state.session_id.split("_")
-        assert len(parts) == 3  # agent_YYYYMMDD_HHMMSS
-        assert len(parts[1]) == 8  # YYYYMMDD
-        assert len(parts[2]) == 6  # HHMMSS
+        assert len(parts) == 3
+        assert len(parts[1]) == 8
+        assert len(parts[2]) == 6
 
     def test_session_id_with_spaces(self):
         """Test session ID generation with spaces in agent name."""
@@ -51,7 +50,7 @@ class TestSessionStateInitialization:
     def test_unique_session_ids(self):
         """Test multiple instances get unique session IDs."""
         state1 = SessionState("TestAgent")
-        time.sleep(1.1)  # Ensure different timestamp
+        time.sleep(1.1)
         state2 = SessionState("TestAgent")
         assert state1.session_id != state2.session_id
 
@@ -191,7 +190,6 @@ class TestConversationHistory:
         history = state.get_conversation_history()
         history.append("Entry 2")
 
-        # Original should not be modified
         assert len(state.conversation_markdown) == 1
 
     def test_clear_conversation_history(self):
@@ -229,14 +227,14 @@ class TestSessionDuration:
         """Test session duration initially is near zero."""
         state = SessionState("TestAgent")
         duration = state.get_session_duration()
-        assert 0 <= duration < 0.1  # Should be very small
+        assert 0 <= duration < 0.1
 
     def test_get_session_duration_after_delay(self):
         """Test session duration after a delay."""
         state = SessionState("TestAgent")
         time.sleep(0.5)
         duration = state.get_session_duration()
-        assert 0.4 <= duration <= 0.7  # Account for timing variance
+        assert 0.4 <= duration <= 0.7
 
     def test_get_session_duration_increases(self):
         """Test session duration increases over time."""
@@ -263,14 +261,12 @@ class TestAccumulatedUsage:
     def test_update_accumulated_usage_delta(self):
         """Test accumulated usage delta calculation."""
         state = SessionState("TestAgent")
-        # First update
         state.update_accumulated_usage(100, 50)
 
-        # Second update with cumulative values
         delta_in, delta_out = state.update_accumulated_usage(250, 125)
 
-        assert delta_in == 150  # 250 - 100
-        assert delta_out == 75  # 125 - 50
+        assert delta_in == 150
+        assert delta_out == 75
         assert state.last_accumulated_input == 250
         assert state.last_accumulated_output == 125
 
@@ -278,15 +274,12 @@ class TestAccumulatedUsage:
         """Test multiple accumulated usage updates."""
         state = SessionState("TestAgent")
 
-        # Update 1
         delta1 = state.update_accumulated_usage(100, 50)
         assert delta1 == (100, 50)
 
-        # Update 2
         delta2 = state.update_accumulated_usage(200, 100)
         assert delta2 == (100, 50)
 
-        # Update 3
         delta3 = state.update_accumulated_usage(350, 175)
         assert delta3 == (150, 75)
 
@@ -295,7 +288,6 @@ class TestAccumulatedUsage:
         state = SessionState("TestAgent")
         state.update_accumulated_usage(100, 50)
 
-        # Same values again
         delta_in, delta_out = state.update_accumulated_usage(100, 50)
         assert delta_in == 0
         assert delta_out == 0
@@ -346,7 +338,7 @@ class TestReset:
         state = SessionState("TestAgent")
         old_session_id = state.session_id
 
-        time.sleep(1.1)  # Ensure different timestamp
+        time.sleep(1.1)
         state.reset("TestAgent")
 
         assert state.session_id != old_session_id
@@ -455,7 +447,6 @@ class TestEdgeCases:
         state = SessionState("TestAgent")
         state.update_accumulated_usage(100, 50)
 
-        # Decreasing values (shouldn't happen but test resilience)
         delta_in, delta_out = state.update_accumulated_usage(50, 25)
         assert delta_in == -50
         assert delta_out == -25

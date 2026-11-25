@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-# Add src directory to Python path for imports
 src_path = Path(__file__).parent.parent / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
@@ -15,8 +14,7 @@ if str(src_path) not in sys.path:
 def temp_config_file(tmp_path):
     """Create a temporary config file."""
     config_file = tmp_path / ".chatrc"
-    config_file.write_text(
-        """
+    config_file.write_text("""
 features:
   show_tokens: true
   rich_enabled: true
@@ -24,8 +22,7 @@ features:
 behavior:
   max_retries: 3
   timeout: 120.0
-"""
-    )
+""")
     return config_file
 
 

@@ -13,8 +13,6 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Import openai-harmony components
-# This is a core dependency and should always be available when installed via pip
 try:
     from openai_harmony import (  # type: ignore[import-untyped]
         HarmonyEncodingName,
@@ -23,8 +21,6 @@ try:
 
     HARMONY_AVAILABLE = True
 except ImportError:
-    # This should only happen in development/testing environments
-    # where dependencies haven't been installed yet
     HARMONY_AVAILABLE = False
     logger.warning(
         "openai-harmony not found - this is a core dependency. "
@@ -84,24 +80,19 @@ class HarmonyProcessor:
             True if agent appears to use Harmony format
         """
         if not HARMONY_AVAILABLE:
-            # In dev/test environments without openai-harmony installed,
-            # still detect agents but they won't be processed
             logger.debug(
                 "Harmony detection available but processing will be disabled "
                 "without openai-harmony"
             )
 
-        # Strategy 1: Check for explicit harmony attribute
         if hasattr(agent, "uses_harmony") and agent.uses_harmony:
             logger.info("✓ Harmony: Agent has explicit uses_harmony=True")
             return True
 
-        # Strategy 2: Check for harmony encoding attribute
         if hasattr(agent, "harmony_encoding"):
             logger.info("✓ Harmony: Agent has harmony_encoding attribute")
             return True
 
-        # Strategy 3: Check provided model_id (preferred method)
         if model_id:
             model_lower = model_id.lower()
             if "gpt-oss" in model_lower or "harmony" in model_lower:
@@ -110,10 +101,8 @@ class HarmonyProcessor:
             else:
                 logger.debug(f"Model ID does not indicate harmony: {model_id}")
 
-        # Strategy 4: Check model attributes on agent as fallback
         model_indicators = []
 
-        # Check direct string attributes on agent
         for attr in ["model", "model_id", "model_name"]:
             if hasattr(agent, attr):
                 model_value = getattr(agent, attr)
@@ -121,10 +110,8 @@ class HarmonyProcessor:
                     model_indicators.append(model_value.lower())
                     logger.debug(f"Found model string on agent.{attr}: {model_value}")
 
-        # Check nested attributes on agent.model object
         if hasattr(agent, "model"):
             model = agent.model
-            # If model itself is a string, we already captured it above
             if not isinstance(model, str):
                 for attr in ["model_id", "model", "model_name", "name", "id"]:
                     if hasattr(model, attr):
@@ -135,7 +122,6 @@ class HarmonyProcessor:
                                 f"Found model on agent.model.{attr}: {model_value}"
                             )
 
-        # Check if any indicator contains gpt-oss or harmony
         for indicator in model_indicators:
             if "gpt-oss" in indicator or "harmony" in indicator:
                 logger.info(
@@ -143,19 +129,16 @@ class HarmonyProcessor:
                 )
                 return True
 
-        # Strategy 4: Check agent class name
         class_name = agent.__class__.__name__.lower()
         if "harmony" in class_name:
             logger.info(f"Agent class name contains 'harmony': {class_name}")
             return True
 
-        # Strategy 5: Check for harmony-specific methods
         harmony_methods = ["render_conversation", "parse_messages"]
         if any(hasattr(agent, method) for method in harmony_methods):
             logger.info("Agent has harmony-specific methods")
             return True
 
-        # No harmony indicators found
         logger.debug(
             f"No harmony indicators found. Checked: "
             f"attributes (uses_harmony, harmony_encoding), "
@@ -193,21 +176,18 @@ class HarmonyProcessor:
             return result
 
         try:
-            # Try to extract tokens from metadata (OpenAI-compatible response)
             tokens = self._extract_tokens_from_metadata(metadata)
 
             if tokens:
                 logger.debug(f"Extracted {len(tokens)} tokens from response")
                 logger.debug(f"Token sample (first 20): {tokens[:20]}")
 
-                # Parse messages from tokens using Harmony encoding
                 try:
                     messages = self.encoding.parse_messages_from_completion_tokens(
                         tokens
                     )
                     logger.info(f"Parsed {len(messages)} harmony messages")
 
-                    # Group messages by channel
                     channels = self._group_messages_by_channel(messages)
                     if channels:
                         result["channels"] = channels
@@ -216,12 +196,10 @@ class HarmonyProcessor:
                             for ch in ["reasoning", "analysis", "thinking"]
                         )
 
-                        # Use final channel as primary text if available and non-empty
                         if "final" in channels and channels["final"].strip():
                             result["text"] = channels["final"]
                         elif "response" in channels and channels["response"].strip():
                             result["text"] = channels["response"]
-                        # Otherwise keep original response_text as fallback
 
                         logger.info(f"Found channels: {list(channels.keys())}")
                     else:
@@ -248,18 +226,15 @@ class HarmonyProcessor:
                         f"Failed to parse harmony tokens: {error_msg}. "
                         "Falling back to text-based extraction"
                     )
-                    # Fall back to text-based parsing
                     channels = self._extract_channels(response_text)
                     if channels:
                         result["channels"] = channels
             else:
                 logger.debug("No tokens found, using text-based parsing")
-                # Fallback: Look for text-based markers
                 channels = self._extract_channels(response_text)
                 if channels:
                     result["channels"] = channels
 
-            # Check for tool call indicators
             if any(
                 marker in response_text.lower()
                 for marker in ["<tool_call>", "<function>", "tool_use"]
@@ -268,7 +243,6 @@ class HarmonyProcessor:
 
         except Exception as e:
             logger.warning(f"Error processing Harmony response: {e}", exc_info=True)
-            # Return original text on error
 
         return result
 
@@ -294,10 +268,8 @@ class HarmonyProcessor:
             return None
 
         try:
-            # Log basic response structure
             logger.debug(f"Extracting tokens from {type(metadata).__name__}")
 
-            # Strategy 1: OpenAI style - choices[0].logprobs
             if hasattr(metadata, "choices") and metadata.choices:
                 choice = metadata.choices[0]
                 if hasattr(choice, "logprobs"):
@@ -307,14 +279,12 @@ class HarmonyProcessor:
                             "logprobs is None - enable logprobs=True in your API call"
                         )
                     else:
-                        # Check for direct tokens list
                         if hasattr(logprobs, "tokens") and logprobs.tokens:
                             logger.debug(
                                 f"Extracted {len(logprobs.tokens)} tokens from logprobs"
                             )
                             return logprobs.tokens
 
-                        # Check for content array with token_ids
                         if hasattr(logprobs, "content") and logprobs.content:
                             token_ids = [
                                 item.token_id
@@ -327,7 +297,6 @@ class HarmonyProcessor:
                                 )
                                 return token_ids
 
-            # Strategy 2: Direct logprobs attribute
             if (
                 hasattr(metadata, "logprobs")
                 and metadata.logprobs
@@ -336,7 +305,6 @@ class HarmonyProcessor:
                 logger.debug("Found tokens in metadata.logprobs")
                 return metadata.logprobs.tokens
 
-            # Strategy 3: Check if metadata itself is a list of tokens
             if isinstance(metadata, list) and all(
                 isinstance(x, int) for x in metadata[:10]
             ):
@@ -368,12 +336,10 @@ class HarmonyProcessor:
 
         for i, msg in enumerate(messages):
             try:
-                # Get channel name (default to 'default' if not specified)
                 channel = "default"
                 if hasattr(msg, "channel") and msg.channel:
                     channel = str(msg.channel).lower()
 
-                # Get content
                 content = ""
                 if hasattr(msg, "content"):
                     content_val = msg.content
@@ -383,7 +349,6 @@ class HarmonyProcessor:
                         else str(content_val)
                     )
 
-                # Add to channel group
                 if channel not in channels:
                     channels[channel] = []
 
@@ -394,7 +359,6 @@ class HarmonyProcessor:
                 logger.warning(f"Error processing message {i + 1}: {e}")
                 continue
 
-        # Combine content for each channel
         result = {
             channel: "\n".join(content_list)
             for channel, content_list in channels.items()
@@ -411,12 +375,9 @@ class HarmonyProcessor:
         """
         Extract output channels from Harmony-formatted text.
 
-        NOTE: This is a simple text-based fallback for when token parsing fails.
-        It uses basic regex patterns and will NOT properly parse real harmony output.
-        Proper harmony parsing requires token-level processing via
-        parse_messages_from_completion_tokens().
-
-        This fallback is kept as a last resort but should not be relied upon.
+        Text-based fallback for token parsing failures. Regex parsing does not
+        fully support Harmony output; use parse_messages_from_completion_tokens()
+        for token-level parsing.
 
         Harmony supports multiple output channels like:
         - analysis: Internal reasoning/analysis
@@ -433,7 +394,6 @@ class HarmonyProcessor:
 
         import re
 
-        # Simple XML-style tag extraction (won't match real harmony format)
         channel_pattern = r"<(\w+)>(.*?)</\1>"
         matches = re.findall(channel_pattern, text, re.DOTALL)
 
@@ -458,19 +418,14 @@ class HarmonyProcessor:
         """
         channels = processed_response.get("channels", {})
 
-        # If detailed thinking is disabled, only show final response or main text
         if not self.show_detailed_thinking:
-            # Return final channel if available and non-empty,
-            # otherwise return main text
             final_text = channels.get("final", "").strip()
             if final_text:
                 return final_text
             return processed_response["text"]
 
-        # Detailed thinking mode: show all channels with labeled prefixes
         lines = []
 
-        # Show reasoning/thinking/analysis if present
         reasoning = (
             channels.get("reasoning")
             or channels.get("thinking")
@@ -479,28 +434,23 @@ class HarmonyProcessor:
         if reasoning:
             lines.append("💭 [REASONING]")
             lines.append(reasoning)
-            lines.append("")  # Blank line separator
+            lines.append("")
 
-        # Show analysis if it's separate from reasoning
         if "analysis" in channels and "reasoning" in channels:
             lines.append("📊 [ANALYSIS]")
             lines.append(channels["analysis"])
             lines.append("")
 
-        # Show commentary
         if "commentary" in channels:
             lines.append("📝 [COMMENTARY]")
             lines.append(channels["commentary"])
             lines.append("")
 
-        # Show tool calls if detected
         if processed_response.get("has_tools") and "tool_call" in channels:
             lines.append("🔧 [TOOL CALL]")
             lines.append(channels["tool_call"])
             lines.append("")
 
-        # Show final response - prefer final channel if non-empty,
-        # otherwise use main text
         final_response = channels.get("final", "").strip() or processed_response["text"]
         if final_response and final_response.strip():
             lines.append("💬 [RESPONSE]")

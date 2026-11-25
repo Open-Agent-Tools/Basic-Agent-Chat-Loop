@@ -35,15 +35,12 @@ class DependencyManager:
             Tuple of (file_type, file_path) if found, None otherwise
             file_type is one of: 'requirements', 'pyproject', 'setup'
         """
-        # Check for requirements.txt (most common)
         requirements_txt = self.agent_dir / "requirements.txt"
         if requirements_txt.exists():
             return ("requirements", requirements_txt)
 
-        # Check for pyproject.toml
         pyproject_toml = self.agent_dir / "pyproject.toml"
         if pyproject_toml.exists():
-            # Verify it has dependencies section
             try:
                 content = pyproject_toml.read_text()
                 if "[project.dependencies]" in content or "dependencies = [" in content:
@@ -51,7 +48,6 @@ class DependencyManager:
             except Exception as e:
                 logger.debug(f"Could not read pyproject.toml: {e}")
 
-        # Check for setup.py (legacy)
         setup_py = self.agent_dir / "setup.py"
         if setup_py.exists():
             return ("setup", setup_py)
@@ -85,12 +81,11 @@ class DependencyManager:
     def _install_from_requirements(self, requirements_file: Path) -> tuple[bool, str]:
         """Install dependencies from requirements.txt."""
         try:
-            # Use subprocess to call pip
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "-r", str(requirements_file)],
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5 minute timeout
+                timeout=300,
             )
 
             if result.returncode == 0:
@@ -132,7 +127,6 @@ class DependencyManager:
     def _install_from_pyproject(self, pyproject_file: Path) -> tuple[bool, str]:
         """Install dependencies from pyproject.toml."""
         try:
-            # Install in editable mode from directory containing pyproject.toml
             project_dir = pyproject_file.parent
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "-e", str(project_dir)],
@@ -176,7 +170,6 @@ class DependencyManager:
     def _install_from_setup(self, setup_file: Path) -> tuple[bool, str]:
         """Install dependencies from setup.py."""
         try:
-            # Install in editable mode from directory containing setup.py
             project_dir = setup_file.parent
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "-e", str(project_dir)],

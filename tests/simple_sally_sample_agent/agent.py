@@ -12,17 +12,14 @@ from strands import Agent
 from strands.models.anthropic import AnthropicModel
 from strands_tools import editor, file_read, file_write
 
-# Load .env file
 try:
     from dotenv import load_dotenv
 
-    # Start with current file directory
     current_path = Path(__file__).parent
     env_path = current_path / ".env"
     if env_path.exists():
         load_dotenv(env_path)
     else:
-        # Search up to 3 parent directories
         for i in range(min(3, len(Path(__file__).parents))):
             env_path = Path(__file__).parents[i] / ".env"
             if env_path.exists():
@@ -36,7 +33,6 @@ try:
 except ImportError:
     from prompts import SYSTEM_PROMPT
 
-# Create the Anthropic model
 model = AnthropicModel(
     client_args={
         "api_key": os.getenv("ANTHROPIC_API_KEY"),
@@ -60,7 +56,6 @@ def create_agent() -> Agent:
     )
 
 
-# Module-level agent
 root_agent = create_agent()
 
 if __name__ == "__main__":

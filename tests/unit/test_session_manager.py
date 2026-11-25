@@ -45,7 +45,6 @@ class TestSessionManagerInitialization:
         """Test that initialization does not create sessions directory."""
         sessions_dir = tmp_path / "sessions"
         SessionManager(sessions_dir=sessions_dir)
-        # Directory is not created until save_session is called
         assert not sessions_dir.exists()
 
     def test_initialization_with_existing_directory(self, tmp_path):
@@ -75,7 +74,6 @@ class TestSaveSession:
         assert success is True
         assert "Session saved" in message
 
-        # Check files were created
         sessions_dir = session_manager.sessions_dir
         assert (sessions_dir / "test_20250126_120000.json").exists()
         assert (sessions_dir / "test_20250126_120000.md").exists()
@@ -154,7 +152,6 @@ class TestSaveSession:
         json_path = session_manager.sessions_dir / "secure_session.json"
         md_path = session_manager.sessions_dir / "secure_session.md"
 
-        # Check permissions (owner read/write only)
         assert oct(json_path.stat().st_mode)[-3:] == "600"
         assert oct(md_path.stat().st_mode)[-3:] == "600"
 
@@ -164,7 +161,6 @@ class TestLoadSession:
 
     def test_load_existing_session(self, session_manager, sample_conversation):
         """Test loading an existing session."""
-        # Save a session first
         session_manager.save_session(
             session_id="load_test",
             agent_name="TestAgent",
@@ -173,7 +169,6 @@ class TestLoadSession:
             conversation=sample_conversation,
         )
 
-        # Load it back
         data = session_manager.load_session("load_test")
 
         assert data is not None
@@ -196,7 +191,6 @@ class TestListSessions:
 
     def test_list_sessions_returns_all(self, session_manager, sample_conversation):
         """Test that list_sessions returns all saved sessions."""
-        # Save multiple sessions
         for i in range(3):
             session_manager.save_session(
                 session_id=f"session_{i}",
@@ -232,7 +226,6 @@ class TestListSessions:
 
     def test_list_sessions_respects_limit(self, session_manager, sample_conversation):
         """Test that list_sessions respects the limit parameter."""
-        # Save multiple sessions
         for i in range(5):
             session_manager.save_session(
                 session_id=f"session_{i}",
@@ -249,7 +242,6 @@ class TestListSessions:
         self, session_manager, sample_conversation
     ):
         """Test that sessions are returned in reverse chronological order."""
-        # Save sessions with delays to ensure different timestamps
         for i in range(3):
             session_manager.save_session(
                 session_id=f"session_{i}",
@@ -261,7 +253,6 @@ class TestListSessions:
             time.sleep(0.01)
 
         sessions = session_manager.list_sessions()
-        # Most recent (session_2) should be first
         assert sessions[0].session_id == "session_2"
         assert sessions[1].session_id == "session_1"
         assert sessions[2].session_id == "session_0"
@@ -284,7 +275,6 @@ class TestDeleteSession:
         assert success is True
         assert "Deleted session" in message
 
-        # Verify files are deleted
         assert not (session_manager.sessions_dir / "delete_me.json").exists()
         assert not (session_manager.sessions_dir / "delete_me.md").exists()
 
@@ -324,7 +314,7 @@ class TestSearchSessions:
             agent_name="TestAgent",
             agent_path="/path/to/agent.py",
             agent_description="Test",
-            conversation=sample_conversation,  # First query is "What is Python?"
+            conversation=sample_conversation,
         )
 
         results = session_manager.search_sessions("Python")
@@ -405,8 +395,6 @@ class TestCleanupOldSessions:
 
     def test_cleanup_old_sessions(self, session_manager, sample_conversation):
         """Test deleting sessions older than specified days."""
-        # This test would require mocking time to create "old" sessions
-        # For now, verify the method exists and runs without error
         count, message = session_manager.cleanup_old_sessions(max_age_days=30)
         assert count == 0
         assert "Deleted 0 sessions" in message

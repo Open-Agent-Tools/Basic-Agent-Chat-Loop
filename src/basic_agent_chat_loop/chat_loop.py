@@ -54,8 +54,6 @@ except ImportError:
     READLINE_AVAILABLE = False
 
 
-# Components
-# Configuration management
 from .chat_config import ChatConfig, get_config
 from .components import (
     AliasManager,
@@ -83,7 +81,6 @@ from .components import (
     load_agent_module,
 )
 
-# Rich library for better formatting
 try:
     from rich.console import Console
     from rich.markdown import Markdown
@@ -96,19 +93,12 @@ except ImportError:
     ConsoleType = None  # type: ignore
     MarkdownType = None  # type: ignore
 
-# Setup logging directory in home directory for easy access
-# Default: ~/.chat_loop_logs/
 log_dir = Path.home() / ".chat_loop_logs"
 
-# Command history configuration
 READLINE_HISTORY_LENGTH = 1000
 
-# Token estimation configuration
-# Approximate token-to-word ratio for English text
-# Based on empirical analysis of GPT tokenization (1 token ≈ 0.75 words)
 TOKEN_TO_WORD_RATIO = 1.3
 
-# Use a single consistent logger throughout the module
 logger = logging.getLogger("basic_agent_chat_loop")
 
 
@@ -125,7 +115,6 @@ def _serialize_for_logging(obj: Any) -> str:
     try:
         return json.dumps(obj, indent=2, default=str)
     except (TypeError, ValueError):
-        # Fallback to repr() for non-serializable objects
         return repr(obj)
 
 
@@ -145,24 +134,18 @@ def setup_logging(agent_name: str) -> bool:
         True if logging was successfully configured, False otherwise
     """
     try:
-        # Ensure log directory exists with secure permissions
         log_dir.mkdir(exist_ok=True, mode=0o700)
 
-        # Create log file path with sanitized agent name
         safe_name = agent_name.lower().replace(" ", "_").replace("/", "_")
         log_file = log_dir / f"{safe_name}_chat.log"
 
-        # Configure our logger
         logger.setLevel(logging.INFO)
 
-        # Remove any existing handlers to avoid duplicates
         logger.handlers = []
 
-        # Add rotating file handler with formatting
-        # maxBytes=10MB, backupCount=5 keeps last ~50MB of logs
         handler = logging.handlers.RotatingFileHandler(
             log_file,
-            maxBytes=10 * 1024 * 1024,  # 10 MB
+            maxBytes=10 * 1024 * 1024,
             backupCount=5,
             encoding="utf-8",
         )
@@ -171,11 +154,9 @@ def setup_logging(agent_name: str) -> bool:
         )
         logger.addHandler(handler)
 
-        # Set restrictive permissions on log file (owner read/write only)
         if log_file.exists():
-            os.chmod(log_file, stat.S_IRUSR | stat.S_IWUSR)  # 0600
+            os.chmod(log_file, stat.S_IRUSR | stat.S_IWUSR)
 
-        # Also add console handler for errors (stderr only)
         console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setLevel(logging.ERROR)
         console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
@@ -186,9 +167,7 @@ def setup_logging(agent_name: str) -> bool:
         return True
 
     except Exception as e:
-        # Fallback: print to stderr if logging setup fails
         print(f"Warning: Could not setup logging: {e}", file=sys.stderr)
-        # Set up minimal console-only logging as fallback
         logger.setLevel(logging.WARNING)
         console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
@@ -207,12 +186,8 @@ def set_terminal_title(title: str) -> None:
         title: The title to set
     """
     try:
-        # \033]0; sets both icon and window title
-        # \033\\ is ST (String Terminator) - more compatible than BEL (\007)
-        # ST works better with Mac Terminal and VSCode's integrated terminal
         print(f"\033]0;{title}\033\\", end="", flush=True)
     except Exception:
-        # Silently fail if terminal doesn't support it
         pass
 
 
@@ -231,16 +206,12 @@ def enable_windows_vt_mode() -> bool:
 
         kernel32 = ctypes.windll.kernel32
 
-        # Get handle to stdout
-        # STD_OUTPUT_HANDLE = -11
         handle = kernel32.GetStdHandle(-11)
 
-        # Get current mode
         mode = ctypes.c_ulong()
         if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
             return False
 
-        # Add ENABLE_VIRTUAL_TERMINAL_PROCESSING (0x0004)
         enable_virtual_terminal_processing = 0x0004
         if not (mode.value & enable_virtual_terminal_processing):
             if kernel32.SetConsoleMode(
@@ -251,7 +222,6 @@ def enable_windows_vt_mode() -> bool:
 
         return True
     except Exception:
-        # If we can't enable it, functionality degrades gracefully
         return False
 
 
@@ -264,7 +234,6 @@ def setup_readline_history() -> Optional[Path]:
     """
     if not READLINE_AVAILABLE:
         logger.debug("Readline not available, history will not be saved")
-        # Show warning on Windows if readline is not available
         if sys.platform == "win32":
             print(
                 Colors.system(
@@ -277,40 +246,29 @@ def setup_readline_history() -> Optional[Path]:
         return None
 
     try:
-        # History file in user's home directory
         history_file = Path.home() / ".chat_history"
 
-        # Set history length
         readline.set_history_length(READLINE_HISTORY_LENGTH)
 
-        # Enable tab completion and better editing
         try:
-            # Suppress CPR warning by redirecting stderr temporarily
             old_stderr = sys.stderr
             sys.stderr = open(os.devnull, "w")
 
             try:
-                # Parse readline init file if it exists
                 readline.parse_and_bind("tab: complete")
 
-                # Enable vi or emacs mode (emacs is default)
                 readline.parse_and_bind("set editing-mode emacs")
 
-                # Disable horizontal scroll to prevent CPR check
                 readline.parse_and_bind("set horizontal-scroll-mode off")
 
-                # Enable better line editing
                 readline.parse_and_bind("set show-all-if-ambiguous on")
                 readline.parse_and_bind("set completion-ignore-case on")
             finally:
-                # Restore stderr
                 sys.stderr.close()
                 sys.stderr = old_stderr
         except Exception as e:
             logger.debug(f"Could not configure readline bindings: {e}")
-            # Continue anyway, basic history will still work
 
-        # Load existing history
         if history_file.exists():
             try:
                 readline.read_history_file(str(history_file))
@@ -318,7 +276,6 @@ def setup_readline_history() -> Optional[Path]:
                 logger.debug(f"Loaded {count} history entries")
             except Exception as e:
                 logger.warning(f"Could not load history from {history_file}: {e}")
-                # Continue anyway, we'll create new history
 
         logger.debug(f"Command history will be saved to: {history_file}")
         return history_file
@@ -345,13 +302,10 @@ def save_readline_history(history_file: Optional[Path]) -> bool:
         return False
 
     try:
-        # Ensure parent directory exists
         history_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Save history
         readline.write_history_file(str(history_file))
 
-        # Set secure permissions (readable/writable by owner only)
         history_file.chmod(0o600)
 
         count = readline.get_current_history_length()
@@ -378,19 +332,14 @@ class ChatLoop:
         self.agent = agent
         self.agent_name = agent_name
         self.agent_description = agent_description
-        self.agent_factory = agent_factory  # Function to create fresh agent instance
-        self.agent_path = agent_path or "unknown"  # Store for session metadata
+        self.agent_factory = agent_factory
+        self.agent_path = agent_path or "unknown"
         self.history_file = None
-        # Note: total_input_tokens and total_output_tokens moved to ResponseStreamer
 
-        # Session state management
-        # (query count, conversation, last query/response, etc.)
         self.session_state = SessionState(agent_name)
 
-        # Load or use provided config
         self.config = config if config else get_config()
 
-        # Apply configuration values (with agent-specific overrides)
         if self.config:
             self.max_retries = int(
                 self.config.get("behavior.max_retries", 3, agent_name=agent_name)
@@ -405,7 +354,6 @@ class ChatLoop:
                 "behavior.spinner_style", "dots", agent_name=agent_name
             )
 
-            # Feature flags
             self.show_metadata = self.config.get(
                 "features.show_metadata", True, agent_name=agent_name
             )
@@ -422,18 +370,15 @@ class ChatLoop:
                 "ui.update_terminal_title", True, agent_name=agent_name
             )
 
-            # Rich override
             rich_enabled = self.config.get(
                 "features.rich_enabled", True, agent_name=agent_name
             )
             self.use_rich = RICH_AVAILABLE and rich_enabled
 
-            # Context warning thresholds
             self.context_warning_thresholds = self.config.get(
                 "context.warning_thresholds", [80, 90, 95], agent_name=agent_name
             )
         else:
-            # Defaults when no config
             self.max_retries = 3
             self.retry_delay = 2.0
             self.timeout = 120.0
@@ -446,38 +391,30 @@ class ChatLoop:
             self.use_rich = RICH_AVAILABLE
             self.context_warning_thresholds = [80, 90, 95]
 
-        # Setup rich console if available and enabled
-        # Configure with Windows compatibility options
         self.console: Optional[Console] = (
             Console(
-                force_terminal=True,  # Force terminal mode even if detection fails
-                legacy_windows=False,  # Use modern Windows Terminal features
+                force_terminal=True,
+                legacy_windows=False,
             )
             if self.use_rich
             else None
         )
 
-        # Log terminal capabilities for debugging
         if self.console:
             logger.debug("Rich Console initialized:")
             logger.debug(f"  is_terminal: {self.console.is_terminal}")
             logger.debug(f"  color_system: {self.console.color_system}")
             logger.debug(f"  legacy_windows: {self.console.legacy_windows}")
 
-        # Extract agent metadata
         self.agent_metadata = extract_agent_metadata(self.agent)
 
-        # Log model detection for debugging
         detected_model = self.agent_metadata.get("model_id", "Unknown")
         logger.info(f"Model Detected: {detected_model}")
 
-        # Setup prompt templates directory
         self.prompts_dir = Path.home() / ".prompts"
 
-        # Create template manager
         self.template_manager = TemplateManager(self.prompts_dir)
 
-        # Setup token tracking (always enabled for session summary)
         self.show_tokens = (
             self.config.get("features.show_tokens", False, agent_name=agent_name)
             if self.config
@@ -485,7 +422,6 @@ class ChatLoop:
         )
         model_for_pricing = self.agent_metadata.get("model_id", "Unknown")
 
-        # Check for config override
         if self.config:
             model_override = self.config.get(
                 "agents." + agent_name + ".model_display_name", None
@@ -493,11 +429,8 @@ class ChatLoop:
             if model_override:
                 model_for_pricing = model_override
 
-        # Always create token tracker for session summary
-        # (not just when show_tokens is true)
         self.token_tracker = TokenTracker(model_for_pricing)
 
-        # Setup status bar if enabled
         self.show_status_bar_enabled = (
             self.config.get("ui.show_status_bar", False, agent_name=agent_name)
             if self.config
@@ -507,7 +440,6 @@ class ChatLoop:
         if self.show_status_bar_enabled:
             model_info = self.agent_metadata.get("model_id", "Unknown Model")
 
-            # Check for config override
             if self.config:
                 model_override = self.config.get(
                     "agents." + agent_name + ".model_display_name", None
@@ -515,12 +447,10 @@ class ChatLoop:
                 if model_override:
                     model_info = model_override
 
-            # Shorten long model IDs (ensure it's a string first)
             model_info = str(model_info) if model_info else "Unknown Model"
             if len(model_info) > 30:
                 model_info = model_info[:27] + "..."
 
-            # Get max_tokens for percentage display in status bar
             max_tokens_for_bar = self.agent_metadata.get("max_tokens", None)
             if max_tokens_for_bar == "Unknown":
                 max_tokens_for_bar = None
@@ -532,13 +462,11 @@ class ChatLoop:
                 max_tokens=max_tokens_for_bar,
             )
 
-            # Log for debugging
             logger.debug(
                 f"Status bar initialized: agent={agent_name}, "
                 f"model={model_info}, show_tokens={self.show_tokens}"
             )
 
-        # Create display manager
         self.display_manager = DisplayManager(
             agent_name=self.agent_name,
             agent_description=self.agent_description,
@@ -550,7 +478,6 @@ class ChatLoop:
             status_bar=self.status_bar,
         )
 
-        # Setup audio notifications
         audio_enabled = (
             self.config.get("audio.enabled", True, agent_name=agent_name)
             if self.config
@@ -565,24 +492,17 @@ class ChatLoop:
             enabled=audio_enabled, sound_file=audio_sound_file
         )
 
-        # Setup session manager for conversation persistence
-        # Sessions are saved to ./.chat-sessions in current directory
         self.session_manager = SessionManager()
 
-        # Setup streaming event parser for extracting text from various formats
         self.event_parser = StreamingEventParser()
 
-        # Setup usage extractor for token/metrics extraction
         self.usage_extractor = UsageExtractor()
 
-        # Setup Harmony processor if agent uses Harmony format
-        # Setup response renderer for displaying agent header
         self.response_renderer = ResponseRenderer(
             agent_name=self.agent_name,
             colors_module=Colors,
         )
 
-        # Setup response streamer for handling agent interactions
         self.response_streamer = ResponseStreamer(
             agent=self.agent,
             agent_name=self.agent_name,
@@ -599,7 +519,6 @@ class ChatLoop:
             status_bar=self.status_bar,
         )
 
-        # Setup session restorer for resuming previous sessions
         self.session_restorer = SessionRestorer(
             agent=self.agent,
             agent_name=self.agent_name,
@@ -613,7 +532,6 @@ class ChatLoop:
             status_bar=self.status_bar,
         )
 
-        # Initialize session persister for saving and compacting sessions
         self.session_persister = SessionPersister(
             agent=self.agent,
             agent_name=self.agent_name,
@@ -626,7 +544,6 @@ class ChatLoop:
             response_streamer=self.response_streamer,
         )
 
-        # Setup command router for parsing user input
         self.command_router = CommandRouter()
 
     def _extract_code_blocks(self, text: str) -> list:
@@ -639,7 +556,6 @@ class ChatLoop:
         Returns:
             List of code block contents (without fence markers)
         """
-        # Match code blocks with triple backticks
         pattern = r"```(?:\w+)?\n(.*?)```"
         matches = re.findall(pattern, text, re.DOTALL)
         return [match.strip() for match in matches]
@@ -700,23 +616,18 @@ class ChatLoop:
             content = file_path.read_text(encoding="utf-8")
             metadata = {}
 
-            # Extract session ID
             if match := re.search(r"\*\*Session ID:\*\* (.+)", content):
                 metadata["session_id"] = match.group(1).strip()
 
-            # Extract agent name
             if match := re.search(r"\*\*Agent:\*\* (.+)", content):
                 metadata["agent_name"] = match.group(1).strip()
 
-            # Extract agent path
             if match := re.search(r"\*\*Agent Path:\*\* (.+)", content):
                 metadata["agent_path"] = match.group(1).strip()
 
-            # Extract total queries
             if match := re.search(r"\*\*Total Queries:\*\* (\d+)", content):
                 metadata["query_count"] = int(match.group(1))
 
-            # Extract resumed from (if present)
             if match := re.search(r"\*\*Resumed From:\*\* (.+)", content):
                 metadata["resumed_from"] = match.group(1).strip()
 
@@ -734,7 +645,7 @@ class ChatLoop:
                     query,
                     save_conversation_callback=self.session_persister.save_conversation,
                 )
-                return  # Success, exit retry loop
+                return
 
             except asyncio.TimeoutError:
                 print(
@@ -759,15 +670,11 @@ class ChatLoop:
                     logger.error(f"Max retries reached after connection error: {e}")
 
             except Exception as e:
-                # For other exceptions, don't retry - they're likely not transient
                 error_msg = str(e)
 
-                # Check for rate limit errors
                 if "rate" in error_msg.lower() or "429" in error_msg:
                     if attempt < self.max_retries:
-                        wait_time = self.retry_delay * (
-                            2 ** (attempt - 1)
-                        )  # Exponential backoff
+                        wait_time = self.retry_delay * (2 ** (attempt - 1))
                         print(ErrorMessages.rate_limit_error(int(wait_time), attempt))
                         await asyncio.sleep(wait_time)
                         logger.warning(
@@ -781,29 +688,23 @@ class ChatLoop:
                         )
                         logger.error("Max retries reached due to rate limiting")
                 else:
-                    # Non-retryable error, log and exit
                     logger.error(f"Non-retryable error: {e}", exc_info=True)
                     raise
 
     async def _async_run(self):
         """Async implementation of the chat loop."""
-        # Setup readline history
         self.history_file = setup_readline_history()
 
-        # Set initial terminal title
         if self.update_terminal_title:
             set_terminal_title(f"{self.agent_name} - Idle")
 
-        # Only show banner now if NOT resuming (will show after resume succeeds)
         will_resume = hasattr(self, "resume_session_ref") and self.resume_session_ref
         if not will_resume:
             self.display_manager.display_banner()
 
-        # Handle --resume flag if specified
         if will_resume:
             session_ref = self.resume_session_ref
 
-            # If "pick" mode, show session picker
             if session_ref == "pick":
                 sessions = self.session_manager.list_sessions(
                     agent_name=self.agent_name, limit=20
@@ -829,13 +730,10 @@ class ChatLoop:
                                 choice, self.response_streamer
                             )
                             if success:
-                                # Display banner after successful resume
                                 self.display_manager.display_banner()
                             else:
-                                # Resume failed, show banner for fresh session
                                 self.display_manager.display_banner()
                         else:
-                            # User pressed Enter to skip - show banner for fresh session
                             self.display_manager.display_banner()
                     except (KeyboardInterrupt, EOFError):
                         print()
@@ -843,34 +741,25 @@ class ChatLoop:
                             Colors.system("Skipping resume, starting fresh session...")
                         )
                         print()
-                        # User cancelled - show banner for fresh session
                         self.display_manager.display_banner()
             else:
-                # Direct resume with specific session ID/number
                 success = await self.session_restorer.restore_session(
                     session_ref, self.response_streamer
                 )
                 if success:
-                    # Display banner after successful resume
                     self.display_manager.display_banner()
                 else:
                     print(Colors.system("\nContinuing with fresh session...\n"))
-                    # Resume failed, show banner for fresh session
                     self.display_manager.display_banner()
 
         try:
             while True:
                 try:
-                    # Get user input directly (blocking is fine for user input)
-                    # Don't use executor as it breaks readline editing
                     user_input = input(f"\n{Colors.user('You')}: ").strip()
 
-                    # Parse user input using CommandRouter
                     command_result = self.command_router.parse_input(user_input)
 
-                    # Route based on command type
                     if command_result.command_type == CommandType.EXIT:
-                        # Handle exit commands
                         print(
                             Colors.system(
                                 f"\nGoodbye! Thanks for using {self.agent_name}!"
@@ -887,7 +776,6 @@ class ChatLoop:
                         continue
 
                     elif command_result.command_type == CommandType.TEMPLATES:
-                        # Check if Claude commands are enabled
                         claude_commands_enabled = (
                             self.config.get(
                                 "features.claude_commands_enabled",
@@ -905,7 +793,6 @@ class ChatLoop:
                             )
                             continue
 
-                        # List available prompt templates grouped by source
                         templates_grouped = (
                             self.template_manager.list_templates_grouped()
                         )
@@ -913,7 +800,6 @@ class ChatLoop:
                         continue
 
                     elif command_result.command_type == CommandType.SESSIONS:
-                        # List saved sessions
                         sessions = self.session_manager.list_sessions(
                             agent_name=self.agent_name, limit=20
                         )
@@ -923,12 +809,10 @@ class ChatLoop:
                         continue
 
                     elif command_result.command_type == CommandType.COMPACT:
-                        # Compact session command
                         await self.session_persister.handle_compact_command()
                         continue
 
                     elif command_result.command_type == CommandType.COPY:
-                        # Copy command with variants (args contains the mode)
                         copy_mode = command_result.args or ""
 
                         try:
@@ -936,7 +820,6 @@ class ChatLoop:
                             description = ""
 
                             if copy_mode == "query":
-                                # Copy last user query
                                 if self.session_state.last_query:
                                     content = self.session_state.last_query
                                     description = "last query"
@@ -944,7 +827,6 @@ class ChatLoop:
                                     print(Colors.system("No query to copy yet"))
                                     continue
                             elif copy_mode == "all":
-                                # Copy entire conversation as markdown
                                 if self.session_state.conversation_markdown:
                                     content = self._format_conversation_as_markdown()
                                     description = "entire conversation"
@@ -952,7 +834,6 @@ class ChatLoop:
                                     print(Colors.system("No conversation to copy yet"))
                                     continue
                             elif copy_mode == "code":
-                                # Copy just code blocks from last response
                                 if self.session_state.last_response:
                                     code_blocks = self._extract_code_blocks(
                                         self.session_state.last_response
@@ -968,7 +849,6 @@ class ChatLoop:
                                     print(Colors.system("No response to copy yet"))
                                     continue
                             else:
-                                # Default: copy last response
                                 if self.session_state.last_response:
                                     content = self.session_state.last_response
                                     description = "last response"
@@ -976,7 +856,6 @@ class ChatLoop:
                                     print(Colors.system("No response to copy yet"))
                                     continue
 
-                            # Copy to clipboard
                             if content:
                                 pyperclip.copy(content)
                                 print(
@@ -991,10 +870,8 @@ class ChatLoop:
                         continue
 
                     elif command_result.command_type == CommandType.RESUME:
-                        # Resume a previous session
                         session_ref = command_result.args
 
-                        # If no session specified, show list of sessions
                         if not session_ref:
                             sessions = self.session_manager.list_sessions(
                                 agent_name=self.agent_name, limit=20
@@ -1011,20 +888,16 @@ class ChatLoop:
                         )
 
                         if success:
-                            # Show banner after resume
                             self.display_manager.display_banner()
                         continue
 
                     elif command_result.command_type == CommandType.CONTEXT:
-                        # Show context usage statistics
                         total_tokens = self.token_tracker.get_total_tokens()
                         input_tokens = self.token_tracker.total_input_tokens
                         output_tokens = self.token_tracker.total_output_tokens
 
-                        # Get max tokens from agent metadata
                         max_tokens = self.agent_metadata.get("max_tokens", "Unknown")
 
-                        # Calculate percentage if max_tokens is known
                         percentage_str = ""
                         if (
                             max_tokens != "Unknown"
@@ -1034,7 +907,6 @@ class ChatLoop:
                             percentage = (total_tokens / max_tokens) * 100
                             percentage_str = f" ({percentage:.1f}%)"
 
-                        # Calculate session duration
                         session_duration = (
                             time.time() - self.session_state.session_start_time
                         )
@@ -1049,11 +921,9 @@ class ChatLoop:
                             minutes = int((session_duration % 3600) / 60)
                             duration_str = f"{hours}h {minutes}m"
 
-                        # Display context information
                         print(f"\n{Colors.system('Context Usage')}")
                         print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
 
-                        # Format max tokens display
                         if max_tokens == "Unknown":
                             max_str = "Unknown"
                         else:
@@ -1075,7 +945,6 @@ class ChatLoop:
                         print(f"  Queries:        {self.session_state.query_count}")
                         print(f"  Session Time:   {duration_str}")
 
-                        # Show warning if approaching limits
                         if (
                             max_tokens != "Unknown"
                             and isinstance(max_tokens, (int, float))
@@ -1083,26 +952,20 @@ class ChatLoop:
                         ):
                             percentage = (total_tokens / max_tokens) * 100
 
-                            # Sort thresholds in descending order
                             sorted_thresholds = sorted(
                                 self.context_warning_thresholds, reverse=True
                             )
 
-                            # Check thresholds from highest to lowest
                             for threshold in sorted_thresholds:
                                 if percentage >= threshold:
-                                    # Highest threshold gets special treatment
                                     if threshold == sorted_thresholds[0]:
-                                        msg = (
-                                            f"⚠️  Warning: {threshold}% of context used!"
-                                        )
+                                        msg = f"⚠️  Warning: {threshold}% of context used!"
                                         print(f"\n  {Colors.error(msg)}")
                                         msg2 = (
                                             "Consider using #compact "
                                             "to free up context."
                                         )
                                         print(f"  {Colors.system(msg2)}")
-                                    # Second highest threshold
                                     elif (
                                         threshold == sorted_thresholds[1]
                                         if len(sorted_thresholds) > 1
@@ -1112,23 +975,19 @@ class ChatLoop:
                                             f"⚠️  Warning: {threshold}% of context used"
                                         )
                                         print(f"\n  {Colors.error(msg)}")
-                                    # Other thresholds
                                     else:
                                         msg = f"💡 Context usage: {threshold}%"
                                         print(f"\n  {Colors.system(msg)}")
-                                    break  # Only show highest matched threshold
+                                    break
 
                         print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
                         continue
 
                     elif command_result.command_type == CommandType.CLEAR:
-                        # Clear screen (cross-platform)
                         os.system("clear" if os.name != "nt" else "cls")
 
-                        # Reset agent session if factory available
                         if self.agent_factory:
                             try:
-                                # Cleanup old agent if possible
                                 if hasattr(self.agent, "cleanup"):
                                     try:
                                         if asyncio.iscoroutinefunction(
@@ -1140,7 +999,6 @@ class ChatLoop:
                                     except Exception as e:
                                         logger.debug(f"Error during agent cleanup: {e}")
 
-                                # Create fresh agent instance
                                 self.agent = self.agent_factory()
                                 print(
                                     Colors.success(
@@ -1164,7 +1022,6 @@ class ChatLoop:
                         continue
 
                     elif command_result.command_type == CommandType.UNKNOWN_COMMAND:
-                        # Unknown # command
                         print(
                             Colors.error(
                                 f"Unknown command: #{command_result.args or ''}"
@@ -1174,7 +1031,6 @@ class ChatLoop:
                         continue
 
                     elif command_result.command_type == CommandType.TEMPLATE:
-                        # Check if Claude commands are enabled
                         claude_commands_enabled = (
                             self.config.get(
                                 "features.claude_commands_enabled",
@@ -1192,21 +1048,16 @@ class ChatLoop:
                             )
                             continue
 
-                        # Template command: /template_name <optional input>
-                        # Extract template name and input using the router's helper
                         template_name, input_text = (
                             self.command_router.extract_template_info(command_result)
                         )
 
-                        # Try to load template
                         template = self.template_manager.load_template(
                             template_name, input_text
                         )
                         if template:
                             print(Colors.system(f"✓ Loaded template: {template_name}"))
-                            # Use the template as the user input
                             user_input = template
-                            # Fall through to process as query
                         else:
                             print(Colors.error(f"Template not found: {template_name}"))
                             templates = self.template_manager.list_templates()
@@ -1216,43 +1067,33 @@ class ChatLoop:
                             continue
 
                     elif command_result.command_type == CommandType.MULTILINE:
-                        # Multi-line input trigger
                         user_input = await get_multiline_input()
                         if not user_input.strip():
                             continue
-                        # Fall through to process as query
 
-                    # For CommandType.QUERY or template/multiline that falls through
                     if command_result.command_type in (
                         CommandType.QUERY,
                         CommandType.TEMPLATE,
                         CommandType.MULTILINE,
                     ):
-                        # Skip empty queries
                         if not user_input.strip():
                             continue
 
-                        # Process query through agent
                         logger.info(f"Processing query: {user_input[:100]}...")
 
-                        # Track query for copy command
                         self.session_state.update_last_query(user_input)
 
-                        # Update terminal title to show processing
                         if self.update_terminal_title:
                             set_terminal_title(f"{self.agent_name} - Processing...")
 
-                        # Update status bar before query
                         if self.status_bar:
                             self.status_bar.increment_query()
-                            # Clear screen and redraw status bar
-                            print("\033[2J\033[H", end="")  # Clear screen, move to top
+                            print("\033[2J\033[H", end="")
                             print(self.status_bar.render())
-                            print()  # Blank line after status bar
+                            print()
 
                         await self.process_query(user_input)
 
-                        # Update terminal title back to idle
                         if self.update_terminal_title:
                             set_terminal_title(f"{self.agent_name} - Idle")
 
@@ -1272,15 +1113,11 @@ class ChatLoop:
                     break
 
         finally:
-            # Reset terminal title
             if self.update_terminal_title:
                 set_terminal_title("Terminal")
 
-            # Save command history
             save_readline_history(self.history_file)
 
-            # Final save on exit with summary
-            # (incremental saves happen after each query without summaries)
             success = await self.session_persister.save_conversation(
                 generate_summary=True
             )
@@ -1289,7 +1126,6 @@ class ChatLoop:
                     self.session_state.session_id
                 )
 
-            # Cleanup agent if it has cleanup method
             if hasattr(self.agent, "cleanup"):
                 try:
                     if asyncio.iscoroutinefunction(self.agent.cleanup):
@@ -1299,7 +1135,6 @@ class ChatLoop:
                 except Exception as e:
                     logger.warning(f"Error during agent cleanup: {e}")
 
-            # Display session summary
             self.display_manager.display_session_summary(
                 self.session_state.session_start_time,
                 self.session_state.query_count,
@@ -1321,7 +1156,6 @@ class ChatLoop:
 
 def main():
     """Main entry point for the chat loop."""
-    # Ensure Windows console supports ANSI colors
     enable_windows_vt_mode()
 
     parser = argparse.ArgumentParser(
@@ -1352,7 +1186,6 @@ Examples:
         """,
     )
 
-    # Import version for --version flag
     try:
         from . import __version__
 
@@ -1372,7 +1205,6 @@ Examples:
         "--config", help="Path to configuration file (default: ~/.chatrc or .chatrc)"
     )
 
-    # Alias management commands
     alias_group = parser.add_argument_group("alias management")
 
     alias_group.add_argument(
@@ -1396,7 +1228,6 @@ Examples:
         help="Overwrite existing alias when using --save-alias",
     )
 
-    # Dependency management
     parser.add_argument(
         "--auto-setup",
         "-a",
@@ -1407,7 +1238,6 @@ Examples:
         ),
     )
 
-    # Session management
     session_group = parser.add_argument_group("session management")
 
     session_group.add_argument(
@@ -1428,7 +1258,6 @@ Examples:
         help="List all saved sessions and exit",
     )
 
-    # Configuration wizard
     parser.add_argument(
         "--wizard",
         "-w",
@@ -1444,7 +1273,6 @@ Examples:
 
     args = parser.parse_args()
 
-    # Handle configuration wizard
     if args.wizard:
         wizard = ConfigWizard()
         config_path = wizard.run()
@@ -1453,7 +1281,6 @@ Examples:
         else:
             sys.exit(1)
 
-    # Handle config reset
     if args.reset_config:
         from .components.config_wizard import reset_config_to_defaults
 
@@ -1463,7 +1290,6 @@ Examples:
         else:
             sys.exit(1)
 
-    # Handle alias management commands
     alias_manager = AliasManager()
 
     if args.save_alias:
@@ -1484,7 +1310,6 @@ Examples:
             print(f"\n{Colors.system('Saved Agent Aliases')} ({len(aliases)}):")
             print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
             for alias_name, agent_path in sorted(aliases.items()):
-                # Check if path still exists
                 if Path(agent_path).exists():
                     print(f"  {Colors.success(alias_name):<20} → {agent_path}")
                 else:
@@ -1507,9 +1332,7 @@ Examples:
             print(Colors.error(message))
             sys.exit(1)
 
-    # Handle session management commands
     if args.list_sessions:
-        # List sessions and exit (from ./.chat-sessions in current directory)
         session_manager = SessionManager()
         sessions = session_manager.list_sessions(limit=50)
 
@@ -1533,7 +1356,6 @@ Examples:
 
         sys.exit(0)
 
-    # Require agent argument if not doing alias management
     if not args.agent:
         print(Colors.error("Error: Agent path or alias required"))
         print()
@@ -1547,7 +1369,6 @@ Examples:
         print(f"  {Colors.system('chat_loop --remove-alias <name>')}")
         sys.exit(1)
 
-    # Resolve agent path (try as path first, then as alias)
     agent_path = alias_manager.resolve_agent_path(args.agent)
 
     if not agent_path:
@@ -1566,11 +1387,9 @@ Examples:
             print("  (none)")
         sys.exit(1)
 
-    # Handle dependency installation if requested
     dep_manager = DependencyManager(agent_path)
 
     if args.auto_setup:
-        # User explicitly requested dependency installation
         dep_info = dep_manager.detect_dependency_file()
         if dep_info:
             file_type, file_path = dep_info
@@ -1590,29 +1409,24 @@ Examples:
             )
             print(Colors.system(msg))
     else:
-        # Check if dependencies exist and suggest using --auto-setup
         suggestion = dep_manager.suggest_auto_setup()
         if suggestion:
             print(Colors.system(suggestion))
-            print()  # Extra spacing
+            print()
 
     try:
-        # Load configuration FIRST (before any print statements)
         config = None
         config_path = Path(args.config) if args.config else None
         config = get_config(config_path)
 
-        # Apply color configuration immediately
         if config:
             color_config = config.get_section("colors")
             Colors.configure(color_config)
 
-        # Show config info
         if config:
             if args.config:
                 print(Colors.system(f"Loaded configuration from: {args.config}"))
             else:
-                # Check which config file was loaded
                 global_config = Path.home() / ".chatrc"
                 project_config = Path.cwd() / ".chatrc"
                 if project_config.exists():
@@ -1620,26 +1434,21 @@ Examples:
                 elif global_config.exists():
                     print(Colors.system(f"Loaded configuration from: {global_config}"))
 
-        # Load the agent
-        # Show what we're loading (path or alias)
         if agent_path != args.agent:
             print(Colors.system(f"Resolved alias '{args.agent}' → {agent_path}"))
         print(Colors.system(f"Loading agent from: {agent_path}"))
         agent, agent_name, agent_description = load_agent_module(agent_path)
 
-        # Setup logging with agent name
         setup_logging(agent_name)
 
         print(Colors.success(f"Agent loaded successfully: {agent_name}"))
         logger.info(f"Agent loaded successfully: {agent_name} - {agent_description}")
 
-        # Create agent factory for session reset
         def create_fresh_agent():
             """Factory function to create a fresh agent instance."""
             new_agent, _, _ = load_agent_module(agent_path)
             return new_agent
 
-        # Start chat loop with config
         chat_loop = ChatLoop(
             agent,
             agent_name,
@@ -1649,16 +1458,13 @@ Examples:
             config=config,
         )
 
-        # Handle --resume flag if provided
         if args.resume:
-            # Store resume session for processing in _async_run
             chat_loop.resume_session_ref = args.resume
         else:
             chat_loop.resume_session_ref = None
 
         chat_loop.run()
 
-        # Explicitly exit with success code
         sys.exit(0)
 
     except Exception as e:

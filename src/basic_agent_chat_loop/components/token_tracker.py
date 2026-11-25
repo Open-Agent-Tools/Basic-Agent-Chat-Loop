@@ -18,7 +18,7 @@ class TokenTracker:
         self.model_name = model_name
         self.total_input_tokens = 0
         self.total_output_tokens = 0
-        self.query_history: list[tuple[int, int]] = []  # List of (input, output) tuples
+        self.query_history: list[tuple[int, int]] = []
 
     def add_usage(self, input_tokens: int, output_tokens: int):
         """

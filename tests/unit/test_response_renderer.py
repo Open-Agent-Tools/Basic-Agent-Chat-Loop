@@ -1,7 +1,6 @@
 """Tests for ResponseRenderer component.
 
-Simplified for v1.8.0 - ResponseRenderer now only handles agent header display.
-Agent library handles all response rendering naturally.
+ResponseRenderer displays the agent header. The agent library renders responses.
 """
 
 from basic_agent_chat_loop.components.response_renderer import ResponseRenderer
@@ -68,7 +67,6 @@ class TestRenderAgentHeader:
         renderer.render_agent_header()
 
         captured = capsys.readouterr()
-        # Should appear twice
         assert captured.out.count("[BLUE]TestAgent[/BLUE]: ") == 2
 
     def test_render_agent_header_unicode(self, capsys):

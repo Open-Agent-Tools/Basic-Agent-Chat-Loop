@@ -12,24 +12,21 @@ from basic_agent_chat_loop.components.audio_notifier import AudioNotifier
 def temp_wav_file(tmp_path):
     """Create a temporary WAV file for testing."""
     wav_file = tmp_path / "test_notification.wav"
-    wav_file.write_bytes(b"RIFF" + b"\x00" * 40)  # Minimal WAV header
+    wav_file.write_bytes(b"RIFF" + b"\x00" * 40)
     return wav_file
 
 
 @pytest.fixture
 def mock_notification_wav(tmp_path, monkeypatch):
     """Mock the bundled notification.wav file location."""
-    # Create a fake module directory structure
     fake_module_dir = tmp_path / "basic_agent_chat_loop"
     fake_module_dir.mkdir(parents=True)
     fake_components_dir = fake_module_dir / "components"
     fake_components_dir.mkdir()
 
-    # Create the notification.wav file
     wav_file = fake_module_dir / "notification.wav"
     wav_file.write_bytes(b"RIFF" + b"\x00" * 40)
 
-    # Mock Path(__file__).parent.parent to return our fake structure
     with patch("basic_agent_chat_loop.components.audio_notifier.Path") as mock_path:
         mock_file = MagicMock()
         mock_file.parent.parent = fake_module_dir
@@ -145,7 +142,6 @@ class TestAudioNotifierPlayLinux:
         """Test that Linux falls back to paplay if aplay fails."""
         mock_platform.return_value = "Linux"
 
-        # First call (aplay) raises FileNotFoundError, second call (paplay) succeeds
         mock_run.side_effect = [FileNotFoundError(), None]
         notifier = AudioNotifier(sound_file=str(temp_wav_file))
 
@@ -153,9 +149,7 @@ class TestAudioNotifierPlayLinux:
 
         assert result is True
         assert mock_run.call_count == 2
-        # Check first call was aplay
         assert mock_run.call_args_list[0][0][0] == ["aplay", str(temp_wav_file)]
-        # Check second call was paplay
         assert mock_run.call_args_list[1][0][0] == ["paplay", str(temp_wav_file)]
 
     @patch("basic_agent_chat_loop.components.audio_notifier.platform.system")
@@ -171,7 +165,7 @@ class TestAudioNotifierPlayLinux:
         result = notifier.play()
 
         assert result is False
-        assert mock_run.call_count == 2  # Tried both aplay and paplay
+        assert mock_run.call_count == 2
 
 
 class TestAudioNotifierPlayWindows:
@@ -182,7 +176,6 @@ class TestAudioNotifierPlayWindows:
         """Test successful audio playback on Windows."""
         mock_platform.return_value = "Windows"
 
-        # Mock the winsound module
         mock_winsound = MagicMock()
         mock_winsound.SND_FILENAME = 0x00020000
         mock_winsound.SND_ASYNC = 0x0001
@@ -199,7 +192,6 @@ class TestAudioNotifierPlayWindows:
         """Test that Windows playback handles exceptions gracefully."""
         mock_platform.return_value = "Windows"
 
-        # Mock winsound to raise an exception
         mock_winsound = MagicMock()
         mock_winsound.PlaySound.side_effect = Exception("Playback failed")
         mock_winsound.SND_FILENAME = 0x00020000
@@ -239,7 +231,6 @@ class TestAudioNotifierEdgeCases:
             notifier = AudioNotifier(enabled=False, sound_file=str(temp_wav_file))
             notifier.play()
 
-            # subprocess.run should never be called
             mock_run.assert_not_called()
 
     def test_sound_file_path_conversion(self, temp_wav_file):
@@ -259,6 +250,5 @@ class TestAudioNotifierEdgeCases:
         notifier.play()
 
         call_kwargs = mock_run.call_args[1]
-        # Verify output is suppressed
         assert "stdout" in call_kwargs
         assert "stderr" in call_kwargs
