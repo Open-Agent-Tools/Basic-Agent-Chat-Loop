@@ -145,7 +145,7 @@ class TestCopyCommand:
         router = CommandRouter()
         result = router.parse_input("#copy")
         assert result.command_type == CommandType.COPY
-        assert result.args is None  # No mode specified
+        assert result.args is None
 
     def test_copy_query(self):
         """Test #copy query variant."""
@@ -245,7 +245,6 @@ class TestTemplateCommands:
         """Test just / is not treated as template."""
         router = CommandRouter()
         result = router.parse_input("/")
-        # Single / should be treated as query, not template
         assert result.command_type == CommandType.QUERY
         assert result.is_command is False
 
@@ -376,7 +375,6 @@ class TestEdgeCases:
         """Test just # character."""
         router = CommandRouter()
         result = router.parse_input("#")
-        # Just # with no command should be unknown
         assert result.command_type == CommandType.UNKNOWN_COMMAND
 
     def test_hash_with_whitespace_only(self):

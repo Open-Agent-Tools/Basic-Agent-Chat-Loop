@@ -58,16 +58,14 @@ class TestDetectDependencyFile:
     def test_detect_pyproject_toml_with_dependencies(self, agent_dir, dep_manager):
         """Test detection of pyproject.toml with dependencies."""
         pyproject = agent_dir / "pyproject.toml"
-        pyproject.write_text(
-            """
+        pyproject.write_text("""
 [project]
 name = "test-agent"
 dependencies = [
     "pyyaml>=6.0.1",
     "rich>=13.7.0",
 ]
-        """
-        )
+        """)
 
         result = dep_manager.detect_dependency_file()
         assert result is not None
@@ -78,13 +76,11 @@ dependencies = [
     def test_detect_pyproject_toml_alternative_format(self, agent_dir, dep_manager):
         """Test detection of pyproject.toml with alternative format."""
         pyproject = agent_dir / "pyproject.toml"
-        pyproject.write_text(
-            """
+        pyproject.write_text("""
 [project.dependencies]
 pyyaml = ">=6.0.1"
 rich = ">=13.7.0"
-        """
-        )
+        """)
 
         result = dep_manager.detect_dependency_file()
         assert result is not None
@@ -95,16 +91,14 @@ rich = ">=13.7.0"
     def test_detect_setup_py(self, agent_dir, dep_manager):
         """Test detection of setup.py."""
         setup = agent_dir / "setup.py"
-        setup.write_text(
-            """
+        setup.write_text("""
 from setuptools import setup
 
 setup(
     name="test-agent",
     install_requires=["pyyaml>=6.0.1"],
 )
-        """
-        )
+        """)
 
         result = dep_manager.detect_dependency_file()
         assert result is not None
@@ -123,12 +117,10 @@ setup(
         req_file.write_text("pyyaml>=6.0.1\n")
 
         pyproject = agent_dir / "pyproject.toml"
-        pyproject.write_text(
-            """
+        pyproject.write_text("""
 [project]
 dependencies = ["rich>=13.7.0"]
-        """
-        )
+        """)
 
         result = dep_manager.detect_dependency_file()
         assert result is not None
@@ -139,19 +131,16 @@ dependencies = ["rich>=13.7.0"]
     def test_detect_pyproject_without_dependencies(self, agent_dir, dep_manager):
         """Test that pyproject.toml without dependencies is skipped."""
         pyproject = agent_dir / "pyproject.toml"
-        pyproject.write_text(
-            """
+        pyproject.write_text("""
 [project]
 name = "test-agent"
 version = "1.0.0"
-        """
-        )
+        """)
 
         setup = agent_dir / "setup.py"
         setup.write_text("# setup")
 
         result = dep_manager.detect_dependency_file()
-        # Should skip pyproject and find setup.py
         assert result is not None
         file_type, file_path = result
         assert file_type == "setup"
@@ -166,7 +155,6 @@ class TestInstallDependencies:
         req_file = agent_dir / "requirements.txt"
         req_file.write_text("pyyaml>=6.0.1\n")
 
-        # Mock successful pip install
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stderr = ""
@@ -183,7 +171,6 @@ class TestInstallDependencies:
         req_file = agent_dir / "requirements.txt"
         req_file.write_text("nonexistent-package>=99.99.99\n")
 
-        # Mock failed pip install
         mock_result = MagicMock()
         mock_result.returncode = 1
         mock_result.stderr = "ERROR: Could not find a version"
@@ -197,15 +184,12 @@ class TestInstallDependencies:
     def test_install_from_pyproject_success(self, mock_run, agent_dir, dep_manager):
         """Test successful installation from pyproject.toml."""
         pyproject = agent_dir / "pyproject.toml"
-        pyproject.write_text(
-            """
+        pyproject.write_text("""
 [project]
 name = "test-agent"
 dependencies = ["pyyaml>=6.0.1"]
-        """
-        )
+        """)
 
-        # Mock successful pip install
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stderr = ""
@@ -221,7 +205,6 @@ dependencies = ["pyyaml>=6.0.1"]
         setup = agent_dir / "setup.py"
         setup.write_text("# setup")
 
-        # Mock successful pip install
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stderr = ""
@@ -246,7 +229,6 @@ dependencies = ["pyyaml>=6.0.1"]
         req_file = agent_dir / "requirements.txt"
         req_file.write_text("pyyaml>=6.0.1\n")
 
-        # Mock timeout
         from subprocess import TimeoutExpired
 
         mock_run.side_effect = TimeoutExpired("pip", 300)
@@ -272,12 +254,10 @@ class TestSuggestAutoSetup:
     def test_suggest_when_pyproject_exists(self, agent_dir, dep_manager):
         """Test suggestion when pyproject.toml exists."""
         pyproject = agent_dir / "pyproject.toml"
-        pyproject.write_text(
-            """
+        pyproject.write_text("""
 [project]
 dependencies = ["pyyaml>=6.0.1"]
-        """
-        )
+        """)
 
         suggestion = dep_manager.suggest_auto_setup()
         assert suggestion is not None
@@ -304,9 +284,8 @@ class TestInstallCommandConstruction:
 
         dep_manager.install_dependencies("requirements", req_file)
 
-        # Check that subprocess.run was called with correct arguments
         mock_run.assert_called_once()
-        call_args = mock_run.call_args[0][0]  # First positional argument
+        call_args = mock_run.call_args[0][0]
         assert "-m" in call_args
         assert "pip" in call_args
         assert "install" in call_args
@@ -317,12 +296,10 @@ class TestInstallCommandConstruction:
     def test_pyproject_uses_pip_install_e(self, mock_run, agent_dir, dep_manager):
         """Test that pyproject.toml uses 'pip install -e'."""
         pyproject = agent_dir / "pyproject.toml"
-        pyproject.write_text(
-            """
+        pyproject.write_text("""
 [project]
 dependencies = ["pyyaml>=6.0.1"]
-        """
-        )
+        """)
 
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -330,10 +307,9 @@ dependencies = ["pyyaml>=6.0.1"]
 
         dep_manager.install_dependencies("pyproject", pyproject)
 
-        # Check that subprocess.run was called with correct arguments
         mock_run.assert_called_once()
         call_args = mock_run.call_args[0][0]
         assert "pip" in call_args
         assert "install" in call_args
         assert "-e" in call_args
-        assert str(agent_dir) in call_args  # Should install from directory
+        assert str(agent_dir) in call_args

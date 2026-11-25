@@ -7,8 +7,6 @@ import pytest
 from basic_agent_chat_loop.chat_loop import ChatLoop
 from basic_agent_chat_loop.components.input_handler import get_multiline_input
 
-# Patch to use regular input() for testing (bypass ESC detection)
-# This allows us to test with simple mocked input
 INPUT_PATCH_TARGET = "basic_agent_chat_loop.components.input_handler.input_with_esc"
 
 
@@ -16,7 +14,7 @@ INPUT_PATCH_TARGET = "basic_agent_chat_loop.components.input_handler.input_with_
 def mock_agent():
     """Create a mock agent for testing."""
     agent = Mock()
-    agent.stream_async = None  # No streaming support
+    agent.stream_async = None
     return agent
 
 
@@ -34,7 +32,6 @@ def chat_loop(mock_agent):
 @pytest.mark.asyncio
 async def test_multiline_input_submit(chat_loop):
     """Test basic multi-line input submission."""
-    # Mock input to return lines then empty line to submit
     inputs = ["line 1", "line 2", "line 3", ""]
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
         result = await get_multiline_input()
@@ -55,7 +52,7 @@ async def test_multiline_input_cancel_command(chat_loop):
 @pytest.mark.asyncio
 async def test_multiline_input_cancel_esc(chat_loop):
     """Test cancelling multi-line input with ESC key."""
-    inputs = ["line 1", None]  # None indicates ESC was pressed
+    inputs = ["line 1", None]
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
         result = await get_multiline_input()
 
@@ -91,13 +88,12 @@ async def test_multiline_input_cancel_ctrl_c(chat_loop):
 @pytest.mark.asyncio
 async def test_multiline_input_back_command(chat_loop):
     """Test editing previous line with .back command."""
-    # Simulate: enter two lines, use .back, re-enter line, submit
     inputs = [
         "line 1",
         "line 2",
-        ".back",  # Go back to edit line 2
-        "line 2 edited",  # Re-enter the line
-        "",  # Submit
+        ".back",
+        "line 2 edited",
+        "",
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
@@ -113,13 +109,12 @@ async def test_multiline_input_back_command(chat_loop):
 @pytest.mark.asyncio
 async def test_multiline_input_up_arrow(chat_loop):
     """Test editing previous line with up arrow key."""
-    # Simulate: enter two lines, press up arrow, re-enter line, submit
     inputs = [
         "line 1",
         "line 2",
-        "UP_ARROW",  # Up arrow pressed
-        "line 2 edited",  # Re-enter the line
-        "",  # Submit
+        "UP_ARROW",
+        "line 2 edited",
+        "",
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
@@ -158,9 +153,9 @@ async def test_multiline_input_back_on_empty(chat_loop):
 async def test_multiline_input_empty_first_line(chat_loop):
     """Test that empty first line shows warning and continues."""
     inputs = [
-        "",  # Empty first line - should warn and continue
+        "",
         "line 1",
-        "",  # Submit
+        "",
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):
@@ -181,7 +176,6 @@ async def test_multiline_input_history_saved(chat_loop):
             with patch("readline.add_history") as mock_add_history:
                 _ = await get_multiline_input()
 
-    # Verify the full block was added to history
     mock_add_history.assert_called_with("line 1\nline 2")
 
 
@@ -199,7 +193,6 @@ async def test_multiline_input_line_numbers(chat_loop):
     with patch(INPUT_PATCH_TARGET, side_effect=capture_prompts):
         _ = await get_multiline_input()
 
-    # Check that prompts contain line numbers
     assert any("1" in p for p in prompts_received)
     assert any("2" in p for p in prompts_received)
 
@@ -211,11 +204,11 @@ async def test_multiline_input_multiple_back_commands(chat_loop):
         "line 1",
         "line 2",
         "line 3",
-        ".back",  # Back to line 3
+        ".back",
         "line 3 edited",
-        ".back",  # Back to line 3 edited
+        ".back",
         "line 3 final",
-        "",  # Submit
+        "",
     ]
 
     with patch(INPUT_PATCH_TARGET, side_effect=inputs):

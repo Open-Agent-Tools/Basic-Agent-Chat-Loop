@@ -119,7 +119,6 @@ class TestFormatConversationAsMarkdown:
             mock_extract.return_value = {"model_id": "test", "tool_count": 0}
             chat_loop = ChatLoop(agent, "Test Agent", "Desc")
 
-            # Add conversation markdown
             chat_loop.session_state.query_count = 1
             chat_loop.session_state.conversation_markdown = [
                 "\n## Query 1 (00:00:00)\n",
@@ -162,7 +161,6 @@ class TestFormatConversationAsMarkdown:
             assert "Hello" in markdown
             assert "Hi there!" in markdown
             assert "Time: 0.5s" in markdown
-            # Should not have token info
             assert "Tokens:" not in markdown
 
 

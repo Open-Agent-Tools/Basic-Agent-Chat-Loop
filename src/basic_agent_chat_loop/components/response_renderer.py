@@ -1,7 +1,6 @@
 """Response renderer for displaying agent header in terminal.
 
-Simplified for v1.8.0 - only handles agent name header display.
-Agent library handles all response rendering naturally.
+Displays the agent name header. The agent library renders responses.
 """
 
 import logging

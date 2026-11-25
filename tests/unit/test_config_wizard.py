@@ -154,8 +154,6 @@ class TestLoadExistingConfig:
 
         wizard._load_existing_config("global")
 
-        # ChatConfig handles corrupted files gracefully by loading defaults
-        # So we get a ChatConfig object, but it should use default values
         assert wizard.current_config is not None
         captured = capsys.readouterr()
         assert "Found existing config" in captured.out
@@ -344,7 +342,6 @@ class TestConfigureFeatures:
     @patch("builtins.input")
     def test_configure_features_all_defaults(self, mock_input, wizard):
         """Test configuring features with all defaults."""
-        # 4 boolean prompts, all accepting defaults
         mock_input.return_value = ""
 
         wizard._configure_features()
@@ -358,7 +355,6 @@ class TestConfigureFeatures:
     @patch("builtins.input")
     def test_configure_features_custom_values(self, mock_input, wizard):
         """Test configuring features with custom values."""
-        # Prompts: tokens, metadata, readline, claude_commands
         mock_input.side_effect = ["y", "n", "y", "n"]
 
         wizard._configure_features()
@@ -467,7 +463,6 @@ class TestConfigurePaths:
 
         wizard._configure_paths()
 
-        # save_location no longer configurable (uses ./.chat-sessions)
         assert "save_location" not in wizard.config["paths"]
         assert wizard.config["paths"]["log_location"] == "~/.chat_loop_logs"
 
@@ -478,7 +473,6 @@ class TestConfigurePaths:
 
         wizard._configure_paths()
 
-        # save_location no longer configurable (uses ./.chat-sessions)
         assert "save_location" not in wizard.config["paths"]
         assert wizard.config["paths"]["log_location"] == "~/custom/logs"
 
@@ -534,12 +528,12 @@ class TestConfigureColors:
     def test_configure_colors_custom_values(self, mock_input, wizard):
         """Test customizing colors."""
         mock_input.side_effect = [
-            "y",  # Customize colors?
-            "bright_red",  # user
-            "bright_green",  # agent
-            "",  # system (default)
-            "",  # error (default)
-            "",  # success (default)
+            "y",
+            "bright_red",
+            "bright_green",
+            "",
+            "",
+            "",
         ]
 
         wizard._configure_colors()
@@ -601,7 +595,7 @@ class TestWriteConfig:
         existing_config = tmp_path / ".chatrc"
         existing_config.write_text("existing content")
 
-        mock_input.return_value = "n"  # Decline overwrite
+        mock_input.return_value = "n"
         wizard.config = {"features": {}}
 
         result = wizard._write_config("global")
@@ -618,7 +612,7 @@ class TestWriteConfig:
         existing_config = tmp_path / ".chatrc"
         existing_config.write_text("existing content")
 
-        mock_input.return_value = "y"  # Accept overwrite
+        mock_input.return_value = "y"
         wizard.config = {
             "colors": {},
             "features": {},
@@ -632,7 +626,6 @@ class TestWriteConfig:
 
         assert result is not None
         assert result.exists()
-        # Content should be changed
         assert existing_config.read_text() != "existing content"
 
     @pytest.mark.skipif(
@@ -653,7 +646,6 @@ class TestWriteConfig:
         result = wizard._write_config("global")
 
         assert result is not None
-        # Check permissions are 0o600
         assert oct(result.stat().st_mode)[-3:] == "600"
 
 
@@ -715,36 +707,28 @@ class TestRunMethod:
     @patch.object(ConfigWizard, "_write_config")
     def test_run_complete_flow(self, mock_write, mock_input, wizard):
         """Test complete wizard flow."""
-        # Mock all user inputs for a complete flow
         mock_input.side_effect = [
-            "1",  # Global scope
-            # Features (5 bools)
+            "1",
             "",
             "",
             "",
             "",
             "",
-            # UI (5 bools)
             "",
             "",
             "",
             "",
             "",
-            # Audio
             "y",
             "",
-            # Harmony
-            "",  # enabled (auto/yes/no)
-            "",  # show_detailed_thinking
-            # Behavior
             "",
             "",
             "",
             "",
-            # Paths
             "",
             "",
-            # Colors
+            "",
+            "",
             "n",
         ]
 
@@ -771,9 +755,6 @@ class TestEdgeCases:
             "paths": {},
         }
 
-        # The wizard should handle yaml import errors in _write_config
-        # For this test, we just verify that with normal yaml available,
-        # the config can be written successfully
         result = wizard._write_config("global")
         assert result is not None
         assert result.exists()
@@ -788,11 +769,10 @@ class TestEdgeCases:
         global_config.write_text(temp_config_file.read_text())
 
         wizard._load_existing_config("global")
-        mock_input.return_value = ""  # Use defaults
+        mock_input.return_value = ""
 
         wizard._configure_features()
 
-        # Should use values from existing config
         assert wizard.config["features"]["show_tokens"] is True
 
 
@@ -806,7 +786,6 @@ class TestResetConfigToDefaults:
         """Test resetting global config with confirmation."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-        # User chooses global (1) and confirms (y)
         mock_input.side_effect = ["1", "y"]
 
         result = reset_config_to_defaults()
@@ -814,7 +793,6 @@ class TestResetConfigToDefaults:
         assert result == tmp_path / ".chatrc"
         assert result.exists()
 
-        # Verify content has default values
         content = result.read_text()
         assert "bright_white" in content
         assert "bright_blue" in content
@@ -827,7 +805,6 @@ class TestResetConfigToDefaults:
         """Test resetting project config."""
         monkeypatch.chdir(tmp_path)
 
-        # User chooses project (2) and confirms (y)
         mock_input.side_effect = ["2", "y"]
 
         result = reset_config_to_defaults()
@@ -840,7 +817,6 @@ class TestResetConfigToDefaults:
         """Test that user can cancel reset."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-        # User chooses global (1) but declines confirmation (n)
         mock_input.side_effect = ["1", "n"]
 
         result = reset_config_to_defaults()
@@ -862,11 +838,9 @@ class TestResetConfigToDefaults:
         """Test that reset overwrites existing config."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-        # Create existing config with custom values
         existing_config = tmp_path / ".chatrc"
         existing_config.write_text("custom: values\nshould: be_replaced")
 
-        # User confirms reset
         mock_input.side_effect = ["1", "y"]
 
         result = reset_config_to_defaults()
@@ -874,7 +848,6 @@ class TestResetConfigToDefaults:
         assert result is not None
         content = result.read_text()
 
-        # Should have default values, not custom ones
         assert "custom: values" not in content
         assert "bright_white" in content
 
@@ -893,7 +866,6 @@ class TestResetConfigToDefaults:
         result = reset_config_to_defaults()
 
         assert result is not None
-        # Check permissions are 0o600
         assert oct(result.stat().st_mode)[-3:] == "600"
 
     @patch("builtins.input")
@@ -903,7 +875,6 @@ class TestResetConfigToDefaults:
         """Test handling invalid choice then valid choice."""
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-        # Invalid choice, then valid choice (1), then confirm
         mock_input.side_effect = ["invalid", "3", "1", "y"]
 
         result = reset_config_to_defaults()
@@ -924,7 +895,6 @@ class TestResetConfigToDefaults:
 
         content = result.read_text()
 
-        # Check all major sections are present
         assert "colors:" in content
         assert "features:" in content
         assert "ui:" in content

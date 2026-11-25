@@ -64,11 +64,10 @@ class TestColors:
         original_agent = Colors.AGENT
 
         try:
-            # Configure with custom colors
             custom_config = {
-                "user": "\033[95m",  # Magenta
-                "agent": "\033[96m",  # Cyan
-                "error": "\033[93m",  # Yellow
+                "user": "\033[95m",
+                "agent": "\033[96m",
+                "error": "\033[93m",
             }
 
             Colors.configure(custom_config)
@@ -78,7 +77,6 @@ class TestColors:
             assert Colors.ERROR == "\033[93m"
 
         finally:
-            # Restore original colors
             Colors.USER = original_user
             Colors.AGENT = original_agent
 
@@ -87,17 +85,13 @@ class TestColors:
         original_system = Colors.SYSTEM
 
         try:
-            # Configure only user color
             Colors.configure({"user": "\033[90m"})
 
-            # User color should be updated
             assert Colors.USER == "\033[90m"
 
-            # System color should remain unchanged
             assert Colors.SYSTEM == original_system
 
         finally:
-            # Restore
             Colors.USER = "\033[97m"
 
     def test_configure_with_empty_dict(self):
@@ -106,7 +100,6 @@ class TestColors:
 
         Colors.configure({})
 
-        # Should remain unchanged
         assert Colors.USER == original_user
 
     def test_resolve_color_with_color_name(self):
@@ -148,11 +141,8 @@ class TestColors:
 
         formatted = Colors.format_agent_response(text)
 
-        # Should contain bright_green for tool/thinking lines
         assert COLOR_PALETTE["bright_green"] in formatted
-        # Should contain agent color for regular lines
         assert Colors.AGENT in formatted
-        # Should contain all original text
         assert "Regular line" in formatted
         assert "[Thinking about the problem]" in formatted
         assert "Tool #1: Read file" in formatted
@@ -166,10 +156,7 @@ class TestColors:
 
         formatted = Colors.format_agent_response(text)
 
-        # Should use agent color throughout
         assert Colors.AGENT in formatted
-        # Should not use bright_green since no tool messages
-        # (Can't assert absence easily since AGENT might be bright_green)
         assert "Just a regular response" in formatted
 
     def test_format_agent_response_only_tool_messages(self):
@@ -178,7 +165,6 @@ class TestColors:
 
         formatted = Colors.format_agent_response(text)
 
-        # All lines should use bright_green
         assert COLOR_PALETTE["bright_green"] in formatted
         assert "[Analyzing the code]" in formatted
         assert "Tool #1: Grep search" in formatted
@@ -188,7 +174,6 @@ class TestColors:
         """Test formatting empty response."""
         formatted = Colors.format_agent_response("")
 
-        # Should return empty string (with colors)
         assert isinstance(formatted, str)
 
     def test_format_agent_response_single_line_with_bracket(self):
@@ -258,7 +243,7 @@ class TestStatusBar:
     def test_get_session_time_seconds(self):
         """Test session time formatting for seconds only."""
         status = StatusBar("Test", "Model")
-        status.start_time = time.time() - 30  # 30 seconds ago
+        status.start_time = time.time() - 30
 
         session_time = status.get_session_time()
         assert "s" in session_time
@@ -267,7 +252,7 @@ class TestStatusBar:
     def test_get_session_time_minutes(self):
         """Test session time formatting with minutes."""
         status = StatusBar("Test", "Model")
-        status.start_time = time.time() - 125  # 2 minutes 5 seconds ago
+        status.start_time = time.time() - 125
 
         session_time = status.get_session_time()
         assert "m" in session_time
@@ -304,12 +289,10 @@ class TestStatusBar:
 
         rendered = status.render()
 
-        # Check structure
         assert "┌" in rendered
         assert "└" in rendered
         assert "│" in rendered
 
-        # Check content
         assert "Test Agent" in rendered
         assert "Claude Sonnet 4.5" in rendered
         assert "0 queries" in rendered
@@ -338,7 +321,6 @@ class TestStatusBar:
 
         rendered = status.render()
 
-        # Tokens should not appear
         assert "tokens" not in rendered
 
     def test_render_with_tokens_enabled_zero(self):
@@ -348,7 +330,6 @@ class TestStatusBar:
 
         rendered = status.render()
 
-        # Should not show tokens when count is 0
         assert "tokens" not in rendered
 
     def test_render_with_tokens_small(self):
@@ -382,10 +363,8 @@ class TestStatusBar:
         rendered = status.render()
         lines = rendered.split("\n")
 
-        # Should have 3 lines
         assert len(lines) == 3
 
-        # All lines should have same length
         assert len(lines[0]) == len(lines[1]) == len(lines[2])
 
     def test_session_time_in_render(self):
@@ -395,7 +374,6 @@ class TestStatusBar:
 
         rendered = status.render()
 
-        # Should show seconds
         assert "s" in rendered
 
     def test_render_with_all_features(self):
@@ -403,11 +381,10 @@ class TestStatusBar:
         status = StatusBar("Complex Agent", "Claude Sonnet 4.5", show_tokens=True)
         status.query_count = 12
         status.total_tokens = 15_000
-        status.start_time = time.time() - 300  # 5 minutes
+        status.start_time = time.time() - 300
 
         rendered = status.render()
 
-        # Check all components present
         assert "Complex Agent" in rendered
         assert "Claude Sonnet 4.5" in rendered
         assert "12 queries" in rendered
@@ -420,10 +397,9 @@ class TestStatusBar:
 
         rendered = status.render()
 
-        # Check for box-drawing characters
-        assert "┌" in rendered  # Top-left corner
-        assert "┐" in rendered  # Top-right corner
-        assert "└" in rendered  # Bottom-left corner
-        assert "┘" in rendered  # Bottom-right corner
-        assert "─" in rendered  # Horizontal line
-        assert "│" in rendered  # Vertical line
+        assert "┌" in rendered
+        assert "┐" in rendered
+        assert "└" in rendered
+        assert "┘" in rendered
+        assert "─" in rendered
+        assert "│" in rendered

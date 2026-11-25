@@ -39,7 +39,6 @@ class UsageExtractor:
         if not response_obj:
             return None
 
-        # Try AWS Bedrock accumulated usage first (cumulative)
         if isinstance(response_obj, dict):
             bedrock_result = self._try_bedrock_token_extraction(response_obj)
             if bedrock_result:
@@ -48,7 +47,6 @@ class UsageExtractor:
                 if tokens:
                     return (tokens, is_accumulated)
 
-        # Try standard usage patterns (per-request)
         usage = self._try_standard_usage_extraction(response_obj)
         if usage:
             tokens = self._extract_tokens_from_usage(usage)
@@ -91,28 +89,21 @@ class UsageExtractor:
             if hasattr(result, "metrics") and hasattr(result.metrics, "tool_metrics"):
                 metrics = result.metrics
                 try:
-                    # Check if tool_metrics is truthy (can raise exception)
                     if metrics.tool_metrics:
-                        # Dict format: {tool_name: [call1, call2, ...]}
                         if isinstance(metrics.tool_metrics, dict):
                             return sum(
                                 len(calls) for calls in metrics.tool_metrics.values()
                             )
-                        # Sequence format: [call1, call2, ...]
                         elif hasattr(metrics.tool_metrics, "__len__"):
                             return len(metrics.tool_metrics)
-                        # Object format: count non-private attributes
                         else:
-                            # Use vars() to get both instance and class attributes
                             attrs: list[str] = []
-                            # Get instance attributes
                             if hasattr(metrics.tool_metrics, "__dict__"):
                                 attrs.extend(
                                     k
                                     for k in metrics.tool_metrics.__dict__.keys()
                                     if not k.startswith("_")
                                 )
-                            # Get class attributes
                             for cls in type(metrics.tool_metrics).__mro__:
                                 if cls is object:
                                     break
@@ -155,25 +146,20 @@ class UsageExtractor:
         Returns:
             Usage object or None if not found
         """
-        # Pattern 1: response.usage (Anthropic/Claude style)
         if hasattr(response_obj, "usage"):
             return response_obj.usage
 
-        # Pattern 2: response['usage'] (dict style)
         if isinstance(response_obj, dict) and "usage" in response_obj:
             return response_obj["usage"]
 
-        # Pattern 3: response.metadata.usage
         if hasattr(response_obj, "metadata") and hasattr(
             response_obj.metadata, "usage"
         ):
             return response_obj.metadata.usage
 
-        # Pattern 4: response.data.usage (streaming event)
         if hasattr(response_obj, "data") and hasattr(response_obj.data, "usage"):
             return response_obj.data.usage
 
-        # Pattern 5: response.data['usage'] (streaming event dict)
         if (
             hasattr(response_obj, "data")
             and isinstance(response_obj.data, dict)
@@ -195,9 +181,7 @@ class UsageExtractor:
         input_tokens: int = 0
         output_tokens: int = 0
 
-        # Try different attribute names (check dict keys first, then attributes)
         if isinstance(usage, dict):
-            # AWS Bedrock camelCase - explicit or chain with default
             input_tokens = (
                 usage.get("inputTokens")
                 or usage.get("input_tokens")
@@ -211,7 +195,6 @@ class UsageExtractor:
                 or 0
             )
         else:
-            # Object attributes - try both camelCase (Bedrock) and snake_case
             input_tokens = (
                 getattr(usage, "inputTokens", None)
                 or getattr(usage, "input_tokens", None)
@@ -225,7 +208,6 @@ class UsageExtractor:
                 or 0
             )
 
-        # Ensure tokens are integers (handle mocks/test objects)
         try:
             input_tokens = int(input_tokens) if input_tokens is not None else 0
             output_tokens = int(output_tokens) if output_tokens is not None else 0

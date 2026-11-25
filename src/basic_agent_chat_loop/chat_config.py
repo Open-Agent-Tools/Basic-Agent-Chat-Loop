@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 class ChatConfig:
     """Configuration manager for chat loop."""
 
-    # Default configuration
     DEFAULTS = {
         "colors": {
             "user": "bright_white",
@@ -37,8 +36,8 @@ class ChatConfig:
             "system": "yellow",
             "error": "bright_red",
             "success": "bright_green",
-            "dim": "\033[2m",  # Dim (no named equivalent)
-            "reset": "\033[0m",  # Reset (no named equivalent)
+            "dim": "\033[2m",
+            "reset": "\033[0m",
         },
         "features": {
             "rich_enabled": True,
@@ -65,19 +64,12 @@ class ChatConfig:
         },
         "audio": {
             "enabled": True,
-            "notification_sound": None,  # Uses bundled notification.wav if None
+            "notification_sound": None,
         },
         "context": {
-            # Warning thresholds for context usage (as percentages)
-            # Show warnings when token usage exceeds these thresholds
             "warning_thresholds": [80, 90, 95],
         },
-        # Per-agent overrides (example structure)
-        "agents": {
-            # 'Complex Coding Clara': {
-            #     'features': {'show_tokens': True}
-            # }
-        },
+        "agents": {},
     }
 
     def __init__(self, config_path: Optional[Path] = None):
@@ -99,7 +91,6 @@ class ChatConfig:
         Returns:
             Merged configuration dictionary
         """
-        # Start with defaults
         config = self._deep_copy(self.DEFAULTS)
 
         if not YAML_AVAILABLE:
@@ -107,15 +98,10 @@ class ChatConfig:
 
         config_files = []
 
-        # Build list in order of precedence (lowest to highest)
-        # Lower priority configs are loaded first, higher priority override them
-
-        # Global config (lowest priority when explicit or project configs exist)
         global_config = Path.home() / ".chatrc"
         if global_config.exists():
             config_files.append(global_config)
 
-        # Project config (higher priority than global)
         for i in range(4):
             if i == 0:
                 project_config = Path.cwd() / ".chatrc"
@@ -127,20 +113,17 @@ class ChatConfig:
 
             if project_config.exists():
                 config_files.append(project_config)
-                break  # Use first found, don't search higher
+                break
 
-        # Explicit path (highest priority - loaded last to override others)
         if explicit_path and explicit_path.exists():
             config_files.append(explicit_path)
 
-        # Load and merge configs (each subsequent config overrides previous)
         for config_file in config_files:
             try:
                 with open(config_file) as f:
                     user_config = yaml.safe_load(f) or {}
                     config = self._merge_config(config, user_config)
             except Exception as e:
-                # Log error but continue with defaults for invalid configs
                 logger.warning(f"Failed to load config from {config_file}: {e}")
                 pass
 
@@ -164,7 +147,6 @@ class ChatConfig:
         result = self._deep_copy(base)
 
         for key, value in override.items():
-            # Skip None values (treat as "not set" rather than explicit None)
             if value is None:
                 continue
 
@@ -173,10 +155,8 @@ class ChatConfig:
                 and isinstance(result[key], dict)
                 and isinstance(value, dict)
             ):
-                # Recursive merge for nested dicts
                 result[key] = self._merge_config(result[key], value)
             else:
-                # Direct override
                 result[key] = value
 
         return result
@@ -195,7 +175,6 @@ class ChatConfig:
         Returns:
             Configuration value
         """
-        # Check agent-specific override first
         agents = self.config.get("agents") or {}
         if agent_name and agent_name in agents:
             agent_config = agents[agent_name]
@@ -203,7 +182,6 @@ class ChatConfig:
             if agent_value is not None:
                 return agent_value
 
-        # Fall back to global config
         value = self._get_nested(self.config, key)
         return value if value is not None else default
 
@@ -244,19 +222,16 @@ class ChatConfig:
         """
         base_section = self.config.get(section, {})
 
-        # Apply agent overrides if specified
         agents = self.config.get("agents") or {}
         if agent_name and agent_name in agents:
             agent_config = agents[agent_name]
             if section in agent_config:
                 base_section = self._merge_config(base_section, agent_config[section])
 
-        # Special handling for colors section - decode escape sequences
         if section == "colors":
             decoded_colors = {}
             for key, value in base_section.items():
                 if isinstance(value, str) and "\\" in value:
-                    # Decode YAML-escaped strings (\\033 -> \033)
                     try:
                         decoded_colors[key] = value.encode().decode("unicode_escape")
                     except Exception:
@@ -278,7 +253,6 @@ class ChatConfig:
         """
         keys = key.split(".")
 
-        # Determine target dict
         if agent_name:
             agents = self.config.get("agents") or {}
             if "agents" not in self.config:
@@ -289,7 +263,6 @@ class ChatConfig:
         else:
             target = self.config
 
-        # Navigate to parent and set value
         for k in keys[:-1]:
             if k not in target or not isinstance(target[k], dict):
                 target[k] = {}
@@ -310,7 +283,6 @@ class ChatConfig:
         return Path(os.path.expanduser(os.path.expandvars(path)))
 
 
-# Global config instance (lazy loaded)
 _global_config: Optional[ChatConfig] = None
 
 
@@ -406,7 +378,6 @@ agents: {}
             f.write(default_config)
         return config_file
     except Exception:
-        # If we can't write the file, that's okay - will use built-in defaults
         pass
 
     return config_file
@@ -426,7 +397,6 @@ def get_config(config_path: Optional[Path] = None, reload: bool = False) -> Chat
     global _global_config
 
     if _global_config is None or reload:
-        # Initialize default config on first run if it doesn't exist
         if config_path is None:
             initialize_default_config()
 

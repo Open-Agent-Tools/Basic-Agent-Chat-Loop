@@ -2,7 +2,6 @@
 
 Handles saving conversation history to markdown files with summaries
 and compacting sessions for context management.
-Extracted from chat_loop.py to improve modularity and reduce file size.
 """
 
 import asyncio
@@ -17,7 +16,6 @@ if TYPE_CHECKING:
     from .token_tracker import TokenTracker
     from .ui_components import Colors
 
-# Rough token-to-word ratio for restoration token estimation
 TOKEN_TO_WORD_RATIO = 1.3
 
 logger = logging.getLogger(__name__)
@@ -41,7 +39,7 @@ class SessionPersister:
         session_restorer: "SessionRestorer",
         token_tracker: "TokenTracker",
         colors_module: type["Colors"],
-        response_streamer: Any,  # Avoid circular import
+        response_streamer: Any,
     ):
         """Initialize the session persister.
 
@@ -118,10 +116,8 @@ class SessionPersister:
             Summary text with HTML markers, or None if generation failed
         """
         try:
-            # Build the summarization prompt
             prompt_parts = ["Generate a progressive session summary:\n\n"]
 
-            # Add background context if there's a previous summary
             if previous_summary:
                 prompt_parts.append(
                     "**Background Context:** Condense this previous summary to 1-2 "
@@ -130,12 +126,10 @@ class SessionPersister:
                 prompt_parts.append(previous_summary)
                 prompt_parts.append("\n\n")
 
-            # Add current session conversation
             prompt_parts.append("**Current Session:**\n")
             prompt_parts.extend(self.session_state.conversation_markdown)
             prompt_parts.append("\n\n")
 
-            # Add instructions
             prompt_parts.append(
                 "Create a structured summary:\n\n**Background Context:** "
             )
@@ -163,7 +157,6 @@ class SessionPersister:
 
             summary_prompt = "".join(prompt_parts)
 
-            # Call agent to generate summary
             print(
                 self.colors.system("📝 Generating session summary... "),
                 end="",
@@ -172,19 +165,15 @@ class SessionPersister:
 
             summary_response = ""
 
-            # Check if agent supports streaming
             if hasattr(self.agent, "stream_async"):
-                # Use streaming
                 summary_response = await self._stream_response(summary_prompt)
             else:
-                # Non-streaming agent
                 summary_response = await asyncio.get_event_loop().run_in_executor(
                     None, self.agent, summary_prompt
                 )
 
             print("✓")
 
-            # Validate that summary has the required markers
             if (
                 "<!-- SESSION_SUMMARY_START -->" not in summary_response
                 or "<!-- SESSION_SUMMARY_END -->" not in summary_response
@@ -212,33 +201,28 @@ class SessionPersister:
             session_id: Optional custom session ID.
                 Uses self.session_state.session_id if not provided.
             generate_summary: Whether to generate an AI summary of the session.
-                Defaults to False to avoid generating summaries after every turn.
+                Defaults to False.
                 Should be True when explicitly compacting or ending a session.
 
         Returns:
             True if save was successful, False otherwise
         """
-        # Only save if there's conversation content
         if not self.session_state.conversation_markdown:
             logger.debug("No conversation to save")
             return False
 
-        # Use provided session_id or fall back to self.session_state.session_id
         save_session_id = session_id or self.session_state.session_id
 
         try:
-            # Generate summary for the session (only if requested)
             summary = None
             if generate_summary:
                 summary = await self._generate_session_summary(
                     previous_summary=self.session_restorer.previous_summary
                 )
 
-            # Ensure sessions directory exists
             sessions_dir = self.session_manager.sessions_dir
             sessions_dir.mkdir(parents=True, exist_ok=True)
 
-            # Build full markdown with header
             md_path = sessions_dir / f"{save_session_id}.md"
             total_tokens = (
                 self.response_streamer.total_input_tokens
@@ -254,7 +238,6 @@ class SessionPersister:
                 f"**Total Queries:** {self.session_state.query_count}\n\n",
             ]
 
-            # Add "Resumed from" info if this session was resumed
             if self.session_restorer.resumed_from:
                 markdown_content.append(
                     f"**Resumed From:** {self.session_restorer.resumed_from}\n\n"
@@ -262,16 +245,13 @@ class SessionPersister:
 
             markdown_content.append("---\n")
 
-            # Add conversation content
             markdown_content.extend(self.session_state.conversation_markdown)
 
-            # Add summary if generated successfully
             if summary:
                 markdown_content.append("\n")
                 markdown_content.append(summary)
                 markdown_content.append("\n")
             elif generate_summary:
-                # Only warn if we tried to generate a summary but it failed
                 logger.warning("Session saved without summary - resume will not work")
                 print(
                     self.colors.system(
@@ -279,14 +259,11 @@ class SessionPersister:
                     )
                 )
 
-            # Write markdown file
             with open(md_path, "w", encoding="utf-8") as f:
                 f.writelines(markdown_content)
 
-            # Set secure permissions (owner read/write only)
             md_path.chmod(0o600)
 
-            # Update session index
             first_query = (
                 self.session_state.conversation_markdown[1]
                 .replace("**You:** ", "")
@@ -331,7 +308,6 @@ class SessionPersister:
         print(self.colors.system(f"  File:       {md_path}"))
         print(self.colors.system(f"  Queries:    {self.session_state.query_count}"))
 
-        # Show token count if available
         total_tokens = (
             self.response_streamer.total_input_tokens
             + self.response_streamer.total_output_tokens
@@ -353,7 +329,6 @@ class SessionPersister:
         3. Starts a new session with the summary as context
         4. Agent acknowledges the restored context
         """
-        # Check if there's anything to compact
         if not self.session_state.conversation_markdown:
             print(
                 self.colors.system(
@@ -363,7 +338,6 @@ class SessionPersister:
             return
 
         try:
-            # Save current session with summary
             print(self.colors.system("\n📋 Compacting current session..."))
             old_session_id = self.session_state.session_id
             old_query_count = self.session_state.query_count
@@ -372,13 +346,11 @@ class SessionPersister:
                 + self.response_streamer.total_output_tokens
             )
 
-            # Generate summary for compaction
             success = await self.save_conversation(generate_summary=True)
             if not success:
                 print(self.colors.error("Failed to save session for compaction"))
                 return
 
-            # Extract summary from saved file
             sessions_dir = self.session_manager.sessions_dir
             saved_file = sessions_dir / f"{old_session_id}.md"
             summary = self.session_restorer._extract_summary_from_markdown(saved_file)
@@ -391,7 +363,6 @@ class SessionPersister:
                 )
                 return
 
-            # Show save confirmation
             print(self.colors.success(f"✓ Saved session: {old_session_id}"))
             print(
                 self.colors.system(
@@ -400,7 +371,6 @@ class SessionPersister:
                 )
             )
 
-            # Build and send restoration prompt using SessionRestorer
             print(self.colors.system("🔄 Starting new session with summary..."))
             print()
 
@@ -417,10 +387,8 @@ class SessionPersister:
                 restoration_duration,
             ) = await self.session_restorer._send_restoration_prompt(restoration_prompt)
 
-            # Display agent acknowledgment
             self.session_restorer._display_restoration_response(restoration_response)
 
-            # Track restoration tokens (approximate - word count * ratio)
             restoration_input_tokens = (
                 len(restoration_prompt.split()) * TOKEN_TO_WORD_RATIO
             )
@@ -428,14 +396,12 @@ class SessionPersister:
                 len(restoration_response.split()) * TOKEN_TO_WORD_RATIO
             )
 
-            # Create new session ID
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_agent_name = (
                 self.agent_name.lower().replace(" ", "_").replace("/", "_")
             )
             new_session_id = f"{safe_agent_name}_{timestamp}"
 
-            # Initialize new session with compacted context
             session_data = {
                 "query_count": old_query_count,
                 "total_tokens": old_total_tokens,

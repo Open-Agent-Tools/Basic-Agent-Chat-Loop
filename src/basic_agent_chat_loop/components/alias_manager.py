@@ -38,7 +38,6 @@ class AliasManager:
             with open(self.aliases_file, encoding="utf-8") as f:
                 data = json.load(f)
 
-            # Validate format
             if not isinstance(data, dict):
                 logger.warning("Invalid aliases file format, expected dict")
                 return {}
@@ -63,10 +62,8 @@ class AliasManager:
             True if successful, False otherwise
         """
         try:
-            # Create parent directory if needed
             self.aliases_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Write JSON with pretty formatting
             with open(self.aliases_file, "w", encoding="utf-8") as f:
                 json.dump(aliases, f, indent=2, sort_keys=True)
 
@@ -103,7 +100,6 @@ class AliasManager:
         Returns:
             Tuple of (success, message)
         """
-        # Validate alias name
         if not alias_name:
             return False, "Alias name cannot be empty"
 
@@ -114,20 +110,16 @@ class AliasManager:
             )
             return (False, msg)
 
-        # Convert to absolute path
         path_obj = Path(agent_path).expanduser().resolve()
 
-        # Validate path exists
         if not path_obj.exists():
             return False, f"Agent file not found: {path_obj}"
 
         if not path_obj.is_file():
             return False, f"Path is not a file: {path_obj}"
 
-        # Load existing aliases
         aliases = self.load_aliases()
 
-        # Check if alias already exists
         if alias_name in aliases and not overwrite:
             existing_path = aliases[alias_name]
             msg = (
@@ -136,10 +128,8 @@ class AliasManager:
             )
             return (False, msg)
 
-        # Add/update alias
         aliases[alias_name] = str(path_obj)
 
-        # Save
         if self.save_aliases(aliases):
             if overwrite and alias_name in self.load_aliases():
                 return True, f"Updated alias '{alias_name}' -> {path_obj}"
@@ -163,7 +153,6 @@ class AliasManager:
         if alias_name not in aliases:
             return False, f"Alias '{alias_name}' not found"
 
-        # Remove and save
         removed_path = aliases.pop(alias_name)
 
         if self.save_aliases(aliases):
@@ -192,15 +181,12 @@ class AliasManager:
         Returns:
             Resolved path if found, None otherwise
         """
-        # First, check if it's a valid path
         path = Path(agent_input).expanduser()
         if path.exists() and path.is_file():
             return str(path.resolve())
 
-        # If not a path, check aliases
         alias_path = self.get_alias(agent_input)
         if alias_path:
-            # Verify alias path still exists
             if Path(alias_path).exists():
                 return alias_path
             else:

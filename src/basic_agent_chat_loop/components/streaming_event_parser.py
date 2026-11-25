@@ -46,23 +46,18 @@ class StreamingEventParser:
             >>> parser.parse_event('Direct text')
             'Direct text'
         """
-        # First check if event is a dict (AWS Strands format)
         if isinstance(event, dict):
             return self._parse_dict_event(event)
 
-        # Check for object with data attribute
         if hasattr(event, "data"):
             return self._parse_data_attribute(event.data)
 
-        # Check for object with delta attribute (AWS Strands/Anthropic objects)
         if hasattr(event, "delta"):
             return self._parse_delta_attribute(event.delta)
 
-        # Check for direct text attribute
         if hasattr(event, "text"):
             return event.text
 
-        # Event is the text itself
         if isinstance(event, str):
             return event
 
@@ -77,8 +72,6 @@ class StreamingEventParser:
         Returns:
             Extracted text or None
         """
-        # AWS Strands nested dict format:
-        # {'event': {'contentBlockDelta': {'delta': {'text': '...'}}}}
         if "event" in event and isinstance(event["event"], dict):
             nested_event = event["event"]
             if "contentBlockDelta" in nested_event:
@@ -88,7 +81,6 @@ class StreamingEventParser:
                     if isinstance(delta, dict) and "text" in delta:
                         return delta["text"]
 
-        # Fallback: check for direct text field
         if "text" in event:
             return event["text"]
 
@@ -103,21 +95,16 @@ class StreamingEventParser:
         Returns:
             Extracted text or None
         """
-        # String data
         if isinstance(data, str):
             return data
 
-        # Dictionary data
         if isinstance(data, dict):
-            # Direct text field
             if "text" in data:
                 return data["text"]
 
-            # Content field with blocks
             if "content" in data:
                 content = data["content"]
                 if isinstance(content, list):
-                    # Find first block with text
                     for block in content:
                         if isinstance(block, dict) and "text" in block:
                             return block["text"]
@@ -135,15 +122,12 @@ class StreamingEventParser:
         Returns:
             Extracted text or None
         """
-        # String delta
         if isinstance(delta, str):
             return delta
 
-        # Object with text attribute
         if hasattr(delta, "text"):
             return delta.text
 
-        # Dictionary delta with text
         if isinstance(delta, dict) and "text" in delta:
             return delta["text"]
 

@@ -24,14 +24,12 @@ class AudioNotifier:
         self.enabled = enabled
         self.system = platform.system()
 
-        # Set default sound file to bundled notification.wav
         if sound_file is None:
             module_dir = Path(__file__).parent.parent
             self.sound_file = module_dir / "notification.wav"
         else:
             self.sound_file = Path(sound_file)
 
-        # Verify sound file exists
         if not self.sound_file.exists():
             self.enabled = False
             print(f"Warning: Audio file not found: {self.sound_file}")
@@ -47,7 +45,7 @@ class AudioNotifier:
             return False
 
         try:
-            if self.system == "Darwin":  # macOS
+            if self.system == "Darwin":
                 subprocess.run(
                     ["afplay", str(self.sound_file)],
                     check=False,
@@ -57,7 +55,6 @@ class AudioNotifier:
                 return True
 
             elif self.system == "Linux":
-                # Try aplay first, then paplay as fallback
                 for cmd in ["aplay", "paplay"]:
                     try:
                         subprocess.run(
@@ -81,9 +78,7 @@ class AudioNotifier:
                 return True
 
             else:
-                # Unsupported platform
                 return False
 
         except Exception:
-            # Silently fail - audio is non-critical
             return False

@@ -36,7 +36,6 @@ Current directory: Run 'pwd' to see your location"""
             "Run the file directly to see full error: python " + filename,
         ]
 
-        # Add specific suggestions based on error type
         if "ModuleNotFoundError" in str(type(error)):
             suggestions.insert(
                 0, "Install missing dependencies (check requirements.txt)"
@@ -187,7 +186,7 @@ To fix:
                 "Verify directory exists and is writable",
                 "Try running with appropriate permissions",
             ]
-        else:  # read or parse
+        else:
             suggestions = [
                 f'Check file exists: ls -la "{filepath}"',
                 "Verify file has correct format (JSON/YAML)",

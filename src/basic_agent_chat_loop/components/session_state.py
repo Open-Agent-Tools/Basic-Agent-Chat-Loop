@@ -25,24 +25,18 @@ class SessionState:
         Args:
             agent_name: Name of the agent for session ID generation
         """
-        # Generate session ID
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_agent_name = agent_name.lower().replace(" ", "_").replace("/", "_")
         self.session_id = f"{safe_agent_name}_{timestamp}"
 
-        # Query and conversation tracking
         self.query_count = 0
         self.conversation_markdown: list[str] = []
 
-        # Last query/response for copy commands
         self.last_query = ""
         self.last_response = ""
 
-        # Session timing
         self.session_start_time = time.time()
 
-        # Accumulated usage tracking for AWS Strands delta calculation
-        # (AWS Strands reports cumulative usage, we need deltas)
         self.last_accumulated_input = 0
         self.last_accumulated_output = 0
 
@@ -109,7 +103,6 @@ class SessionState:
         delta_input = current_input - self.last_accumulated_input
         delta_output = current_output - self.last_accumulated_output
 
-        # Update tracking
         self.last_accumulated_input = current_input
         self.last_accumulated_output = current_output
 
@@ -155,21 +148,17 @@ class SessionState:
         Args:
             agent_name: Name of the agent for new session ID generation
         """
-        # Generate new session ID
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_agent_name = agent_name.lower().replace(" ", "_").replace("/", "_")
         self.session_id = f"{safe_agent_name}_{timestamp}"
 
-        # Reset counters
         self.query_count = 0
         self.conversation_markdown.clear()
         self.last_query = ""
         self.last_response = ""
 
-        # Reset timing
         self.session_start_time = time.time()
 
-        # Reset accumulated usage
         self.last_accumulated_input = 0
         self.last_accumulated_output = 0
 

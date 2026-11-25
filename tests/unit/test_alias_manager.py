@@ -36,7 +36,6 @@ class TestAliasManagerInitialization:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         AliasManager()
         aliases_file = tmp_path / ".chat_aliases"
-        # File is not created until save_aliases is called
         assert not aliases_file.exists()
 
     def test_initialization_loads_existing_aliases(self, populated_alias_manager):
@@ -162,15 +161,10 @@ class TestResolveAgentPath:
 
     def test_resolve_alias(self, populated_alias_manager, tmp_path):
         """Test resolving an alias to its path."""
-        # Create the actual file that the alias points to
         Path("/path/to/test_agent.py")
 
-        # For this test, we just check that it tries to resolve the alias
-        # The actual file doesn't need to exist for alias resolution
         populated_alias_manager.resolve_agent_path("test_agent")
 
-        # Since the file doesn't actually exist, it should return None
-        # But the alias lookup should work
         aliases = populated_alias_manager.list_aliases()
         assert "test_agent" in aliases
 
@@ -196,7 +190,6 @@ class TestFileCorruption:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         manager = AliasManager()
 
-        # Should initialize with empty aliases
         aliases = manager.list_aliases()
         assert aliases == {}
 
@@ -208,11 +201,9 @@ class TestFileCorruption:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         manager = AliasManager()
 
-        # Add a new alias
         agent_path = tmp_path / "agent.py"
         agent_path.write_text("# test agent")
         manager.add_alias("test", str(agent_path))
 
-        # File should now be valid JSON
         content = json.loads(aliases_file.read_text())
         assert "test" in content

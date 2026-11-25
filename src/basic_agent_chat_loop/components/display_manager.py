@@ -10,7 +10,6 @@ from typing import Any, Optional
 from .token_tracker import TokenTracker
 from .ui_components import Colors
 
-# Check for readline availability
 try:
     import readline  # noqa: F401
 
@@ -60,7 +59,6 @@ class DisplayManager:
         if not self.show_banner:
             return
 
-        # Show status bar if enabled
         if self.status_bar:
             print(f"\n{self.status_bar.render()}")
 
@@ -69,12 +67,10 @@ class DisplayManager:
         print(f"Welcome to {self.agent_name}!")
         print(f"{self.agent_description}")
 
-        # Display agent metadata if enabled and available
         if self.show_metadata and self.agent_metadata:
             print()
             print(Colors.DIM + "Agent Configuration:" + Colors.RESET)
 
-            # Use status bar model if available (it has overrides applied)
             if self.status_bar and self.status_bar.model_info:
                 print(f"  Model: {self.status_bar.model_info}")
             elif "model_id" in self.agent_metadata:
@@ -119,7 +115,6 @@ class DisplayManager:
         if self.use_rich:
             print("  Rich      - Enhanced markdown rendering with syntax highlighting")
 
-        # Show config info if config loaded
         if self.config:
             print()
             print(Colors.DIM + "Configuration loaded" + Colors.RESET)
@@ -242,7 +237,6 @@ class DisplayManager:
         """
         session_duration = time.time() - session_start_time
 
-        # Format duration
         if session_duration < 60:
             duration_str = f"{session_duration:.0f}s"
         elif session_duration < 3600:
@@ -262,7 +256,6 @@ class DisplayManager:
         summary_parts.append(f"Duration: {duration_str}")
         summary_parts.append(f"Queries: {query_count}")
 
-        # Token info
         total_tokens = token_tracker.get_total_tokens()
         if total_tokens > 0:
             input_tok = token_tracker.total_input_tokens
@@ -295,17 +288,13 @@ class DisplayManager:
             print("Example: ~/.prompts/review.md")
             return
 
-        # Count total templates across all sources
         total_count = sum(len(templates) for _, templates in templates_grouped)
 
         print(f"\n{Colors.system('Available Prompt Templates')} ({total_count}):")
         print(f"{Colors.DIM}{'=' * 60}{Colors.RESET}")
 
-        # Track which templates we've seen to detect overrides
         seen_templates = set()
 
-        # Display in reverse order so lowest priority shows first
-        # This makes overrides appear later and be more obvious
         for directory, templates in reversed(templates_grouped):
             print(f"\n{Colors.system(f'Templates from {directory}:')}")
             print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
@@ -348,21 +337,17 @@ class DisplayManager:
         print(f"{Colors.DIM}{'-' * 60}{Colors.RESET}")
 
         for i, session in enumerate(sessions, 1):
-            # Format date
             created_str = session.created.strftime("%b %d, %H:%M")
 
-            # Build session line
             session_line = f"  {i}. {session.agent_name} - {created_str}"
             session_line += f" - {session.query_count} "
             session_line += "query" if session.query_count == 1 else "queries"
 
-            # Highlight if same agent
             if agent_name and session.agent_name == agent_name:
                 print(Colors.success(session_line))
             else:
                 print(session_line)
 
-            # Show preview
             preview_text = f'     "{session.preview}"'
             print(f"{Colors.DIM}{preview_text}{Colors.RESET}")
 

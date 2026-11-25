@@ -1,7 +1,6 @@
 """Session restoration component for resuming previous conversations.
 
 Handles loading session summaries and restoring agent context from saved sessions.
-Extracted from chat_loop.py to improve modularity and reduce file size.
 """
 
 import asyncio
@@ -18,7 +17,6 @@ if TYPE_CHECKING:
     from .token_tracker import TokenTracker
     from .ui_components import Colors, StatusBar
 
-# Rough token-to-word ratio for restoration token estimation
 TOKEN_TO_WORD_RATIO = 1.3
 
 logger = logging.getLogger(__name__)
@@ -84,9 +82,7 @@ class SessionRestorer:
         self.console = console
         self.status_bar = status_bar
 
-        # Track parent session ID for resumed sessions
         self._resumed_from: Optional[str] = None
-        # Store previous summary for progressive summarization
         self._previous_summary: Optional[str] = None
 
         logger.debug("SessionRestorer initialized")
@@ -123,13 +119,11 @@ class SessionRestorer:
             f"{self.token_tracker.format_tokens(total_tokens)}):\n\n",
         ]
 
-        # Add resumed_from info if present
         if resumed_from:
             restoration_prompt_parts.append(
                 f"This session was resumed from: {resumed_from}\n\n"
             )
 
-        # Add session file path if provided
         if session_file:
             restoration_prompt_parts.append(
                 f"Previous session file: {session_file}\n\n"
@@ -196,7 +190,6 @@ class SessionRestorer:
         Returns:
             Actual session ID string, or None if invalid
         """
-        # If session_id is a number, resolve it from the list
         if session_id.isdigit():
             session_num = int(session_id)
             sessions = self.session_manager.list_sessions(
@@ -208,7 +201,6 @@ class SessionRestorer:
                 print(f"Valid range: 1-{len(sessions)}")
                 return None
 
-            # Get actual session_id from the list (1-indexed)
             session_info = sessions[session_num - 1]
             return session_info.session_id
 
@@ -224,7 +216,6 @@ class SessionRestorer:
             Dict with session data (metadata, summary, query_count, total_tokens,
             session_file), or None if validation fails
         """
-        # Load markdown file
         sessions_dir = self.session_manager.sessions_dir
         session_file = sessions_dir / f"{session_id}.md"
 
@@ -232,13 +223,11 @@ class SessionRestorer:
             print(self.colors.error(f"⚠️  Session file not found: {session_id}"))
             return None
 
-        # Extract metadata from markdown
         metadata = self._extract_metadata_from_markdown(session_file)
         if not metadata:
             print(self.colors.error("Failed to parse session metadata"))
             return None
 
-        # Extract summary
         summary = self._extract_summary_from_markdown(session_file)
         if not summary:
             print(
@@ -249,12 +238,10 @@ class SessionRestorer:
             )
             return None
 
-        # Get query count and tokens from metadata or session index
         query_count = metadata.get("query_count", 0)
         session_info_data = self.session_manager.get_session_metadata(session_id)
         total_tokens = session_info_data.total_tokens if session_info_data else 0
 
-        # Display session info
         print(
             self.colors.success(
                 f"✓ Found: {metadata.get('agent_name', 'Unknown')} - {session_id}"
@@ -284,7 +271,6 @@ class SessionRestorer:
         Returns:
             True if user confirms continuation, False otherwise
         """
-        # Check if agent path matches (graceful warning)
         if "agent_path" in metadata and metadata["agent_path"] != self.agent_path:
             print(
                 self.colors.system(
@@ -314,9 +300,7 @@ class SessionRestorer:
         restoration_start = time.time()
         restoration_response = ""
 
-        # Check if agent supports streaming
         if hasattr(self.agent, "stream_async"):
-            # Display with spinner while streaming
             if self.use_rich and self.console:
                 spinner = Spinner("dots", text="Restoring context...")
                 with Live(spinner, console=self.console, refresh_per_second=10):
@@ -326,7 +310,6 @@ class SessionRestorer:
             else:
                 restoration_response = await self._stream_response(restoration_prompt)
         else:
-            # Non-streaming agent
             restoration_response = await asyncio.get_event_loop().run_in_executor(
                 None, self.agent, restoration_prompt
             )
@@ -357,7 +340,7 @@ class SessionRestorer:
         restoration_input_tokens: float,
         restoration_output_tokens: float,
         session_data: dict,
-        response_streamer: Any,  # Avoid circular import
+        response_streamer: Any,
     ) -> None:
         """Initialize new session with restored context.
 
@@ -371,12 +354,10 @@ class SessionRestorer:
             session_data: Dict with query_count, total_tokens, summary, session_file
             response_streamer: ResponseStreamer instance for resetting token counts
         """
-        # Initialize new session
         self.session_state.session_id = new_session_id
-        self._resumed_from = old_session_id  # Track parent session
-        self._previous_summary = session_data["summary"]  # Store for next compaction
+        self._resumed_from = old_session_id
+        self._previous_summary = session_data["summary"]
 
-        # Reset conversation but add restoration exchange
         self.session_state.conversation_markdown = [
             f"\n## Session Restored ({datetime.now().strftime('%H:%M:%S')})\n",
             f"**Context:** Resumed from {old_session_id} "
@@ -391,13 +372,11 @@ class SessionRestorer:
             "---\n",
         ]
 
-        # Reset counters (restoration tokens tracked separately)
         self.session_state.query_count = 0
         response_streamer.total_input_tokens = 0
         response_streamer.total_output_tokens = 0
         self.session_state.session_start_time = time.time()
 
-        # Update status bar if enabled
         if self.status_bar:
             self.status_bar.query_count = 0
             self.status_bar.start_time = self.session_state.session_start_time
@@ -420,22 +399,18 @@ class SessionRestorer:
         try:
             print(self.colors.system("\n📋 Loading session..."))
 
-            # Resolve numeric session IDs to actual IDs
             resolved_id = self._resolve_session_id(session_id)
             if not resolved_id:
                 return False
             session_id = resolved_id
 
-            # Load and validate session data
             session_data = self._load_and_validate_session(session_id)
             if not session_data:
                 return False
 
-            # Validate agent compatibility
             if not self._validate_agent_compatibility(session_data["metadata"]):
                 return False
 
-            # Build and send restoration prompt
             print(self.colors.system("🔄 Restoring context..."))
             print()
 
@@ -453,10 +428,8 @@ class SessionRestorer:
                 restoration_duration,
             ) = await self._send_restoration_prompt(restoration_prompt)
 
-            # Display agent acknowledgment
             self._display_restoration_response(restoration_response)
 
-            # Track restoration tokens (approximate - word count * ratio)
             restoration_input_tokens = (
                 len(restoration_prompt.split()) * TOKEN_TO_WORD_RATIO
             )
@@ -464,14 +437,12 @@ class SessionRestorer:
                 len(restoration_response.split()) * TOKEN_TO_WORD_RATIO
             )
 
-            # Create new session ID for resumed session
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_agent_name = (
                 self.agent_name.lower().replace(" ", "_").replace("/", "_")
             )
             new_session_id = f"{safe_agent_name}_{timestamp}"
 
-            # Initialize new session with restored context
             self._initialize_restored_session(
                 old_session_id=session_id,
                 new_session_id=new_session_id,
@@ -528,23 +499,18 @@ class SessionRestorer:
             content = file_path.read_text(encoding="utf-8")
             metadata = {}
 
-            # Extract session ID
             if match := re.search(r"\*\*Session ID:\*\* (.+)", content):
                 metadata["session_id"] = match.group(1).strip()
 
-            # Extract agent name
             if match := re.search(r"\*\*Agent:\*\* (.+)", content):
                 metadata["agent_name"] = match.group(1).strip()
 
-            # Extract agent path
             if match := re.search(r"\*\*Agent Path:\*\* (.+)", content):
                 metadata["agent_path"] = match.group(1).strip()
 
-            # Extract total queries
             if match := re.search(r"\*\*Total Queries:\*\* (\d+)", content):
                 metadata["query_count"] = int(match.group(1))
 
-            # Extract resumed from (if present)
             if match := re.search(r"\*\*Resumed From:\*\* (.+)", content):
                 metadata["resumed_from"] = match.group(1).strip()
 

@@ -2,17 +2,17 @@
 """
 Comprehensive Windows Compatibility Test Suite
 
-Tests the Windows-specific features added in commit 481617e:
+Tests Windows-specific features:
 1. Windows VT mode enablement for ANSI color support
 2. Python version requirement bump to 3.10+
 3. Cross-platform compatibility
 """
+
 import sys
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-# Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from basic_agent_chat_loop.chat_loop import enable_windows_vt_mode
@@ -34,25 +34,24 @@ class TestWindowsVTMode(unittest.TestCase):
     def test_windows_ctypes_import_failure(self):
         """When ctypes import fails on Windows, should return False."""
         with patch("sys.platform", "win32"):
-            with patch("builtins.__import__", side_effect=ImportError("ctypes not available")):
+            with patch(
+                "builtins.__import__", side_effect=ImportError("ctypes not available")
+            ):
                 result = enable_windows_vt_mode()
                 self.assertFalse(result)
 
     @patch("sys.platform", "win32")
     def test_windows_vt_mode_already_enabled(self):
         """When VT mode is already enabled, should return True."""
-        # Mock ctypes module
         mock_ctypes = MagicMock()
         mock_kernel32 = MagicMock()
         mock_ctypes.windll.kernel32 = mock_kernel32
 
-        # Mock GetStdHandle
         mock_handle = 123
         mock_kernel32.GetStdHandle.return_value = mock_handle
 
-        # Mock GetConsoleMode - VT mode already enabled (bit 0x0004 set)
         mock_mode = MagicMock()
-        mock_mode.value = 0x0007  # Has VT bit set (0x0004)
+        mock_mode.value = 0x0007
         mock_ctypes.c_ulong.return_value = mock_mode
         mock_kernel32.GetConsoleMode.return_value = True
 
@@ -70,13 +69,11 @@ class TestWindowsVTMode(unittest.TestCase):
         mock_handle = 123
         mock_kernel32.GetStdHandle.return_value = mock_handle
 
-        # VT mode not enabled initially
         mock_mode = MagicMock()
-        mock_mode.value = 0x0003  # VT bit not set
+        mock_mode.value = 0x0003
         mock_ctypes.c_ulong.return_value = mock_mode
         mock_kernel32.GetConsoleMode.return_value = True
 
-        # SetConsoleMode succeeds
         mock_kernel32.SetConsoleMode.return_value = True
 
         with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
@@ -99,7 +96,6 @@ class TestWindowsVTMode(unittest.TestCase):
         mock_ctypes.c_ulong.return_value = mock_mode
         mock_kernel32.GetConsoleMode.return_value = True
 
-        # SetConsoleMode fails
         mock_kernel32.SetConsoleMode.return_value = False
 
         with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
@@ -116,7 +112,6 @@ class TestWindowsVTMode(unittest.TestCase):
         mock_handle = 123
         mock_kernel32.GetStdHandle.return_value = mock_handle
 
-        # GetConsoleMode fails
         mock_kernel32.GetConsoleMode.return_value = False
 
         with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
@@ -130,7 +125,6 @@ class TestWindowsVTMode(unittest.TestCase):
         mock_kernel32 = MagicMock()
         mock_ctypes.windll.kernel32 = mock_kernel32
 
-        # Simulate exception during API call
         mock_kernel32.GetStdHandle.side_effect = Exception("Windows API error")
 
         with patch.dict("sys.modules", {"ctypes": mock_ctypes}):
@@ -147,7 +141,7 @@ class TestPythonVersionRequirement(unittest.TestCase):
             sys.version_info[:2],
             (3, 10),
             f"Python version {sys.version_info.major}.{sys.version_info.minor} "
-            f"does not meet the minimum requirement of 3.10"
+            f"does not meet the minimum requirement of 3.10",
         )
 
     def test_version_info_accessible(self):
@@ -165,7 +159,6 @@ class TestANSIColorSupport(unittest.TestCase):
         """ANSI color codes should be properly defined in ui_components."""
         from basic_agent_chat_loop.components.ui_components import Colors
 
-        # Test basic color access via class attributes
         self.assertIsNotNone(Colors.USER)
         self.assertIsNotNone(Colors.AGENT)
         self.assertIsNotNone(Colors.ERROR)
@@ -175,12 +168,10 @@ class TestANSIColorSupport(unittest.TestCase):
         """ANSI codes should follow proper escape sequence format."""
         from basic_agent_chat_loop.components.ui_components import Colors
 
-        # Test that default color codes use ANSI format
         color_code = Colors.SUCCESS
-        # ANSI codes start with \033[ or \x1b[
         self.assertTrue(
             color_code.startswith("\033[") or color_code.startswith("\x1b["),
-            f"Color code '{color_code}' doesn't start with ANSI escape sequence"
+            f"Color code '{color_code}' doesn't start with ANSI escape sequence",
         )
 
 
@@ -193,14 +184,14 @@ class TestPlatformDetection(unittest.TestCase):
 
     def test_platform_specific_imports(self):
         """Platform-specific imports should not break on other platforms."""
-        # This should work on all platforms
         from basic_agent_chat_loop import chat_loop
+
         self.assertTrue(hasattr(chat_loop, "enable_windows_vt_mode"))
 
     def test_readline_availability(self):
         """Readline should be available (readline or pyreadline3)."""
         from basic_agent_chat_loop.components import input_handler
-        # READLINE_AVAILABLE can be True or False, both are valid
+
         self.assertIsInstance(input_handler.READLINE_AVAILABLE, bool)
 
 
@@ -209,15 +200,14 @@ class TestWindowsSpecificDependencies(unittest.TestCase):
 
     def test_pyreadline3_conditional_import(self):
         """pyreadline3 should only be required on Windows."""
-        # On non-Windows, this test just verifies the condition exists
         if sys.platform == "win32":
             try:
                 import pyreadline3
+
                 self.assertIsNotNone(pyreadline3)
             except ImportError:
                 self.fail("pyreadline3 should be available on Windows")
         else:
-            # On non-Windows, pyreadline3 is not required
             self.assertNotEqual(sys.platform, "win32")
 
 
@@ -230,17 +220,14 @@ class TestMainEntryPoint(unittest.TestCase):
         """main() should call enable_windows_vt_mode() early."""
         from basic_agent_chat_loop.chat_loop import main
 
-        # Mock sys.argv to prevent argument parsing issues
         with patch("sys.argv", ["chat_loop"]):
             try:
-                # Call main - it will fail due to missing config, but that's OK
                 main()
             except SystemExit:
-                pass  # Expected when no agent is provided
+                pass
             except Exception:
-                pass  # Other exceptions are fine for this test
+                pass
 
-        # Verify enable_windows_vt_mode was called
         mock_enable_vt.assert_called_once()
 
 
@@ -254,11 +241,9 @@ def run_tests():
     print(f"Python: {sys.version}")
     print("=" * 70)
 
-    # Create test suite
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
 
-    # Add all test classes
     suite.addTests(loader.loadTestsFromTestCase(TestWindowsVTMode))
     suite.addTests(loader.loadTestsFromTestCase(TestPythonVersionRequirement))
     suite.addTests(loader.loadTestsFromTestCase(TestANSIColorSupport))
@@ -266,11 +251,9 @@ def run_tests():
     suite.addTests(loader.loadTestsFromTestCase(TestWindowsSpecificDependencies))
     suite.addTests(loader.loadTestsFromTestCase(TestMainEntryPoint))
 
-    # Run tests with detailed output
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
 
-    # Print summary
     print("\n" + "=" * 70)
     print("Test Summary")
     print("=" * 70)
@@ -278,7 +261,9 @@ def run_tests():
     print(f"Successes: {result.testsRun - len(result.failures) - len(result.errors)}")
     print(f"Failures: {len(result.failures)}")
     print(f"Errors: {len(result.errors)}")
-    print(f"Success Rate: {((result.testsRun - len(result.failures) - len(result.errors)) / result.testsRun * 100):.1f}%")
+    print(
+        f"Success Rate: {((result.testsRun - len(result.failures) - len(result.errors)) / result.testsRun * 100):.1f}%"
+    )
 
     return 0 if result.wasSuccessful() else 1
 

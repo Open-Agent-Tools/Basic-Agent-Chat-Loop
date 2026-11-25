@@ -269,7 +269,6 @@ class TestDisplayInfo:
         display_with_config.display_info()
         captured = capsys.readouterr()
 
-        # Auto-save is now always enabled, so should always appear
         assert "Auto-save conversations after each message" in captured.out
 
 
@@ -279,7 +278,7 @@ class TestDisplaySessionSummary:
     def test_session_summary_basic(self, basic_display, capsys):
         """Test basic session summary."""
         tracker = TokenTracker()
-        start_time = time.time() - 30  # 30 seconds ago
+        start_time = time.time() - 30
 
         basic_display.display_session_summary(start_time, 5, tracker)
         captured = capsys.readouterr()
@@ -301,7 +300,7 @@ class TestDisplaySessionSummary:
     def test_session_summary_duration_minutes(self, basic_display, capsys):
         """Test duration formatting in minutes."""
         tracker = TokenTracker()
-        start_time = time.time() - 125  # 2m 5s
+        start_time = time.time() - 125
 
         basic_display.display_session_summary(start_time, 1, tracker)
         captured = capsys.readouterr()
@@ -311,7 +310,7 @@ class TestDisplaySessionSummary:
     def test_session_summary_duration_hours(self, basic_display, capsys):
         """Test duration formatting in hours."""
         tracker = TokenTracker()
-        start_time = time.time() - 7320  # 2h 2m
+        start_time = time.time() - 7320
 
         basic_display.display_session_summary(start_time, 1, tracker)
         captured = capsys.readouterr()
@@ -416,7 +415,6 @@ class TestEdgeCases:
         display.display_banner()
         captured = capsys.readouterr()
 
-        # Should not show max tokens if Unknown
         assert "Max Tokens: Unknown" not in captured.out
 
     def test_status_bar_model_override(self, capsys):
@@ -437,6 +435,5 @@ class TestEdgeCases:
         display.display_banner()
         captured = capsys.readouterr()
 
-        # Should use status bar model, not metadata model
         assert "new-model" in captured.out
         assert "old-model" not in captured.out
